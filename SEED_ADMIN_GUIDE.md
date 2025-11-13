@@ -22,7 +22,7 @@ From MongoDB Atlas:
 
 **Example:**
 ```
-mongodb+srv://admin:YourPassword@cluster0.xxxxx.mongodb.net/supplier-onboarding?retryWrites=true&w=majority
+mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster0.xxxxx.mongodb.net/supplier-onboarding?retryWrites=true&w=majority
 ```
 
 ### Step 2: Set Environment Variable (Temporary)
@@ -33,14 +33,14 @@ Open Terminal and run:
 cd /Users/heatmap/Documents/Betika
 
 # Set your production MongoDB URI (replace with your actual URI)
-export MONGODB_URI="mongodb+srv://admin:YourPassword@cluster0.xxxxx.mongodb.net/supplier-onboarding"
+export MONGODB_URI="mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster0.xxxxx.mongodb.net/supplier-onboarding"
 ```
 
 **OR** create a temporary `.env` file:
 
 ```bash
 # Create .env file with production MongoDB URI
-echo 'MONGODB_URI=mongodb+srv://admin:YourPassword@cluster0.xxxxx.mongodb.net/supplier-onboarding' > .env
+echo 'MONGODB_URI=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster0.xxxxx.mongodb.net/supplier-onboarding' > .env
 ```
 
 ### Step 3: Run the Seed Script
@@ -161,7 +161,7 @@ node seed-production.js
 2. **Check Connection String:**
    - Password must be URL-encoded (e.g., `@` → `%40`)
    - Must include database name: `/supplier-onboarding`
-   - Format: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`
+   - Format: `mongodb+srv://<username>:<password>@cluster.mongodb.net/<dbname>`
 
 3. **Check Database User:**
    - Go to **Database Access**

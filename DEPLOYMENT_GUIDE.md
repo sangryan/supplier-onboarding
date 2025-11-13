@@ -38,7 +38,7 @@ This guide will walk you through deploying the Supplier Onboarding Portal to Ren
 2. Choose **Connect your application**
 3. Copy the connection string (looks like: `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/`)
 4. Replace `<password>` with your actual password
-5. Add database name at the end: `mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/supplier-onboarding`
+5. Add database name at the end: `mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster0.xxxxx.mongodb.net/supplier-onboarding`
 
 ## Step 2: Push Code to GitHub
 

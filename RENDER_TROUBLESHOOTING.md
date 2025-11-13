@@ -24,7 +24,7 @@ Make sure these are set in **Backend Service → Environment**:
 ```
 NODE_ENV=production
 PORT=8000
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/supplier-onboarding
+MONGODB_URI=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster.mongodb.net/supplier-onboarding
 JWT_SECRET=(auto-generated)
 JWT_EXPIRE=7d
 CLIENT_URL=https://supplier-onboarding-portal.onrender.com
@@ -83,7 +83,7 @@ Free services sleep after 15 minutes of inactivity:
 
 3. **Check Connection String Format**
    ```
-   mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/supplier-onboarding?retryWrites=true&w=majority
+   mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@cluster0.xxxxx.mongodb.net/supplier-onboarding?retryWrites=true&w=majority
    ```
    - Must include database name: `/supplier-onboarding`
    - Special characters in password must be URL-encoded

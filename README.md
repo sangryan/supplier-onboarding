@@ -228,7 +228,7 @@ To enable email notifications:
 The system uses MongoDB. To use a remote MongoDB instance:
 
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+MONGODB_URI=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@<YOUR_CLUSTER>.mongodb.net/<DATABASE_NAME>
 ```
 
 ## 📖 Usage
