@@ -33,21 +33,15 @@ const LandingPage = () => {
           {/* Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
+              component="img"
+              src="/images/Icon.svg"
+              alt="Betika Logo"
               sx={{
-                width: { xs: 28, sm: 32 },
-                height: { xs: 28, sm: 32 },
-                backgroundColor: theme.palette.primary.main,
-                borderRadius: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: { xs: 32, sm: 40 },
+                height: { xs: 30, sm: 37 },
                 mr: 1.5,
               }}
-            >
-              <Typography sx={{ color: 'white', fontSize: { xs: '16px', sm: '18px' }, fontWeight: 'bold' }}>
-                B
-              </Typography>
-            </Box>
+            />
             {/* Mobile: Show "Supplier Onboarding" in two lines */}
             <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
               <Typography sx={{ fontSize: '13px', fontWeight: 600, color: theme.palette.text.primary, lineHeight: 1.2 }}>

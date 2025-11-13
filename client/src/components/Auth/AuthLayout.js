@@ -86,21 +86,15 @@ const AuthLayout = ({ children }) => {
           {/* Header */}
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, justifyContent: { xs: 'center', sm: 'flex-start' } }}>
             <Box
+              component="img"
+              src="/images/Icon.svg"
+              alt="Betika Logo"
               sx={{
-                width: 32,
-                height: 32,
-                backgroundColor: theme.palette.primary.main,
-                borderRadius: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: 40,
+                height: 37,
                 mr: 1.5,
               }}
-            >
-              <Typography sx={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-                B
-              </Typography>
-            </Box>
+            />
             <Typography sx={{ fontSize: '16px', fontWeight: 500, color: theme.palette.text.secondary }}>
               Supplier Onboarding Portal
             </Typography>
