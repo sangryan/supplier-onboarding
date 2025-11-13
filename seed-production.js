@@ -10,7 +10,6 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 // Import User model
 const User = require('./server/models/User');
@@ -38,10 +37,12 @@ const seedAdmin = async () => {
 
     // Admin user data
     const adminData = {
-      name: 'System Administrator',
+      firstName: 'System',
+      lastName: 'Administrator',
       email: 'admin@betika.com',
       password: 'Admin@123',
-      role: 'admin',
+      role: 'super_admin',
+      department: 'IT',
       isActive: true
     };
 
@@ -51,23 +52,19 @@ const seedAdmin = async () => {
     if (existingAdmin) {
       console.log('⚠️  Admin user already exists!');
       console.log(`📧 Email: ${existingAdmin.email}`);
-      console.log(`👤 Role: ${existingAdmin.role}`);
+      console.log(`👤 Name: ${existingAdmin.firstName} ${existingAdmin.lastName}`);
+      console.log(`🔑 Role: ${existingAdmin.role}`);
       console.log(`✅ Active: ${existingAdmin.isActive}`);
       console.log('\n💡 You can login with:');
-      console.log(`   Email: ${adminData.email}`);
-      console.log(`   Password: ${adminData.password}`);
+      console.log(`   Email: admin@betika.com`);
+      console.log(`   Password: Admin@123`);
       console.log('\n⚠️  IMPORTANT: Change this password after first login!\n');
       await mongoose.connection.close();
       process.exit(0);
     }
 
-    // Hash password
-    console.log('🔐 Hashing password...');
-    const salt = await bcrypt.genSalt(10);
-    adminData.password = await bcrypt.hash(adminData.password, salt);
-
-    // Create admin user
-    console.log('👤 Creating admin user...');
+    // Create admin user (password will be hashed by the model's pre-save hook)
+    console.log('👤 Creating super admin user...');
     const admin = await User.create(adminData);
 
     console.log('\n✅ Admin user created successfully!\n');
