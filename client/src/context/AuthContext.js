@@ -37,7 +37,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('Login attempt:', { email });
+      console.log('Login attempt:', { email, password: password.substring(0, 3) + '***' });
+      console.log('API baseURL:', api.defaults.baseURL);
+      
       const response = await api.post('/auth/login', { email, password });
       console.log('Login response:', response.data);
       
@@ -55,7 +57,11 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error full:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      console.error('Response headers:', error.response?.headers);
+      
       const message = error.response?.data?.message || error.message || 'Login failed';
       toast.error(message);
       return { success: false, message };
