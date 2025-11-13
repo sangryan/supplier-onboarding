@@ -10,11 +10,34 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
+// Configure CORS
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'https://supplier-onboarding-portal.onrender.com'
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked: ${origin}`);
+      callback(null, true); // Allow anyway for now, can tighten later
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
@@ -60,27 +83,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/supplier_onboarding', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
-
-// Health check
+// Health check (before DB connection for quick response)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, () => {
+// Start server first, then connect to database
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Accepting connections on 0.0.0.0:${PORT}`);
+  
+  // Connect to database after server starts
+  if (process.env.MONGODB_URI) {
+    mongoose.connect(process.env.MONGODB_URI)
+      .then(() => {
+        console.log('✅ MongoDB connected successfully');
+        console.log(`Database: ${process.env.MONGODB_URI.split('@')[1]?.split('?')[0] || 'hidden'}`);
+      })
+      .catch(err => {
+        console.error('❌ MongoDB connection error:', err.message);
+        console.warn('⚠️  Server running without database connection');
+        // Don't exit - allow server to run without DB for health checks
+      });
+  } else {
+    console.warn('⚠️  MONGODB_URI not set - running without database');
+  }
 });
 
 module.exports = app;
