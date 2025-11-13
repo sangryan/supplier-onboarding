@@ -37,16 +37,26 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('Login attempt:', { email });
       const response = await api.post('/auth/login', { email, password });
+      console.log('Login response:', response.data);
+      
       const { token, user } = response.data;
       
+      if (!token || !user) {
+        console.error('Invalid response format:', response.data);
+        throw new Error('Invalid response from server');
+      }
+      
+      console.log('Storing token and user:', { token: token.substring(0, 20) + '...', user });
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Login successful!');
       
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
+      console.error('Login error:', error);
+      const message = error.response?.data?.message || error.message || 'Login failed';
       toast.error(message);
       return { success: false, message };
     }
