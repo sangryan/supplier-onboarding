@@ -78,6 +78,7 @@ router.post('/login', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         errors: errors.array()
@@ -85,19 +86,35 @@ router.post('/login', [
     }
 
     const { email, password } = req.body;
+    
+    console.log('Login attempt:', {
+      email,
+      emailLength: email?.length,
+      passwordLength: password?.length,
+      emailLower: email?.toLowerCase(),
+    });
 
     // Find user
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
     
     if (!user) {
+      console.log('User not found for email:', email.toLowerCase().trim());
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    console.log('User found:', {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive
+    });
+
     // Check if user is active
     if (!user.isActive) {
+      console.log('User account is deactivated');
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated'
@@ -105,8 +122,12 @@ router.post('/login', [
     }
 
     // Check password
+    console.log('Comparing password...');
     const isMatch = await user.comparePassword(password);
+    console.log('Password match:', isMatch);
+    
     if (!isMatch) {
+      console.log('Password does not match!');
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
