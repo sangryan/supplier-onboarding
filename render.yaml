@@ -34,7 +34,6 @@ services:
   - type: web
     name: supplier-onboarding-portal
     env: static
-    plan: free
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/build
     envVars:
