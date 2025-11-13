@@ -38,7 +38,7 @@ services:
     staticPublishPath: ./client/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://supplier-onboarding-api.onrender.com
+        value: https://supplier-onboarding-api.onrender.com/api
     routes:
       - type: rewrite
         source: /*
