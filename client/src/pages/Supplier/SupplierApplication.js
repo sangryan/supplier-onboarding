@@ -79,6 +79,28 @@ const currencies = ['KES', 'USD', 'EUR', 'GBP'];
 
 const creditPeriods = ['7 Days', '14 Days', '30 Days', '60 Days', '90 Days'];
 
+const entityTypes = [
+  'Limited Company',
+  'Public Limited Company', 
+  'Partnership',
+  'Sole Proprietorship',
+  'Trust',
+  'NGO',
+  'Government Entity',
+  'Other'
+];
+
+const serviceTypes = [
+  'Goods Supply',
+  'Services',
+  'Consultancy',
+  'Construction',
+  'IT Services',
+  'Professional Services',
+  'Maintenance & Repair',
+  'Other'
+];
+
 const SupplierApplication = () => {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -106,6 +128,11 @@ const SupplierApplication = () => {
     branch: '',
     currency: '',
     creditPeriod: '',
+    
+    // Entity Details
+    entityType: '',
+    serviceTypes: '',
+    servicesDescription: '',
   });
   const [loading, setLoading] = useState(false);
   const [countrySearchOpen, setCountrySearchOpen] = useState(false);
@@ -151,6 +178,12 @@ const SupplierApplication = () => {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handlePrevious = () => {
+    if (activeStep > 0) {
+      setActiveStep(prev => prev - 1);
     }
   };
 
@@ -761,13 +794,152 @@ const SupplierApplication = () => {
       
       case 1:
         return (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="h6" gutterBottom>
-              Entity Details
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Document upload and certifications section coming soon
-            </Typography>
+          <Box>
+            {/* Entity Details Section */}
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 4,
+                p: 3,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+              }}
+            >
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 0.5,
+                  fontSize: '18px',
+                  color: '#111827'
+                }}
+              >
+                Entity Details
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: '#6b7280',
+                  fontSize: '14px',
+                  mb: 3
+                }}
+              >
+                Entity type and required documents
+              </Typography>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                  >
+                    Entity type
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={formData.entityType}
+                      onChange={(e) => handleChange('entityType', e.target.value)}
+                      displayEmpty
+                      sx={{ backgroundColor: '#fff' }}
+                    >
+                      <MenuItem value="" disabled>
+                        Select
+                      </MenuItem>
+                      {entityTypes.map((type) => (
+                        <MenuItem key={type} value={type}>
+                          {type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Service Details Section */}
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 4,
+                p: 3,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+              }}
+            >
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 0.5,
+                  fontSize: '18px',
+                  color: '#111827'
+                }}
+              >
+                Service Details
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: '#6b7280',
+                  fontSize: '14px',
+                  mb: 3
+                }}
+              >
+                Details of services being offered
+              </Typography>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                  >
+                    Types of Services Being Offered
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={formData.serviceTypes}
+                      onChange={(e) => handleChange('serviceTypes', e.target.value)}
+                      displayEmpty
+                      sx={{ backgroundColor: '#fff' }}
+                    >
+                      <MenuItem value="" disabled>
+                        Select service type
+                      </MenuItem>
+                      {serviceTypes.map((type) => (
+                        <MenuItem key={type} value={type}>
+                          {type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                  >
+                    Services Description
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={6}
+                    value={formData.servicesDescription}
+                    onChange={(e) => handleChange('servicesDescription', e.target.value)}
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#fff',
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
           </Box>
         );
       
@@ -832,8 +1004,8 @@ const SupplierApplication = () => {
                   width: 32,
                   height: 32,
                   borderRadius: '50%',
-                  backgroundColor: index === activeStep ? theme.palette.green.main : 'transparent',
-                  color: index === activeStep ? '#fff' : theme.palette.green.main,
+                  backgroundColor: index < activeStep ? theme.palette.green.main : index === activeStep ? theme.palette.green.main : 'transparent',
+                  color: index === activeStep || index < activeStep ? '#fff' : theme.palette.green.main,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -841,7 +1013,7 @@ const SupplierApplication = () => {
                   fontSize: '16px'
                 }}
               >
-                {step.number}
+                {index < activeStep ? <Check sx={{ fontSize: '18px' }} /> : step.number}
               </Box>
             ))}
           </Box>
@@ -885,9 +1057,9 @@ const SupplierApplication = () => {
                       width: 48,
                       height: 48,
                       borderRadius: '50%',
-                      backgroundColor: index === activeStep ? theme.palette.green.main : 'transparent',
-                      border: index === activeStep ? 'none' : 'none',
-                      color: index === activeStep ? '#fff' : theme.palette.green.main,
+                      backgroundColor: index < activeStep ? theme.palette.green.main : index === activeStep ? theme.palette.green.main : 'transparent',
+                      border: index === activeStep || index < activeStep ? 'none' : 'none',
+                      color: index === activeStep || index < activeStep ? '#fff' : theme.palette.green.main,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -899,7 +1071,7 @@ const SupplierApplication = () => {
                       zIndex: 1
                     }}
                   >
-                    {step.number}
+                    {index < activeStep ? <Check sx={{ fontSize: '24px' }} /> : step.number}
                   </Box>
                   <Typography
                     sx={{
@@ -937,53 +1109,85 @@ const SupplierApplication = () => {
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             gap: 2
           }}
         >
-          <Button
-            variant="outlined"
-            onClick={handleSaveDraft}
-            disabled={loading}
-            sx={{
-              textTransform: 'none',
-              fontSize: '14px',
-              fontWeight: 500,
-              px: 3,
-              py: 1,
-              borderRadius: '6px',
-              borderColor: '#d1d5db',
-              color: '#374151',
-              '&:hover': {
-                borderColor: '#9ca3af',
-                backgroundColor: '#f9fafb'
-              }
-            }}
-          >
-            Save Draft
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSaveAndContinue}
-            disabled={loading}
-            sx={{
-              backgroundColor: theme.palette.green.main,
-              color: '#fff',
-              textTransform: 'none',
-              fontSize: '14px',
-              fontWeight: 500,
-              px: 3,
-              py: 1,
-              borderRadius: '6px',
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: theme.palette.green.hover,
+          {/* Left side buttons */}
+          <Box>
+            {activeStep > 0 && (
+              <Button
+                variant="outlined"
+                onClick={handlePrevious}
+                startIcon={<ArrowBack />}
+                sx={{
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  px: 3,
+                  py: 1,
+                  borderRadius: '6px',
+                  borderColor: '#d1d5db',
+                  color: '#374151',
+                  '&:hover': {
+                    borderColor: '#9ca3af',
+                    backgroundColor: '#f9fafb'
+                  }
+                }}
+              >
+                Previous
+              </Button>
+            )}
+          </Box>
+
+          {/* Right side buttons */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {activeStep === 0 && (
+              <Button
+                variant="outlined"
+                onClick={handleSaveDraft}
+                disabled={loading}
+                sx={{
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  px: 3,
+                  py: 1,
+                  borderRadius: '6px',
+                  borderColor: '#d1d5db',
+                  color: '#374151',
+                  '&:hover': {
+                    borderColor: '#9ca3af',
+                    backgroundColor: '#f9fafb'
+                  }
+                }}
+              >
+                Save Draft
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              onClick={handleSaveAndContinue}
+              disabled={loading}
+              sx={{
+                backgroundColor: theme.palette.green.main,
+                color: '#fff',
+                textTransform: 'none',
+                fontSize: '14px',
+                fontWeight: 500,
+                px: 3,
+                py: 1,
+                borderRadius: '6px',
                 boxShadow: 'none',
-              },
-            }}
-          >
-            {loading ? 'Saving...' : 'Save and Continue'}
-          </Button>
+                '&:hover': {
+                  backgroundColor: theme.palette.green.hover,
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              {loading ? 'Saving...' : 'Save and Continue'}
+            </Button>
+          </Box>
         </Box>
       </Container>
 
