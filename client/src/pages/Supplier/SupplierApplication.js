@@ -823,7 +823,37 @@ const SupplierApplication = () => {
 
         {/* Custom Stepper */}
         <Box sx={{ mb: 4 }}>
-          <Grid container spacing={0} justifyContent="center" alignItems="flex-start">
+          {/* Mobile View - Just Numbers */}
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', gap: 4, mb: 3 }}>
+            {steps.map((step, index) => (
+              <Box
+                key={step.number}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  backgroundColor: index === activeStep ? theme.palette.green.main : 'transparent',
+                  color: index === activeStep ? '#fff' : theme.palette.green.main,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 600,
+                  fontSize: '16px'
+                }}
+              >
+                {step.number}
+              </Box>
+            ))}
+          </Box>
+
+          {/* Desktop View - Full Details */}
+          <Grid 
+            container 
+            spacing={0} 
+            justifyContent="center" 
+            alignItems="flex-start"
+            sx={{ display: { xs: 'none', md: 'flex' } }}
+          >
             {steps.map((step, index) => (
               <Grid 
                 item 
@@ -908,8 +938,7 @@ const SupplierApplication = () => {
           sx={{
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: 2,
-            flexWrap: 'wrap'
+            gap: 2
           }}
         >
           <Button
