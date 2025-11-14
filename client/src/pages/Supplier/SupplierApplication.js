@@ -1013,7 +1013,7 @@ const SupplierApplication = () => {
                   fontSize: '16px'
                 }}
               >
-                {index < activeStep ? <Check sx={{ fontSize: '18px' }} /> : step.number}
+                {index < activeStep ? <Check sx={{ fontSize: '16px', fontWeight: 'bold' }} /> : step.number}
               </Box>
             ))}
           </Box>
@@ -1071,7 +1071,7 @@ const SupplierApplication = () => {
                       zIndex: 1
                     }}
                   >
-                    {index < activeStep ? <Check sx={{ fontSize: '24px' }} /> : step.number}
+                    {index < activeStep ? <Check sx={{ fontSize: '20px', fontWeight: 'bold', strokeWidth: 2 }} /> : step.number}
                   </Box>
                   <Typography
                     sx={{
