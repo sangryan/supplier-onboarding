@@ -11,12 +11,16 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  InputAdornment,
+  Popper,
+  ClickAwayListener,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, Search, Check, KeyboardArrowDown } from '@mui/icons-material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import Footer from '../../components/Footer/Footer';
 
 const steps = [
   {
@@ -42,9 +46,23 @@ const steps = [
 ];
 
 const countries = [
-  'Kenya', 'Uganda', 'Tanzania', 'Rwanda', 'Burundi', 'South Sudan',
-  'Ethiopia', 'Somalia', 'Egypt', 'South Africa', 'Nigeria', 'Ghana',
-  'Other'
+  { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
+  { code: 'TZ', name: 'Tanzania', flag: '🇹🇿' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: 'UG', name: 'Uganda', flag: '🇺🇬' },
+  { code: 'RW', name: 'Rwanda', flag: '🇷🇼' },
+  { code: 'BI', name: 'Burundi', flag: '🇧🇮' },
+  { code: 'SS', name: 'South Sudan', flag: '🇸🇸' },
+  { code: 'ET', name: 'Ethiopia', flag: '🇪🇹' },
+  { code: 'SO', name: 'Somalia', flag: '🇸🇴' },
+  { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
+  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭' },
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CN', name: 'China', flag: '🇨🇳' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
 const legalNatures = [
@@ -90,6 +108,15 @@ const SupplierApplication = () => {
     creditPeriod: '',
   });
   const [loading, setLoading] = useState(false);
+  const [countrySearchOpen, setCountrySearchOpen] = useState(false);
+  const [countrySearchTerm, setCountrySearchTerm] = useState('');
+  const [countryAnchorEl, setCountryAnchorEl] = useState(null);
+
+  const filteredCountries = countries.filter(country =>
+    country.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
+  );
+
+  const selectedCountry = countries.find(c => c.name === formData.registeredCountry);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({
@@ -133,7 +160,16 @@ const SupplierApplication = () => {
         return (
           <Box>
             {/* Basic Information Section */}
-            <Box sx={{ mb: 4 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 4,
+                p: 3,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+              }}
+            >
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -184,23 +220,142 @@ const SupplierApplication = () => {
                   >
                     Registered Country
                   </Typography>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={formData.registeredCountry}
-                      onChange={(e) => handleChange('registeredCountry', e.target.value)}
-                      displayEmpty
-                      sx={{ backgroundColor: '#fff' }}
-                    >
-                      <MenuItem value="" disabled>
-                        <em>Select country</em>
-                      </MenuItem>
-                      {countries.map((country) => (
-                        <MenuItem key={country} value={country}>
-                          {country}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <ClickAwayListener onClickAway={() => setCountrySearchOpen(false)}>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        value={selectedCountry ? selectedCountry.name : ''}
+                        placeholder="Select country"
+                        onClick={(e) => {
+                          setCountryAnchorEl(e.currentTarget);
+                          setCountrySearchOpen(!countrySearchOpen);
+                          setCountrySearchTerm('');
+                        }}
+                        InputProps={{
+                          readOnly: true,
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <KeyboardArrowDown sx={{ color: '#6b7280' }} />
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                          }
+                        }}
+                      />
+                      
+                      {countrySearchOpen && (
+                        <Paper
+                          sx={{
+                            mt: 0.5,
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {/* Search Input Inside Dropdown */}
+                          <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              placeholder="Search country..."
+                              value={countrySearchTerm}
+                              onChange={(e) => setCountrySearchTerm(e.target.value)}
+                              autoFocus
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <Search sx={{ color: '#9ca3af', fontSize: 20 }} />
+                                  </InputAdornment>
+                                ),
+                              }}
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  backgroundColor: 'transparent',
+                                  '& fieldset': {
+                                    border: 'none',
+                                  },
+                                  '&:hover fieldset': {
+                                    border: 'none',
+                                  },
+                                  '&.Mui-focused fieldset': {
+                                    border: 'none',
+                                  },
+                                  padding: 0,
+                                }
+                              }}
+                            />
+                          </Box>
+                          
+                          {/* Country List - Show exactly 4 items */}
+                          <Box
+                            sx={{
+                              maxHeight: '200px', // Exactly 4 items × 50px per item
+                              overflowY: 'auto',
+                              px: 1.5,
+                              pb: 1,
+                              '&::-webkit-scrollbar': {
+                                width: '6px',
+                              },
+                              '&::-webkit-scrollbar-track': {
+                                backgroundColor: '#f1f1f1',
+                              },
+                              '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: '#d1d5db',
+                                borderRadius: '3px',
+                              },
+                            }}
+                          >
+                            {filteredCountries.length > 0 ? (
+                              filteredCountries.map((country) => (
+                                <Box
+                                  key={country.code}
+                                  onClick={() => {
+                                    handleChange('registeredCountry', country.name);
+                                    setCountrySearchOpen(false);
+                                    setCountrySearchTerm('');
+                                  }}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    px: 1.5,
+                                    py: 1.25,
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      backgroundColor: '#f9fafb'
+                                    }
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                    <Typography sx={{ fontSize: '20px' }}>{country.flag}</Typography>
+                                    <Typography sx={{ fontSize: '14px', color: '#374151' }}>
+                                      {country.name}
+                                    </Typography>
+                                  </Box>
+                                  {formData.registeredCountry === country.name && (
+                                    <Check sx={{ color: '#578A18', fontSize: 20 }} />
+                                  )}
+                                </Box>
+                              ))
+                            ) : (
+                              <Box sx={{ p: 2, textAlign: 'center' }}>
+                                <Typography sx={{ fontSize: '14px', color: '#9ca3af' }}>
+                                  No countries found
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Paper>
+                      )}
+                    </Box>
+                  </ClickAwayListener>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
@@ -279,7 +434,7 @@ const SupplierApplication = () => {
                       sx={{ backgroundColor: '#fff' }}
                     >
                       <MenuItem value="" disabled>
-                        <em>Select</em>
+                        Select
                       </MenuItem>
                       {legalNatures.map((nature) => (
                         <MenuItem key={nature} value={nature}>
@@ -313,10 +468,19 @@ const SupplierApplication = () => {
                   />
                 </Grid>
               </Grid>
-            </Box>
+            </Paper>
 
             {/* Contact Person Details Section */}
-            <Box sx={{ mb: 4 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 4,
+                p: 3,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+              }}
+            >
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -443,10 +607,19 @@ const SupplierApplication = () => {
                   />
                 </Grid>
               </Grid>
-            </Box>
+            </Paper>
 
             {/* Payment Details Section */}
-            <Box sx={{ mb: 4 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 4,
+                p: 3,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+              }}
+            >
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -545,7 +718,7 @@ const SupplierApplication = () => {
                       sx={{ backgroundColor: '#fff' }}
                     >
                       <MenuItem value="" disabled>
-                        <em>Select</em>
+                        Select
                       </MenuItem>
                       {currencies.map((curr) => (
                         <MenuItem key={curr} value={curr}>
@@ -556,7 +729,7 @@ const SupplierApplication = () => {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12}>
                   <Typography 
                     variant="body2" 
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
@@ -571,7 +744,7 @@ const SupplierApplication = () => {
                       sx={{ backgroundColor: '#fff' }}
                     >
                       <MenuItem value="" disabled>
-                        <em>Select</em>
+                        Select
                       </MenuItem>
                       {creditPeriods.map((period) => (
                         <MenuItem key={period} value={period}>
@@ -582,7 +755,7 @@ const SupplierApplication = () => {
                   </FormControl>
                 </Grid>
               </Grid>
-            </Box>
+            </Paper>
           </Box>
         );
       
@@ -628,8 +801,8 @@ const SupplierApplication = () => {
   };
 
   return (
-    <Box sx={{ backgroundColor: '#fff', minHeight: '100vh', pb: 4 }}>
-      <Container maxWidth="lg" sx={{ pt: 3 }}>
+    <Box sx={{ backgroundColor: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', pb: 0 }}>
+      <Container maxWidth="lg" sx={{ pt: 3, pb: 4, flex: 1 }}>
         {/* Back Button */}
         <Button
           startIcon={<ArrowBack />}
@@ -650,33 +823,59 @@ const SupplierApplication = () => {
 
         {/* Custom Stepper */}
         <Box sx={{ mb: 4 }}>
-          <Grid container spacing={3} justifyContent="center">
+          <Grid container spacing={0} justifyContent="center" alignItems="flex-start">
             {steps.map((step, index) => (
-              <Grid item xs={12} sm={6} md={3} key={step.number}>
-                <Box sx={{ textAlign: 'center' }}>
+              <Grid 
+                item 
+                xs={12} 
+                sm={6} 
+                md={3} 
+                key={step.number}
+                sx={{
+                  position: 'relative',
+                  px: { xs: 2, md: 2 },
+                  ...(index < steps.length - 1 && {
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: 0,
+                      top: '80px',
+                      height: '1px',
+                      width: '100%',
+                      maxWidth: '50px',
+                      backgroundColor: '#e5e7eb',
+                      display: { xs: 'none', md: 'block' }
+                    }
+                  })
+                }}
+              >
+                <Box sx={{ textAlign: 'center', px: { xs: 1, md: 1 } }}>
                   <Box
                     sx={{
                       width: 48,
                       height: 48,
                       borderRadius: '50%',
-                      backgroundColor: index === activeStep ? theme.palette.green.main : '#e5e7eb',
-                      color: index === activeStep ? '#fff' : '#6b7280',
+                      backgroundColor: index === activeStep ? theme.palette.green.main : 'transparent',
+                      border: index === activeStep ? 'none' : 'none',
+                      color: index === activeStep ? '#fff' : theme.palette.green.main,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       margin: '0 auto',
                       mb: 1.5,
                       fontWeight: 600,
-                      fontSize: '18px'
+                      fontSize: '20px',
+                      position: 'relative',
+                      zIndex: 1
                     }}
                   >
                     {step.number}
                   </Box>
                   <Typography
                     sx={{
-                      fontWeight: index === activeStep ? 600 : 500,
-                      fontSize: '15px',
-                      color: index === activeStep ? '#111827' : '#6b7280',
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      color: '#000',
                       mb: 0.5
                     }}
                   >
@@ -685,8 +884,10 @@ const SupplierApplication = () => {
                   <Typography
                     variant="body2"
                     sx={{
-                      fontSize: '13px',
-                      color: '#9ca3af'
+                      fontSize: '14px',
+                      color: '#9ca3af',
+                      fontWeight: 400,
+                      lineHeight: 1.5
                     }}
                   >
                     {step.description}
@@ -698,17 +899,9 @@ const SupplierApplication = () => {
         </Box>
 
         {/* Form Content */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 3, sm: 4 },
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            mb: 3
-          }}
-        >
+        <Box sx={{ mb: 3 }}>
           {renderStepContent(activeStep)}
-        </Paper>
+        </Box>
 
         {/* Action Buttons */}
         <Box
@@ -764,6 +957,8 @@ const SupplierApplication = () => {
           </Button>
         </Box>
       </Container>
+
+      <Footer />
     </Box>
   );
 };

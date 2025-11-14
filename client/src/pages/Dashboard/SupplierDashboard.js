@@ -17,6 +17,7 @@ import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import Footer from '../../components/Footer/Footer';
 
 const SupplierDashboard = () => {
   const { user } = useAuth();
@@ -44,13 +45,14 @@ const SupplierDashboard = () => {
   const hasApplications = applications.length > 0;
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', pb: 0 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
       <Container 
         maxWidth="lg"
         sx={{ 
-          pt: { xs: 3, sm: 5 }, 
+          pt: { xs: 3, sm: 5 },
           pb: { xs: 3, sm: 4 },
           px: { xs: 2, sm: 3 },
+          flex: 1,
         }}
       >
         {/* Welcome Section */}
@@ -363,29 +365,7 @@ const SupplierDashboard = () => {
         </Box>
       </Container>
 
-      {/* Footer */}
-      <Box 
-        component="footer"
-        sx={{ 
-          backgroundColor: '#1a1d29',
-          color: '#fff',
-          py: 3.5,
-          mt: 8
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              textAlign: 'center',
-              fontSize: '13px',
-              color: '#9ca3af'
-            }}
-          >
-            © 2025 Supplier Onboarding Portal. All rights reserved.
-          </Typography>
-        </Container>
-      </Box>
+      <Footer />
     </Box>
   );
 };
