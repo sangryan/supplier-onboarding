@@ -40,6 +40,9 @@ const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
+  // Suppliers don't need sidebar
+  const isSupplier = user?.role === 'supplier';
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -122,19 +125,39 @@ const Layout = () => {
         sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
+          {!isSupplier && (
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Supplier Onboarding System
-          </Typography>
+          {isSupplier ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+              <Box
+                component="img"
+                src="/images/Icon.svg"
+                alt="Betika Logo"
+                sx={{
+                  width: 32,
+                  height: 30,
+                  mr: 1.5,
+                }}
+              />
+              <Typography variant="h6" noWrap component="div">
+                Supplier Onboarding Portal
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              Supplier Onboarding System
+            </Typography>
+          )}
 
           <IconButton color="inherit" sx={{ mr: 2 }}>
             <Badge badgeContent={0} color="error">
@@ -198,43 +221,46 @@ const Layout = () => {
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
+      {/* Sidebar - Hidden for suppliers */}
+      {!isSupplier && (
+        <Box
+          component="nav"
+          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
         >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{
+              keepMounted: true,
+            }}
+            sx={{
+              display: { xs: 'block', sm: 'none' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+          >
+            {drawer}
+          </Drawer>
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        </Box>
+      )}
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
+          p: isSupplier ? 0 : 3,
+          width: isSupplier ? '100%' : { sm: `calc(100% - ${drawerWidth}px)` },
+          mt: isSupplier ? 8 : 8,
         }}
       >
         <Outlet />
