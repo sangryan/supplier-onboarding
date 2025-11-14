@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import SupplierDashboard from './SupplierDashboard';
 
 const StatCard = ({ title, value, icon, color }) => (
   <Card sx={{ height: '100%' }}>
@@ -82,89 +83,7 @@ const Dashboard = () => {
 
   // Supplier Dashboard
   if (user.role === 'supplier') {
-    return (
-      <Container maxWidth="lg">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" gutterBottom>
-            Welcome, {user.firstName}!
-          </Typography>
-          <Typography variant="body1" color="textSecondary">
-            Manage your supplier application and track your onboarding progress
-          </Typography>
-        </Box>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Application Status
-                </Typography>
-                <Typography variant="h4" color="primary" sx={{ my: 2 }}>
-                  {stats?.applicationStatus || 'Not Started'}
-                </Typography>
-                {stats?.vendorNumber && (
-                  <Typography variant="body2" color="textSecondary">
-                    Vendor Number: <strong>{stats.vendorNumber}</strong>
-                  </Typography>
-                )}
-                <Button
-                  variant="contained"
-                  sx={{ mt: 2 }}
-                  onClick={() => navigate('/application/status')}
-                >
-                  View Application
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Documents
-                </Typography>
-                <Typography variant="h4" sx={{ my: 2 }}>
-                  {stats?.documentsUploaded || 0}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Documents Uploaded
-                </Typography>
-                <Button
-                  variant="outlined"
-                  sx={{ mt: 2 }}
-                  onClick={() => navigate('/application/status')}
-                >
-                  Manage Documents
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {(!stats?.applicationStatus || stats.applicationStatus === 'draft') && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3, bgcolor: 'primary.main', color: 'white' }}>
-                <Typography variant="h6" gutterBottom>
-                  Get Started
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  Complete your supplier application to start the onboarding process
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  size="large"
-                  onClick={() => navigate('/application/new')}
-                >
-                  Start New Application
-                </Button>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
-      </Container>
-    );
+    return <SupplierDashboard />;
   }
 
   // Admin/Internal User Dashboard
