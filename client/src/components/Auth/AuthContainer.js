@@ -16,6 +16,7 @@ const AuthContainer = ({ mode = 'login' }) => {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     verificationCode: '',
   });
   const [error, setError] = useState('');
@@ -52,9 +53,19 @@ const AuthContainer = ({ mode = 'login' }) => {
 
     if (step === 'auth') {
       if (isRegister) {
-        // Register
+        // Register - Validate
+        if (!formData.name.trim()) {
+          setError('Full name is required');
+          return;
+        }
+        
         if (formData.password.length < 8) {
           setError('Password must be at least 8 characters');
+          return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match');
           return;
         }
 
@@ -130,7 +141,7 @@ const AuthContainer = ({ mode = 'login' }) => {
               textAlign: { xs: 'center', sm: 'left' }
             }}
           >
-            {isRegister ? 'Get started' : 'Welcome back'}
+            {isRegister ? 'Supplier Registration' : 'Welcome back'}
           </Typography>
           <Typography 
             sx={{ 
@@ -141,7 +152,7 @@ const AuthContainer = ({ mode = 'login' }) => {
             }}
           >
             {isRegister
-              ? 'Set up your profile in a few seconds.'
+              ? 'Register your company as a supplier to get started with onboarding.'
               : 'Sign in to your account to continue.'}
           </Typography>
 
@@ -237,7 +248,7 @@ const AuthContainer = ({ mode = 'login' }) => {
               />
             </Box>
 
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: isRegister ? 2 : 3 }}>
               <Typography sx={{ mb: 0.75, fontSize: '15px', fontWeight: 600, color: '#000' }}>
                 Password
               </Typography>
@@ -271,6 +282,44 @@ const AuthContainer = ({ mode = 'login' }) => {
                 }}
               />
             </Box>
+
+            {/* Confirm Password - Only show for registration */}
+            {isRegister && (
+              <Box sx={{ mb: 3 }}>
+                <Typography sx={{ mb: 0.75, fontSize: '15px', fontWeight: 600, color: '#000' }}>
+                  Confirm Password
+                </Typography>
+                <TextField
+                  required
+                  fullWidth
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#fff',
+                      '& fieldset': {
+                        borderColor: '#d1d5db',
+                        borderRadius: '8px',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9ca3af',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#1976d2',
+                        borderWidth: '1px',
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      padding: '12px 14px',
+                      fontSize: '15px',
+                    },
+                  }}
+                />
+              </Box>
+            )}
 
             <Button
               type="submit"
