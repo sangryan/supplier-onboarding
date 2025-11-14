@@ -27,6 +27,7 @@ import {
   People as PeopleIcon,
   Assessment as AssessmentIcon,
   Notifications as NotificationsIcon,
+  NotificationsOutlined as NotificationsOutlinedIcon,
   AccountCircle,
   Logout,
 } from '@mui/icons-material';
@@ -122,7 +123,14 @@ const Layout = () => {
     <Box sx={{ display: 'flex' }}>
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{ 
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          ...(isSupplier && {
+            backgroundColor: '#fff',
+            color: '#000',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          })
+        }}
       >
         <Toolbar>
           {!isSupplier && (
@@ -131,7 +139,10 @@ const Layout = () => {
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' } }}
+              sx={{ 
+                mr: 2, 
+                display: { xs: 'block', sm: 'none' }
+              }}
             >
               <MenuIcon />
             </IconButton>
@@ -144,12 +155,43 @@ const Layout = () => {
                 src="/images/Icon.svg"
                 alt="Betika Logo"
                 sx={{
-                  width: 32,
-                  height: 30,
+                  width: { xs: 32, sm: 40 },
+                  height: { xs: 30, sm: 38 },
                   mr: 1.5,
                 }}
               />
-              <Typography variant="h6" noWrap component="div">
+              {/* Mobile - Two lines */}
+              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                <Typography 
+                  sx={{
+                    color: '#000',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Supplier
+                </Typography>
+                <Typography 
+                  sx={{
+                    color: '#000',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Onboarding
+                </Typography>
+              </Box>
+              {/* Desktop - One line */}
+              <Typography 
+                sx={{
+                  display: { xs: 'none', sm: 'block' },
+                  color: '#000',
+                  fontWeight: 600,
+                  fontSize: '18px',
+                }}
+              >
                 Supplier Onboarding Portal
               </Typography>
             </Box>
@@ -159,9 +201,13 @@ const Layout = () => {
             </Typography>
           )}
 
-          <IconButton color="inherit" sx={{ mr: 2 }}>
+          <IconButton sx={{ mr: 1, color: isSupplier ? '#6b7280' : 'inherit' }}>
             <Badge badgeContent={0} color="error">
-              <NotificationsIcon />
+              {isSupplier ? (
+                <NotificationsOutlinedIcon sx={{ fontWeight: 'normal' }} />
+              ) : (
+                <NotificationsIcon />
+              )}
             </Badge>
           </IconButton>
 
@@ -172,9 +218,17 @@ const Layout = () => {
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleMenu}
-              color="inherit"
+              sx={{ color: isSupplier ? '#000' : 'inherit' }}
             >
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+              <Avatar sx={{ 
+                width: 32, 
+                height: 32, 
+                bgcolor: isSupplier ? '#fff' : '#263d8e',
+                color: isSupplier ? '#374151' : '#fff',
+                fontSize: '11px',
+                fontWeight: 400,
+                border: isSupplier ? '1px solid #d1d5db' : 'none',
+              }}>
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </Avatar>
             </IconButton>

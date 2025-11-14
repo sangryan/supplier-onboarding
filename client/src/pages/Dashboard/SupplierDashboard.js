@@ -8,9 +8,9 @@ import {
   Grid,
 } from '@mui/material';
 import {
-  FolderOpen as FolderIcon,
-  HelpOutline as HelpIcon,
-  Email as EmailIcon,
+  FolderOpenOutlined as FolderIcon,
+  HelpOutlineOutlined as HelpIcon,
+  MailOutline as EmailIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -44,17 +44,25 @@ const SupplierDashboard = () => {
   const hasApplications = applications.length > 0;
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f9fafb', pb: 8 }}>
-      <Container maxWidth="lg" sx={{ pt: 4 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', pb: 0 }}>
+      <Container 
+        maxWidth="lg"
+        sx={{ 
+          pt: { xs: 3, sm: 5 }, 
+          pb: { xs: 3, sm: 4 },
+          px: { xs: 2, sm: 3 },
+        }}
+      >
         {/* Welcome Section */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
           <Typography 
             variant="h4" 
             sx={{ 
               fontWeight: 'bold', 
               mb: 1,
-              color: '#000',
-              fontSize: { xs: '24px', sm: '32px' }
+              color: '#111827',
+              fontSize: { xs: '22px', sm: '28px' },
+              letterSpacing: '-0.01em',
             }}
           >
             Welcome {user.firstName}
@@ -62,7 +70,8 @@ const SupplierDashboard = () => {
           <Typography 
             sx={{ 
               color: '#6b7280',
-              fontSize: { xs: '14px', sm: '16px' }
+              fontSize: { xs: '13px', sm: '14px' },
+              lineHeight: 1.6,
             }}
           >
             Seamless, Smart, and Secure Supplier Onboarding for a Future-Ready Business.
@@ -73,29 +82,29 @@ const SupplierDashboard = () => {
         <Paper 
           elevation={0} 
           sx={{ 
-            mb: 4, 
-            p: 3,
+            mb: { xs: 3, sm: 4 }, 
+            p: { xs: 2.5, sm: 3 },
             border: '1px solid #e5e7eb',
-            borderRadius: '8px'
+            borderRadius: '8px',
+            backgroundColor: '#fff',
           }}
         >
           {/* Header with New Application Button */}
           <Box 
             sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
+              display: { xs: 'block', sm: 'flex' },
+              justifyContent: { sm: 'space-between' },
+              alignItems: { sm: 'center' },
               mb: 3,
-              flexWrap: 'wrap',
-              gap: 2
             }}
           >
             <Typography 
               variant="h6" 
               sx={{ 
                 fontWeight: 600,
-                color: '#000',
-                fontSize: { xs: '18px', sm: '20px' }
+                color: '#111827',
+                fontSize: { xs: '18px', sm: '19px' },
+                mb: { xs: 2, sm: 0 }
               }}
             >
               Your applications
@@ -114,6 +123,7 @@ const SupplierDashboard = () => {
                 py: 1,
                 borderRadius: '6px',
                 boxShadow: 'none',
+                width: { xs: '100%', sm: 'auto' },
                 '&:hover': {
                   backgroundColor: theme.palette.green.hover,
                   boxShadow: 'none',
@@ -134,7 +144,8 @@ const SupplierDashboard = () => {
             <Box 
               sx={{ 
                 textAlign: 'center', 
-                py: 6,
+                py: 4,
+                px: 3,
                 border: '2px dashed #e5e7eb',
                 borderRadius: '8px',
                 backgroundColor: '#fafafa'
@@ -142,16 +153,17 @@ const SupplierDashboard = () => {
             >
               <FolderIcon 
                 sx={{ 
-                  fontSize: 64, 
-                  color: '#9ca3af', 
-                  mb: 2 
+                  fontSize: 40, 
+                  color: '#9ca3af',
+                  fontWeight: 'normal',
+                  mb: 1.5,
                 }} 
               />
               <Typography 
                 sx={{ 
-                  mb: 3,
-                  color: '#374151',
-                  fontSize: '16px',
+                  mb: 2,
+                  color: '#111827',
+                  fontSize: '15px',
                   fontWeight: 500
                 }}
               >
@@ -166,8 +178,8 @@ const SupplierDashboard = () => {
                   textTransform: 'none',
                   fontSize: '14px',
                   fontWeight: 500,
-                  px: 3,
-                  py: 1.25,
+                  px: 3.5,
+                  py: 1.2,
                   borderRadius: '6px',
                   boxShadow: 'none',
                   '&:hover': {
@@ -226,30 +238,32 @@ const SupplierDashboard = () => {
         </Paper>
 
         {/* Need Help Section */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
           <Typography 
             variant="h6" 
             sx={{ 
               fontWeight: 600,
-              mb: 3,
-              color: '#000',
-              fontSize: { xs: '18px', sm: '20px' }
+              mb: { xs: 2.5, sm: 3 },
+              color: '#111827',
+              fontSize: { xs: '18px', sm: '19px' }
             }}
           >
             Need Help ?
           </Typography>
           
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 2, sm: 2 }}>
             {/* FAQs Card */}
             <Grid item xs={12} md={6}>
               <Paper 
                 elevation={0}
                 sx={{ 
-                  p: 3,
+                  p: { xs: 2.5, sm: 3 },
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  height: '100%',
+                  backgroundColor: '#fff',
                   '&:hover': {
                     borderColor: '#d1d5db',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
@@ -260,14 +274,21 @@ const SupplierDashboard = () => {
                   console.log('Navigate to FAQs');
                 }}
               >
-                <HelpIcon sx={{ fontSize: 40, color: '#374151', mb: 2 }} />
+                <HelpIcon 
+                  sx={{ 
+                    fontSize: 32, 
+                    color: '#374151',
+                    fontWeight: 'normal',
+                    mb: 2,
+                  }} 
+                />
                 <Typography 
                   variant="h6" 
                   sx={{ 
                     fontWeight: 600,
-                    mb: 1,
-                    color: '#000',
-                    fontSize: '18px'
+                    mb: 0.75,
+                    color: '#111827',
+                    fontSize: '16px'
                   }}
                 >
                   FAQs
@@ -276,7 +297,8 @@ const SupplierDashboard = () => {
                   variant="body2" 
                   sx={{ 
                     color: '#6b7280',
-                    fontSize: '14px'
+                    fontSize: '13px',
+                    lineHeight: 1.5,
                   }}
                 >
                   Find answers to common questions
@@ -289,11 +311,13 @@ const SupplierDashboard = () => {
               <Paper 
                 elevation={0}
                 sx={{ 
-                  p: 3,
+                  p: { xs: 2.5, sm: 3 },
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  height: '100%',
+                  backgroundColor: '#fff',
                   '&:hover': {
                     borderColor: '#d1d5db',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
@@ -304,14 +328,21 @@ const SupplierDashboard = () => {
                   window.location.href = 'mailto:support@betika.com';
                 }}
               >
-                <EmailIcon sx={{ fontSize: 40, color: '#374151', mb: 2 }} />
+                <EmailIcon 
+                  sx={{ 
+                    fontSize: 32, 
+                    color: '#374151',
+                    fontWeight: 'normal',
+                    mb: 2,
+                  }} 
+                />
                 <Typography 
                   variant="h6" 
                   sx={{ 
                     fontWeight: 600,
-                    mb: 1,
-                    color: '#000',
-                    fontSize: '18px'
+                    mb: 0.75,
+                    color: '#111827',
+                    fontSize: '16px'
                   }}
                 >
                   Contact Support
@@ -320,7 +351,8 @@ const SupplierDashboard = () => {
                   variant="body2" 
                   sx={{ 
                     color: '#6b7280',
-                    fontSize: '14px'
+                    fontSize: '13px',
+                    lineHeight: 1.5,
                   }}
                 >
                   Get help from our team
@@ -335,10 +367,10 @@ const SupplierDashboard = () => {
       <Box 
         component="footer"
         sx={{ 
-          backgroundColor: '#1f2937',
+          backgroundColor: '#1a1d29',
           color: '#fff',
-          py: 3,
-          mt: 6
+          py: 3.5,
+          mt: 8
         }}
       >
         <Container maxWidth="lg">
@@ -346,7 +378,7 @@ const SupplierDashboard = () => {
             variant="body2" 
             sx={{ 
               textAlign: 'center',
-              fontSize: '14px',
+              fontSize: '13px',
               color: '#9ca3af'
             }}
           >
