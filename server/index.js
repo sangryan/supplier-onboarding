@@ -43,17 +43,10 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));
 
-// Health check endpoint
+// Health check endpoint (BEFORE rate limiting to avoid 429 errors from frequent health checks)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -61,6 +54,25 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Also serve health check at root for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Rate limiting (applied to API routes AFTER health checks)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/api/health' || req.path === '/health'
+});
+app.use('/api/', limiter);
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -81,11 +93,6 @@ app.use((err, req, res, next) => {
     message: err.message || 'Internal Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
-});
-
-// Health check (before DB connection for quick response)
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 const PORT = process.env.PORT || 8000;
