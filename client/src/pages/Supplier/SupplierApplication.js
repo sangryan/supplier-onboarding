@@ -119,7 +119,8 @@ const SupplierApplication = () => {
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   // Track which fields are prefilled from profile (read-only for new applications)
-  const [prefilledFields, setPrefilledFields] = useState(new Set());
+  // Using array instead of Set for better React state detection
+  const [prefilledFields, setPrefilledFields] = useState([]);
   const [formData, setFormData] = useState({
     // Basic Information
     supplierName: '',
@@ -391,21 +392,22 @@ const SupplierApplication = () => {
                     : '';
                   
                   // Compare application data with profile data
-                  const prefilled = new Set();
-                  if (mappedData.contactFullName === registeredFullName) prefilled.add('contactFullName');
-                  if (mappedData.contactRelationship === (supplierData.authorizedPerson?.relationship || '')) prefilled.add('contactRelationship');
-                  if (mappedData.contactIdPassport === (supplierData.authorizedPerson?.idPassportNumber || '')) prefilled.add('contactIdPassport');
-                  if (mappedData.contactPhone === (supplierData.authorizedPerson?.phone || '')) prefilled.add('contactPhone');
-                  if (mappedData.contactEmail === (supplierData.authorizedPerson?.email || user?.email || '')) prefilled.add('contactEmail');
-                  if (mappedData.supplierName === (supplierData.supplierName || '')) prefilled.add('supplierName');
-                  if (mappedData.registeredCountry === (supplierData.registeredCountry || address?.country || '')) prefilled.add('registeredCountry');
-                  if (mappedData.companyRegistrationNumber === (supplierData.companyRegistrationNumber || '')) prefilled.add('companyRegistrationNumber');
-                  if (mappedData.companyEmail === (supplierData.companyEmail || '')) prefilled.add('companyEmail');
-                  if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.add('companyWebsite');
-                  if (mappedData.legalNature === legalNatureDisplay) prefilled.add('legalNature');
-                  if (mappedData.physicalAddress === fullAddress) prefilled.add('physicalAddress');
+                  const prefilled = [];
+                  if (mappedData.contactFullName === registeredFullName) prefilled.push('contactFullName');
+                  if (mappedData.contactRelationship === (supplierData.authorizedPerson?.relationship || '')) prefilled.push('contactRelationship');
+                  if (mappedData.contactIdPassport === (supplierData.authorizedPerson?.idPassportNumber || '')) prefilled.push('contactIdPassport');
+                  if (mappedData.contactPhone === (supplierData.authorizedPerson?.phone || '')) prefilled.push('contactPhone');
+                  if (mappedData.contactEmail === (supplierData.authorizedPerson?.email || user?.email || '')) prefilled.push('contactEmail');
+                  if (mappedData.supplierName === (supplierData.supplierName || '')) prefilled.push('supplierName');
+                  if (mappedData.registeredCountry === (supplierData.registeredCountry || address?.country || '')) prefilled.push('registeredCountry');
+                  if (mappedData.companyRegistrationNumber === (supplierData.companyRegistrationNumber || '')) prefilled.push('companyRegistrationNumber');
+                  if (mappedData.companyEmail === (supplierData.companyEmail || '')) prefilled.push('companyEmail');
+                  if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.push('companyWebsite');
+                  if (mappedData.legalNature === legalNatureDisplay) prefilled.push('legalNature');
+                  if (mappedData.physicalAddress === fullAddress) prefilled.push('physicalAddress');
                   
-                  setPrefilledFields(new Set(prefilled));
+                  console.log('🟡 [PREFILL] Existing application - marking matching fields as prefilled:', prefilled);
+                  setPrefilledFields(prefilled);
                 }
               } catch (error) {
                 console.error('Error checking prefilled fields:', error);
@@ -476,20 +478,23 @@ const SupplierApplication = () => {
                 ? mapLegalNatureToDisplay(supplierData.legalNature)
                 : '';
               
-              // Mark fields as prefilled
-              const prefilled = new Set();
-              if (registeredFullName) prefilled.add('contactFullName');
-              if (supplierData.authorizedPerson?.relationship) prefilled.add('contactRelationship');
-              if (supplierData.authorizedPerson?.idPassportNumber) prefilled.add('contactIdPassport');
-              if (supplierData.authorizedPerson?.phone) prefilled.add('contactPhone');
-              if (supplierData.authorizedPerson?.email || user.email) prefilled.add('contactEmail');
-              if (supplierData.supplierName) prefilled.add('supplierName');
-              if (supplierData.registeredCountry || address?.country) prefilled.add('registeredCountry');
-              if (supplierData.companyRegistrationNumber) prefilled.add('companyRegistrationNumber');
-              if (supplierData.companyEmail) prefilled.add('companyEmail');
-              if (supplierData.companyWebsite) prefilled.add('companyWebsite');
-              if (legalNatureDisplay) prefilled.add('legalNature');
-              if (fullAddress) prefilled.add('physicalAddress');
+              // Mark fields as prefilled - mark ALL fields that come from profile
+              const prefilled = [];
+              // Always mark contactFullName and contactEmail as prefilled (from user registration)
+              prefilled.push('contactFullName');
+              if (supplierData.authorizedPerson?.relationship) prefilled.push('contactRelationship');
+              if (supplierData.authorizedPerson?.idPassportNumber) prefilled.push('contactIdPassport');
+              if (supplierData.authorizedPerson?.phone) prefilled.push('contactPhone');
+              prefilled.push('contactEmail'); // Always from user.email
+              if (supplierData.supplierName) prefilled.push('supplierName');
+              if (supplierData.registeredCountry || address?.country) prefilled.push('registeredCountry');
+              if (supplierData.companyRegistrationNumber) prefilled.push('companyRegistrationNumber');
+              if (supplierData.companyEmail) prefilled.push('companyEmail');
+              if (supplierData.companyWebsite) prefilled.push('companyWebsite');
+              if (legalNatureDisplay) prefilled.push('legalNature');
+              if (fullAddress) prefilled.push('physicalAddress');
+              
+              console.log('🟡 [PREFILL] Marking fields as prefilled:', prefilled);
               
               setFormData(prev => ({
                 ...prev,
@@ -509,13 +514,14 @@ const SupplierApplication = () => {
                 physicalAddress: fullAddress,
               }));
               
-              // Store prefilled fields for read-only check
-              setPrefilledFields(new Set(prefilled));
+              // Store prefilled fields for read-only check - use array for React state
+              setPrefilledFields(prefilled);
+              console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
             } else {
               // No supplier data, just prefill contact info
-              const prefilled = new Set();
-              if (registeredFullName) prefilled.add('contactFullName');
-              if (user.email) prefilled.add('contactEmail');
+              const prefilled = ['contactFullName', 'contactEmail'];
+              
+              console.log('🟡 [PREFILL] No supplier data, marking contact fields as prefilled:', prefilled);
               
               setFormData(prev => ({
                 ...prev,
@@ -524,13 +530,14 @@ const SupplierApplication = () => {
               }));
               
               // Store prefilled fields for read-only check
-              setPrefilledFields(new Set(prefilled));
+              setPrefilledFields(prefilled);
+              console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
             }
           } catch (error) {
             // On error, just prefill contact info
-            const prefilled = new Set();
-            if (registeredFullName) prefilled.add('contactFullName');
-            if (user.email) prefilled.add('contactEmail');
+            const prefilled = ['contactFullName', 'contactEmail'];
+            
+            console.log('🟡 [PREFILL] Error case, marking contact fields as prefilled:', prefilled);
             
             setFormData(prev => ({
               ...prev,
@@ -539,7 +546,8 @@ const SupplierApplication = () => {
             }));
             
             // Store prefilled fields for read-only check
-            setPrefilledFields(new Set(prefilled));
+            setPrefilledFields(prefilled);
+            console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
           }
         };
         
@@ -547,6 +555,15 @@ const SupplierApplication = () => {
       }
     }
   }, [id, user]);
+
+  // Debug: Log prefilledFields to verify it's working
+  useEffect(() => {
+    if (prefilledFields.length > 0) {
+      console.log('🔵 [PREFILL DEBUG] Current prefilledFields:', prefilledFields);
+      console.log('🔵 [PREFILL DEBUG] Is contactFullName prefilled?', prefilledFields.includes('contactFullName'));
+      console.log('🔵 [PREFILL DEBUG] Is supplierName prefilled?', prefilledFields.includes('supplierName'));
+    }
+  }, [prefilledFields]);
 
   const handleSaveDraft = async () => {
     setLoading(true);
@@ -1008,13 +1025,20 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.supplierName}
-                    onChange={(e) => handleChange('supplierName', e.target.value)}
-                    disabled={prefilledFields.has('supplierName')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('supplierName')) {
+                        handleChange('supplierName', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('supplierName')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('supplierName')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('supplierName') && {
+                        ...(prefilledFields.includes('supplierName') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1039,9 +1063,9 @@ const SupplierApplication = () => {
                         size="small"
                         value={selectedCountry ? selectedCountry.name : ''}
                         placeholder="Select country"
-                        disabled={prefilledFields.has('registeredCountry')}
+                        disabled={prefilledFields.includes('registeredCountry')}
                         onClick={(e) => {
-                          if (!prefilledFields.has('registeredCountry')) {
+                          if (!prefilledFields.includes('registeredCountry')) {
                             setCountryAnchorEl(e.currentTarget);
                             setCountrySearchOpen(!countrySearchOpen);
                             setCountrySearchTerm('');
@@ -1058,8 +1082,8 @@ const SupplierApplication = () => {
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: '#fff',
-                            cursor: prefilledFields.has('registeredCountry') ? 'not-allowed' : 'pointer',
-                            ...(prefilledFields.has('registeredCountry') && {
+                            cursor: prefilledFields.includes('registeredCountry') ? 'not-allowed' : 'pointer',
+                            ...(prefilledFields.includes('registeredCountry') && {
                               '& .MuiInputBase-input': {
                                 cursor: 'not-allowed',
                               }
@@ -1136,7 +1160,7 @@ const SupplierApplication = () => {
                                 <Box
                                   key={country.code}
                                   onClick={() => {
-                                    if (!prefilledFields.has('registeredCountry')) {
+                                    if (!prefilledFields.includes('registeredCountry')) {
                                       handleChange('registeredCountry', country.name);
                                       setCountrySearchOpen(false);
                                       setCountrySearchTerm('');
@@ -1148,14 +1172,14 @@ const SupplierApplication = () => {
                                     justifyContent: 'space-between',
                                     px: 1.5,
                                     py: 1.25,
-                                    cursor: prefilledFields.has('registeredCountry') ? 'not-allowed' : 'pointer',
+                                    cursor: prefilledFields.includes('registeredCountry') ? 'not-allowed' : 'pointer',
                                     borderRadius: '4px',
-                                    ...(prefilledFields.has('registeredCountry') && {
+                                    ...(prefilledFields.includes('registeredCountry') && {
                                       opacity: 0.6,
                                       pointerEvents: 'none'
                                     }),
                                     '&:hover': {
-                                      backgroundColor: prefilledFields.has('registeredCountry') ? 'transparent' : '#f9fafb'
+                                      backgroundColor: prefilledFields.includes('registeredCountry') ? 'transparent' : '#f9fafb'
                                     }
                                   }}
                                 >
@@ -1194,13 +1218,20 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.companyRegistrationNumber}
-                    onChange={(e) => handleChange('companyRegistrationNumber', e.target.value)}
-                    disabled={prefilledFields.has('companyRegistrationNumber')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('companyRegistrationNumber')) {
+                        handleChange('companyRegistrationNumber', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('companyRegistrationNumber')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('companyRegistrationNumber')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('companyRegistrationNumber') && {
+                        ...(prefilledFields.includes('companyRegistrationNumber') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1222,13 +1253,20 @@ const SupplierApplication = () => {
                     fullWidth
                     type="email"
                     value={formData.companyEmail}
-                    onChange={(e) => handleChange('companyEmail', e.target.value)}
-                    disabled={prefilledFields.has('companyEmail')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('companyEmail')) {
+                        handleChange('companyEmail', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('companyEmail')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('companyEmail')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('companyEmail') && {
+                        ...(prefilledFields.includes('companyEmail') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1249,13 +1287,20 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.companyWebsite}
-                    onChange={(e) => handleChange('companyWebsite', e.target.value)}
-                    disabled={prefilledFields.has('companyWebsite')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('companyWebsite')) {
+                        handleChange('companyWebsite', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('companyWebsite')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('companyWebsite')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('companyWebsite') && {
+                        ...(prefilledFields.includes('companyWebsite') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1277,12 +1322,12 @@ const SupplierApplication = () => {
                     <Select
                       value={formData.legalNature}
                       onChange={(e) => handleChange('legalNature', e.target.value)}
-                      disabled={prefilledFields.has('legalNature')}
+                      disabled={prefilledFields.includes('legalNature')}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
                       sx={{ 
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('legalNature') && {
+                        ...(prefilledFields.includes('legalNature') && {
                           cursor: 'not-allowed',
                           '& .MuiSelect-select': {
                             cursor: 'not-allowed',
@@ -1317,14 +1362,21 @@ const SupplierApplication = () => {
                     multiline
                     rows={3}
                     value={formData.physicalAddress}
-                    onChange={(e) => handleChange('physicalAddress', e.target.value)}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('physicalAddress')) {
+                        handleChange('physicalAddress', e.target.value);
+                      }
+                    }}
                     placeholder="Type your physical address here. Be as detailed as possible"
-                    disabled={prefilledFields.has('physicalAddress')}
+                    disabled={prefilledFields.includes('physicalAddress')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('physicalAddress')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('physicalAddress') && {
+                        ...(prefilledFields.includes('physicalAddress') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1381,13 +1433,20 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.contactFullName}
-                    onChange={(e) => handleChange('contactFullName', e.target.value)}
-                    disabled={prefilledFields.has('contactFullName')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('contactFullName')) {
+                        handleChange('contactFullName', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('contactFullName')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('contactFullName')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('contactFullName') && {
+                        ...(prefilledFields.includes('contactFullName') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1408,14 +1467,21 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.contactRelationship}
-                    onChange={(e) => handleChange('contactRelationship', e.target.value)}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('contactRelationship')) {
+                        handleChange('contactRelationship', e.target.value);
+                      }
+                    }}
                     placeholder="e.g. CEO, CFO"
-                    disabled={prefilledFields.has('contactRelationship')}
+                    disabled={prefilledFields.includes('contactRelationship')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('contactRelationship')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('contactRelationship') && {
+                        ...(prefilledFields.includes('contactRelationship') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1436,13 +1502,20 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.contactIdPassport}
-                    onChange={(e) => handleChange('contactIdPassport', e.target.value)}
-                    disabled={prefilledFields.has('contactIdPassport')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('contactIdPassport')) {
+                        handleChange('contactIdPassport', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('contactIdPassport')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('contactIdPassport')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('contactIdPassport') && {
+                        ...(prefilledFields.includes('contactIdPassport') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1463,14 +1536,21 @@ const SupplierApplication = () => {
                   <TextField
                     fullWidth
                     value={formData.contactPhone}
-                    onChange={(e) => handleChange('contactPhone', e.target.value)}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('contactPhone')) {
+                        handleChange('contactPhone', e.target.value);
+                      }
+                    }}
                     placeholder="e.g +254712345678"
-                    disabled={prefilledFields.has('contactPhone')}
+                    disabled={prefilledFields.includes('contactPhone')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('contactPhone')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('contactPhone') && {
+                        ...(prefilledFields.includes('contactPhone') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
@@ -1492,13 +1572,20 @@ const SupplierApplication = () => {
                     fullWidth
                     type="email"
                     value={formData.contactEmail}
-                    onChange={(e) => handleChange('contactEmail', e.target.value)}
-                    disabled={prefilledFields.has('contactEmail')}
+                    onChange={(e) => {
+                      if (!prefilledFields.includes('contactEmail')) {
+                        handleChange('contactEmail', e.target.value);
+                      }
+                    }}
+                    disabled={prefilledFields.includes('contactEmail')}
+                    InputProps={{
+                      readOnly: prefilledFields.includes('contactEmail')
+                    }}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
-                        ...(prefilledFields.has('contactEmail') && {
+                        ...(prefilledFields.includes('contactEmail') && {
                           cursor: 'not-allowed',
                           '& .MuiInputBase-input': {
                             cursor: 'not-allowed',
