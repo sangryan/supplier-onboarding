@@ -25,6 +25,9 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
       tls: {
         rejectUnauthorized: false // Allow self-signed certificates
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000, // 10 seconds
+      socketTimeout: 10000, // 10 seconds
       debug: process.env.NODE_ENV === 'development', // Enable debug output in development
       logger: process.env.NODE_ENV === 'development' // Enable logging in development
     });
