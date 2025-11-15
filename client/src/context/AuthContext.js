@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       toast.success('Login successful!');
       
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
       console.error('Login error full:', error);
       console.error('Response data:', error.response?.data);
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       toast.success('Registration successful!');
       
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       toast.error(message);

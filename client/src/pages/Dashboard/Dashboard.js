@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import SupplierDashboard from './SupplierDashboard';
+import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 
 const StatCard = ({ title, value, icon, color }) => (
   <Card sx={{ height: '100%' }}>
@@ -57,10 +58,25 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    const checkProfile = async () => {
+      if (user?.role === 'supplier') {
+        const profileComplete = await checkSupplierProfileComplete(user);
+        if (!profileComplete) {
+          navigate('/profile');
+          return;
+        }
+      }
+      setProfileChecked(true);
+      fetchDashboardData();
+    };
+
+    if (user) {
+      checkProfile();
+    }
+  }, [user, navigate]);
 
   const fetchDashboardData = async () => {
     try {
@@ -73,7 +89,7 @@ const Dashboard = () => {
     }
   };
 
-  if (loading) {
+  if (loading || !profileChecked) {
     return (
       <Container>
         <Typography>Loading...</Typography>

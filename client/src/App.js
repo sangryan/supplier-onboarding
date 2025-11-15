@@ -14,12 +14,15 @@ import theme from './theme/theme';
 // Components
 import Layout from './components/Layout/Layout';
 import PrivateRoute from './components/PrivateRoute';
+import SupplierProfileGuard from './components/SupplierProfileGuard';
 
 // Pages
 import LandingPage from './pages/Landing/LandingPage';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import TwoFactorAuth from './pages/Auth/TwoFactorAuth';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import SupplierApplication from './pages/Supplier/SupplierApplication';
 import ApplicationStatus from './pages/Supplier/ApplicationStatus';
@@ -31,6 +34,8 @@ import ContractDetails from './pages/Contracts/ContractDetails';
 import UserManagement from './pages/Admin/UserManagement';
 import Reports from './pages/Reports/Reports';
 import Profile from './pages/Profile/Profile';
+import EditContactInfo from './pages/Profile/EditContactInfo';
+import EditCompanyDetails from './pages/Profile/EditCompanyDetails';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -68,27 +73,37 @@ function App() {
         {/* Landing Page */}
         <Route 
           path="/" 
-          element={!user ? <LandingPage /> : <Navigate to="/dashboard" />} 
+          element={!user ? <LandingPage /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
         />
 
         {/* Public Routes */}
         <Route 
           path="/login" 
-          element={!user ? <Login /> : <Navigate to="/dashboard" />} 
+          element={!user ? <Login /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
         />
         <Route 
           path="/register" 
-          element={!user ? <Register /> : <Navigate to="/dashboard" />} 
+          element={!user ? <Register /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
         />
         <Route 
           path="/2fa" 
-          element={!user ? <TwoFactorAuth /> : <Navigate to="/dashboard" />} 
+          element={!user ? <TwoFactorAuth /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={!user ? <ForgotPassword /> : <Navigate to="/dashboard" />} 
+        />
+        <Route 
+          path="/reset-password/:token" 
+          element={!user ? <ResetPassword /> : <Navigate to="/dashboard" />} 
         />
 
         {/* Protected Routes */}
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<SupplierProfileGuard><Dashboard /></SupplierProfileGuard>} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/edit-contact" element={<EditContactInfo />} />
+          <Route path="/profile/edit-company" element={<EditCompanyDetails />} />
           
           {/* Supplier Routes */}
           <Route path="/application/new" element={<SupplierApplication />} />

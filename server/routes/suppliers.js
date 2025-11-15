@@ -353,7 +353,12 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
     const canUpdate = isDraft || isMoreInfoRequired; // Same logic as canSubmit() method
     const isAdmin = ['super_admin', 'procurement', 'legal', 'management'].includes(req.user.role);
     
-    if (req.user.role === 'supplier' && !canUpdate && !isAdmin) {
+    // Profile-related fields that can always be updated (even when application is submitted/approved)
+    const profileFields = ['additionalContacts', 'authorizedPerson', 'companyEmail', 'companyWebsite', 'companyPhysicalAddress', 'physicalAddress'];
+    const isProfileUpdate = Object.keys(req.body).some(key => profileFields.includes(key));
+    
+    // Allow profile updates regardless of status, or allow all updates if draft/more_info_required/admin
+    if (req.user.role === 'supplier' && !canUpdate && !isAdmin && !isProfileUpdate) {
       return res.status(400).json({
         success: false,
         message: 'Cannot update supplier at this stage'
@@ -436,6 +441,9 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
     // Always update lastModified
     updateData.lastModified = new Date();
 
+    // Store the original submittedBy before update (needed for user email update)
+    const originalSubmittedBy = supplier.submittedBy || req.user.id;
+
     console.log('Updating supplier with data keys:', Object.keys(updateData));
     console.log('Update data sample (first 5 keys):', Object.keys(updateData).slice(0, 5).reduce((obj, key) => {
       obj[key] = updateData[key];
@@ -466,6 +474,31 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
           success: false,
           message: 'Supplier not found after update'
         });
+      }
+      
+      // If authorizedPerson.email was updated, also update the User's email
+      if (updateData.authorizedPerson && updateData.authorizedPerson.email) {
+        try {
+          // Get the user ID from the original supplier's submittedBy field (before update)
+          const userId = originalSubmittedBy.toString ? originalSubmittedBy.toString() : originalSubmittedBy;
+          
+          // Check if email is actually different to avoid unnecessary updates
+          const user = await User.findById(userId);
+          if (user && user.email !== updateData.authorizedPerson.email.toLowerCase().trim()) {
+            // Update the user's email
+            await User.findByIdAndUpdate(
+              userId,
+              { email: updateData.authorizedPerson.email.toLowerCase().trim() },
+              { new: true, runValidators: true }
+            );
+            
+            console.log('User email updated from', user.email, 'to', updateData.authorizedPerson.email);
+          }
+        } catch (userUpdateError) {
+          console.error('Error updating user email:', userUpdateError);
+          // Don't fail the entire request if user email update fails
+          // Log it but continue with the supplier update
+        }
       }
       
       // Convert to plain object to include all fields (including those not in schema)

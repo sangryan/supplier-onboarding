@@ -28,6 +28,7 @@ import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CloudUpload,
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
+import { useAuth } from '../../context/AuthContext';
 import { format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
 const steps = [
@@ -115,6 +116,7 @@ const SupplierApplication = () => {
   const params = useParams();
   const id = params.id; // Works for both /application/:id/edit and /application/:id
   const theme = useTheme();
+  const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
     // Basic Information
@@ -371,8 +373,85 @@ const SupplierApplication = () => {
         }
       };
       loadApplication();
+    } else {
+      // Prefill contact and company information with registered user's details for new applications
+      if (user) {
+        const registeredFullName = user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`.trim()
+          : (user.firstName || user.lastName || '');
+        
+        // Try to fetch existing supplier data to prefill company details
+        const fetchSupplierForPrefill = async () => {
+          try {
+            const response = await api.get('/suppliers');
+            const suppliers = response.data.data || [];
+            if (suppliers.length > 0) {
+              const supplierData = suppliers[0];
+              const address = supplierData.companyPhysicalAddress;
+              const fullAddress = address
+                ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
+                : supplierData.physicalAddress || '';
+              
+              // Map legalNature from database enum to display value
+              const mapLegalNatureToDisplay = (dbValue) => {
+                const mapping = {
+                  'company': 'Private Limited Company',
+                  'partnership': 'Partnership',
+                  'individual': 'Sole Proprietorship',
+                  'state_owned': 'Private Limited Company',
+                  'ngo': 'NGO',
+                  'foundation': 'Private Limited Company',
+                  'association': 'Private Limited Company',
+                  'foreign_company': 'Private Limited Company',
+                  'trust': 'Trust',
+                  'other': 'Other'
+                };
+                return mapping[dbValue] || '';
+              };
+              
+              const legalNatureDisplay = supplierData.legalNature 
+                ? mapLegalNatureToDisplay(supplierData.legalNature)
+                : '';
+              
+              setFormData(prev => ({
+                ...prev,
+                // Contact information
+                contactFullName: registeredFullName,
+                contactRelationship: supplierData.authorizedPerson?.relationship || '',
+                contactIdPassport: supplierData.authorizedPerson?.idPassportNumber || '',
+                contactPhone: supplierData.authorizedPerson?.phone || '',
+                contactEmail: supplierData.authorizedPerson?.email || user.email || '',
+                // Company information
+                supplierName: supplierData.supplierName || '',
+                registeredCountry: supplierData.registeredCountry || address?.country || '',
+                companyRegistrationNumber: supplierData.companyRegistrationNumber || '',
+                companyEmail: supplierData.companyEmail || '',
+                companyWebsite: supplierData.companyWebsite || '',
+                legalNature: legalNatureDisplay,
+                physicalAddress: fullAddress,
+              }));
+            } else {
+              // No supplier data, just prefill contact info
+              setFormData(prev => ({
+                ...prev,
+                contactFullName: registeredFullName,
+                contactEmail: user.email || '',
+              }));
+            }
+          } catch (error) {
+            // On error, just prefill contact info
+            setFormData(prev => ({
+              ...prev,
+              contactFullName: registeredFullName,
+              contactEmail: user.email || '',
+            }));
+          }
+        };
+        
+        fetchSupplierForPrefill();
+      }
     }
-  }, [id]);
+  }, [id, user]);
 
   const handleSaveDraft = async () => {
     setLoading(true);

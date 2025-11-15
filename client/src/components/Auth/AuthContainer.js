@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { Box, Typography, TextField, Button } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
+import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import AuthLayout from './AuthLayout';
 import TabSwitcher from './TabSwitcher';
 
@@ -21,6 +22,7 @@ const AuthContainer = ({ mode = 'login' }) => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasFailedLogin, setHasFailedLogin] = useState(false);
 
   const isRegister = activeTab === 1;
 
@@ -32,6 +34,7 @@ const AuthContainer = ({ mode = 'login' }) => {
   const handleTabChange = (tabIndex) => {
     setActiveTab(tabIndex);
     setError('');
+    setHasFailedLogin(false); // Reset failed login flag when switching tabs
     // Navigate to the appropriate route
     if (tabIndex === 0) {
       navigate('/login');
@@ -49,6 +52,7 @@ const AuthContainer = ({ mode = 'login' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
 
     if (step === 'auth') {
@@ -86,7 +90,13 @@ const AuthContainer = ({ mode = 'login' }) => {
         const result = await register(userData);
 
         if (result.success) {
-          navigate('/dashboard');
+          // New suppliers should be directed to the application form first
+          // Check if user is a supplier and redirect accordingly
+          if (result.user?.role === 'supplier') {
+            navigate('/application/new');
+          } else {
+            navigate('/dashboard');
+          }
         } else {
           setError(result.message);
         }
@@ -96,21 +106,42 @@ const AuthContainer = ({ mode = 'login' }) => {
         // Login
         setLoading(true);
 
-        const result = await login(formData.email, formData.password);
+        try {
+          const result = await login(formData.email, formData.password);
 
-        if (result.success) {
-          // Check if 2FA is enabled (for future implementation)
-          // if (result.requires2FA) {
-          //   setStep('2fa');
-          //   setLoading(false);
-          //   return;
-          // }
-          navigate('/dashboard');
-        } else {
-          setError(result.message);
+          if (result.success) {
+            // Reset failed login flag on success
+            setHasFailedLogin(false);
+            // Check if 2FA is enabled (for future implementation)
+            // if (result.requires2FA) {
+            //   setStep('2fa');
+            //   setLoading(false);
+            //   return;
+            // }
+            
+            // Check if supplier profile is complete
+            if (result.user?.role === 'supplier') {
+              const profileComplete = await checkSupplierProfileComplete(result.user);
+              if (profileComplete) {
+                navigate('/dashboard');
+              } else {
+                navigate('/profile');
+              }
+            } else {
+              navigate('/dashboard');
+            }
+          } else {
+            setError(result.message);
+            setHasFailedLogin(true); // Mark that login has failed
+            setLoading(false);
+          }
+        } catch (error) {
+          // Handle any unexpected errors
+          console.error('Login error:', error);
+          setError(error.message || 'An error occurred during login. Please try again.');
+          setHasFailedLogin(true);
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     } else if (step === '2fa') {
       // Handle 2FA verification (future implementation)
@@ -335,7 +366,7 @@ const AuthContainer = ({ mode = 'login' }) => {
                 height: '48px',
                 borderRadius: '8px',
                 boxShadow: 'none',
-                mb: 2.5,
+                mb: hasFailedLogin && !isRegister ? 1.5 : 2.5,
                 '&:hover': {
                   backgroundColor: theme.palette.green.hover,
                   boxShadow: 'none',
@@ -354,6 +385,26 @@ const AuthContainer = ({ mode = 'login' }) => {
                 ? 'Create account'
                 : 'SIGN IN'}
             </Button>
+
+            {/* Forgot Password Link - Only show on login and after failed attempt */}
+            {!isRegister && hasFailedLogin && (
+              <Typography sx={{ textAlign: 'center', mb: 2.5, fontSize: '13px' }}>
+                <Box
+                  component="span"
+                  onClick={() => navigate('/forgot-password')}
+                  sx={{
+                    color: theme.palette.green.main || '#578A18',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      color: theme.palette.green.hover || '#467014',
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  Forgot Password?
+                </Box>
+              </Typography>
+            )}
 
             {/* OR Divider */}
             <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
