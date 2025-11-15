@@ -160,26 +160,6 @@ const SupplierDashboard = () => {
 
   const hasApplications = applications.length > 0;
   const hasActiveApplications = activeApplications.length > 0;
-  
-  // Create complete application function
-  const createCompleteApplication = async () => {
-    try {
-      await api.post('/suppliers/create-complete');
-      toast.success('Complete application created successfully!');
-      fetchApplications();
-    } catch (error) {
-      console.error('Error creating complete application:', error);
-      // Don't show error toast on auto-create, only on manual
-    }
-  };
-  
-  // Auto-create complete application if no applications exist (for demo)
-  useEffect(() => {
-    if (!loading && !hasApplications) {
-      createCompleteApplication();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, hasApplications]);
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
