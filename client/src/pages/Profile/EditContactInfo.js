@@ -151,20 +151,59 @@ const EditContactInfo = () => {
         setAdditionalContacts(updatedContacts);
       }
       
+      // Save to backend if supplier exists
+      if (supplier?._id) {
+        try {
+          await api.put(`/suppliers/${supplier._id}`, {
+            additionalContacts: updatedContacts
+          });
+          await fetchSupplierData(); // Refresh data
+        } catch (apiError) {
+          console.error('Error saving contact to backend:', apiError);
+          toast.error('Failed to save contact to server');
+          return;
+        }
+      }
+      
       setAddContactDialog(false);
       setEditContactDialog(false);
       setEditingContactIndex(null);
       setNewContact({ name: '', email: '', phone: '', idPassport: '', relationship: '' });
       toast.success(editingContactIndex !== null ? 'Contact updated successfully' : 'Contact added successfully');
     } catch (error) {
+      console.error('Error saving contact:', error);
       toast.error('Failed to save contact');
     }
   };
 
-  const handleDeleteContact = (index) => {
-    const updated = additionalContacts.filter((_, i) => i !== index);
-    setAdditionalContacts(updated);
-    toast.success('Contact deleted successfully');
+  const handleDeleteContact = async (index) => {
+    try {
+      // Save current state before updating
+      const previousContacts = [...additionalContacts];
+      const updated = additionalContacts.filter((_, i) => i !== index);
+      setAdditionalContacts(updated);
+      
+      // Save to backend if supplier exists
+      if (supplier?._id) {
+        try {
+          await api.put(`/suppliers/${supplier._id}`, {
+            additionalContacts: updated
+          });
+          await fetchSupplierData(); // Refresh data
+        } catch (apiError) {
+          console.error('Error deleting contact from backend:', apiError);
+          toast.error('Failed to delete contact from server');
+          // Revert local state on error
+          setAdditionalContacts(previousContacts);
+          return;
+        }
+      }
+      
+      toast.success('Contact deleted successfully');
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      toast.error('Failed to delete contact');
+    }
   };
 
   const handleEditContact = (contact, index) => {
@@ -189,12 +228,38 @@ const EditContactInfo = () => {
       };
 
       if (supplier?._id) {
+        // Update existing supplier
         await api.put(`/suppliers/${supplier._id}`, updateData);
         toast.success('Contact information update submitted for approval');
         navigate('/profile');
+      } else {
+        // Create new supplier if one doesn't exist
+        // Use draft endpoint to create supplier with minimal required fields
+        const draftData = {
+          supplierName: formData.fullName || 'Draft Application',
+          authorizedPerson: {
+            name: formData.fullName,
+            relationship: formData.relationship,
+            idPassportNumber: formData.idPassport,
+            phone: formData.phone,
+            email: formData.email,
+          },
+          additionalContacts: additionalContacts,
+          profileUpdateComment: formData.comment,
+        };
+        
+        const response = await api.post('/suppliers/draft', draftData);
+        if (response.data.success) {
+          toast.success('Contact information saved successfully');
+          navigate('/profile');
+        } else {
+          throw new Error('Failed to create supplier profile');
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit update request');
+      console.error('Error submitting contact information:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to submit update request';
+      toast.error(errorMessage);
     }
   };
 

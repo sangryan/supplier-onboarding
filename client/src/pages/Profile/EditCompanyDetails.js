@@ -72,6 +72,20 @@ const mapLegalNatureToDisplay = (dbValue) => {
   return mapping[dbValue] || '';
 };
 
+// Map display values back to database enum values
+const mapDisplayToLegalNature = (displayValue) => {
+  const reverseMapping = {
+    'Private Limited Company': 'company',
+    'Public Limited Company': 'company',
+    'Partnership': 'partnership',
+    'Sole Proprietorship': 'individual',
+    'Trust': 'trust',
+    'NGO': 'ngo',
+    'Other': 'other'
+  };
+  return reverseMapping[displayValue] || 'company'; // Default to 'company'
+};
+
 const EditCompanyDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -146,24 +160,68 @@ const EditCompanyDetails = () => {
 
   const handleSubmit = async () => {
     try {
+      // Map legalNature display value back to database enum
+      const legalNatureDb = formData.legalNature ? mapDisplayToLegalNature(formData.legalNature) : 'company';
+      
+      // Parse physical address - if it's a string, try to structure it
+      // Otherwise, keep it as is if it's already structured
+      let physicalAddressData = formData.physicalAddress;
+      if (typeof physicalAddressData === 'string' && physicalAddressData.trim()) {
+        // Try to parse the address string into structured format
+        // For now, store as both physicalAddress (string) and companyPhysicalAddress (structured)
+        const addressParts = physicalAddressData.split(',').map(part => part.trim());
+        physicalAddressData = {
+          street: addressParts[0] || '',
+          city: addressParts[1] || '',
+          country: addressParts[2] || formData.registeredCountry || '',
+          postalCode: addressParts[3] || ''
+        };
+      }
+
       const updateData = {
         supplierName: formData.supplierName,
         registeredCountry: formData.registeredCountry,
         companyRegistrationNumber: formData.companyRegistrationNumber,
         companyEmail: formData.companyEmail,
         companyWebsite: formData.companyWebsite,
-        legalNature: formData.legalNature,
-        physicalAddress: formData.physicalAddress,
+        legalNature: legalNatureDb,
+        physicalAddress: typeof formData.physicalAddress === 'string' ? formData.physicalAddress : undefined,
+        companyPhysicalAddress: physicalAddressData,
         companyUpdateComment: formData.comment,
       };
 
       if (supplier?._id) {
+        // Update existing supplier
         await api.put(`/suppliers/${supplier._id}`, updateData);
         toast.success('Company details update submitted for approval');
         navigate('/profile');
+      } else {
+        // Create new supplier if one doesn't exist
+        // Use draft endpoint to create supplier with company details
+        const draftData = {
+          supplierName: formData.supplierName || 'Draft Application',
+          registeredCountry: formData.registeredCountry,
+          companyRegistrationNumber: formData.companyRegistrationNumber,
+          companyEmail: formData.companyEmail,
+          companyWebsite: formData.companyWebsite,
+          legalNature: legalNatureDb,
+          physicalAddress: typeof formData.physicalAddress === 'string' ? formData.physicalAddress : undefined,
+          companyPhysicalAddress: physicalAddressData,
+          companyUpdateComment: formData.comment,
+        };
+        
+        const response = await api.post('/suppliers/draft', draftData);
+        if (response.data.success) {
+          toast.success('Company details saved successfully');
+          navigate('/profile');
+        } else {
+          throw new Error('Failed to create supplier profile');
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit update request');
+      console.error('Error submitting company details:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to submit update request';
+      toast.error(errorMessage);
     }
   };
 
