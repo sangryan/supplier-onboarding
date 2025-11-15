@@ -4,6 +4,7 @@ const crypto = require('crypto');
 // Create email transporter
 let transporter = null;
 let transporterVerified = false;
+let transporterError = null;
 
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
@@ -35,9 +36,15 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
         console.error('   Error command:', error.command);
         console.error('   This means emails will NOT be sent until this is fixed');
         transporterVerified = false;
+        transporterError = {
+          message: error.message,
+          code: error.code,
+          command: error.command
+        };
       } else {
         console.log('✅ Email transporter verified and ready to send emails');
         transporterVerified = true;
+        transporterError = null;
       }
     });
   } catch (error) {
@@ -148,6 +155,22 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
  */
 exports.generateResetToken = () => {
   return crypto.randomBytes(32).toString('hex');
+};
+
+/**
+ * Get email transporter status
+ * @returns {Object} Status information
+ */
+exports.getEmailStatus = () => {
+  return {
+    configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD),
+    verified: transporterVerified,
+    error: transporterError,
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || 587,
+    user: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
+    password: process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET'
+  };
 };
 
 module.exports = exports;
