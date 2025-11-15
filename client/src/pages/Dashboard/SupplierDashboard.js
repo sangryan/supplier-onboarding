@@ -222,7 +222,7 @@ const SupplierDashboard = () => {
           elevation={0} 
           sx={{ 
             mb: { xs: 3, sm: 4 }, 
-            p: { xs: 2.5, sm: 3 },
+            p: { xs: 1.5, sm: 3 },
             border: '1px solid #e5e7eb',
             borderRadius: '8px',
             backgroundColor: '#fff',
@@ -317,7 +317,7 @@ const SupplierDashboard = () => {
                   key={app._id}
                   elevation={0}
                   sx={{
-                    p: 2.5,
+                    p: { xs: 1.5, sm: 2.5 },
                     mb: 2,
                     border: '1px solid #e5e7eb',
                     borderRadius: '6px',
@@ -410,7 +410,7 @@ const SupplierDashboard = () => {
                       key={app._id}
                       elevation={0}
                       sx={{
-                        p: 2.5,
+                        p: { xs: 1.5, sm: 2.5 },
                         mb: 2,
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
@@ -420,44 +420,11 @@ const SupplierDashboard = () => {
                         }
                       }}
                     >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box sx={{ flex: 1 }}>
-                          {/* Application ID - Larger, bold */}
-                          <Typography sx={{ fontWeight: 600, mb: 0.5, fontSize: '18px', color: '#111827' }}>
-                            {formatApplicationId(app._id, app.createdAt)}
-                          </Typography>
-                          {/* Last Modified Date - Smaller, lighter gray */}
-                          <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px', mb: 1.5 }}>
-                            Last modified: {formatDate(app.lastModified || app.updatedAt || app.createdAt)}
-                          </Typography>
-                          {/* Status with "Status:" label */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography 
-                              sx={{ 
-                                color: '#9ca3af', 
-                                fontSize: '13px',
-                                fontWeight: 400
-                              }}
-                            >
-                              Status:
-                            </Typography>
-                            <Chip
-                              label={getStatusLabel(app.status)}
-                              size="small"
-                              sx={{
-                                backgroundColor: '#f3f4f6',
-                                color: '#6b7280',
-                                fontSize: '12px',
-                                height: '24px',
-                                fontWeight: 400,
-                                border: 'none',
-                                '& .MuiChip-label': {
-                                  px: 1.5
-                                }
-                              }}
-                            />
-                          </Box>
-                        </Box>
+                      {/* First Row: Application ID and View Button */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography sx={{ fontWeight: 600, fontSize: '18px', color: '#111827', flex: 1, minWidth: 0 }}>
+                          {formatApplicationId(app._id, app.createdAt)}
+                        </Typography>
                         {/* View Button - White with light gray border */}
                         <Button
                           variant="outlined"
@@ -473,7 +440,8 @@ const SupplierDashboard = () => {
                             borderColor: '#e5e7eb',
                             backgroundColor: '#fff',
                             color: '#374151',
-                            ml: 2,
+                            ml: 1.5,
+                            flexShrink: 0,
                             '&:hover': {
                               borderColor: '#d1d5db',
                               backgroundColor: '#fff'
@@ -482,6 +450,39 @@ const SupplierDashboard = () => {
                         >
                           View
                         </Button>
+                      </Box>
+                      
+                      {/* Second Row: Last Modified Date */}
+                      <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px', mb: 1.5 }}>
+                        Last modified: {formatDate(app.lastModified || app.updatedAt || app.createdAt)}
+                      </Typography>
+                      
+                      {/* Third Row: Status with "Status:" label */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography 
+                          sx={{ 
+                            color: '#9ca3af', 
+                            fontSize: '13px',
+                            fontWeight: 400
+                          }}
+                        >
+                          Status:
+                        </Typography>
+                        <Chip
+                          label={getStatusLabel(app.status)}
+                          size="small"
+                          sx={{
+                            backgroundColor: '#f3f4f6',
+                            color: '#111827',
+                            fontSize: '12px',
+                            height: '24px',
+                            fontWeight: 600,
+                            border: 'none',
+                            '& .MuiChip-label': {
+                              px: 1.5
+                            }
+                          }}
+                        />
                       </Box>
                     </Paper>
                   ))}
@@ -512,7 +513,7 @@ const SupplierDashboard = () => {
               <Paper 
                 elevation={0}
                 sx={{ 
-                  p: { xs: 2.5, sm: 3 },
+                  p: { xs: 1.5, sm: 3 },
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
@@ -566,7 +567,7 @@ const SupplierDashboard = () => {
               <Paper 
                 elevation={0}
                 sx={{ 
-                  p: { xs: 2.5, sm: 3 },
+                  p: { xs: 1.5, sm: 3 },
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
