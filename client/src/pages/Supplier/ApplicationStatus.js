@@ -145,6 +145,7 @@ const ApplicationStatus = () => {
     companyEmail: supplier.companyEmail || '',
     companyWebsite: supplier.companyWebsite || '',
     registeredCountry: supplier.registeredCountry || '',
+    physicalAddress: supplier.physicalAddress || '',
     companyPhysicalAddress: supplier.companyPhysicalAddress || {},
     contactFullName: supplier.authorizedPerson?.name || '',
     contactRelationship: supplier.authorizedPerson?.relationship || '',
@@ -152,8 +153,8 @@ const ApplicationStatus = () => {
     contactPhone: supplier.authorizedPerson?.phone || '',
     contactEmail: supplier.authorizedPerson?.email || '',
     bankName: supplier.bankName || '',
-    bankAccountNumber: supplier.bankAccountNumber || '',
-    bankBranch: supplier.bankBranch || '',
+    accountNumber: supplier.accountNumber || supplier.bankAccountNumber || '',
+    branch: supplier.branch || supplier.bankBranch || '',
     creditPeriod: supplier.creditPeriod || '',
     serviceTypes: supplier.serviceTypes || [],
     certificateOfIncorporation: supplier.certificateOfIncorporation || null,
@@ -471,12 +472,13 @@ const ApplicationStatus = () => {
                     {formData.registeredCountry || '-'}
                   </Typography>
                 </Grid>
-                <Grid item xs={12}>
+                {/* Physical Address */}
+                <Grid item xs={12} md={4}>
                   <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
                     Physical Address
                   </Typography>
                   <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                    {formData.companyPhysicalAddress?.street || '-'}, {formData.companyPhysicalAddress?.city || ''}, {formData.companyPhysicalAddress?.country || ''} {formData.companyPhysicalAddress?.postalCode || ''}
+                    {formData.companyPhysicalAddress?.street || formData.physicalAddress || '-'}
                   </Typography>
                 </Grid>
               </Grid>
@@ -602,7 +604,7 @@ const ApplicationStatus = () => {
                     Account Number
                   </Typography>
                   <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                    {formData.bankAccountNumber || '-'}
+                    {formData.accountNumber || '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
@@ -610,7 +612,7 @@ const ApplicationStatus = () => {
                     Branch
                   </Typography>
                   <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                    {formData.bankBranch || '-'}
+                    {formData.branch || '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
