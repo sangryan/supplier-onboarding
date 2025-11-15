@@ -90,9 +90,12 @@ const AuthContainer = ({ mode = 'login' }) => {
         const result = await register(userData);
 
         if (result.success) {
-          // New suppliers should be directed to the application form first
-          // Check if user is a supplier and redirect accordingly
-          if (result.user?.role === 'supplier') {
+          // Check if email verification is required
+          if (result.requiresVerification) {
+            // Redirect to 2FA page with email
+            navigate('/2fa', { state: { email: formData.email, from: 'register' } });
+          } else if (result.user?.role === 'supplier') {
+            // New suppliers should be directed to the application form first
             navigate('/application/new');
           } else {
             navigate('/dashboard');
@@ -112,12 +115,6 @@ const AuthContainer = ({ mode = 'login' }) => {
           if (result.success) {
             // Reset failed login flag on success
             setHasFailedLogin(false);
-            // Check if 2FA is enabled (for future implementation)
-            // if (result.requires2FA) {
-            //   setStep('2fa');
-            //   setLoading(false);
-            //   return;
-            // }
             
             // Check if supplier profile is complete
             if (result.user?.role === 'supplier') {
@@ -130,6 +127,11 @@ const AuthContainer = ({ mode = 'login' }) => {
             } else {
               navigate('/dashboard');
             }
+          } else if (result.requiresVerification) {
+            // Email verification required - redirect to 2FA page
+            setHasFailedLogin(false);
+            navigate('/2fa', { state: { email: formData.email, from: 'login' } });
+            setLoading(false);
           } else {
             setError(result.message);
             setHasFailedLogin(true); // Mark that login has failed

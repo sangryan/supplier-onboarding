@@ -196,6 +196,110 @@ exports.generateResetToken = () => {
 };
 
 /**
+ * Generate 6-character alphanumeric OTP code
+ * @returns {String} - OTP code (6 characters, mix of numbers and letters)
+ */
+exports.generateOTP = () => {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let otp = '';
+  for (let i = 0; i < 6; i++) {
+    otp += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return otp;
+};
+
+/**
+ * Send OTP verification email
+ * @param {Object} options - Email options
+ * @param {String} options.email - Recipient email
+ * @param {String} options.otpCode - OTP verification code
+ * @param {String} options.userName - User's name
+ * @returns {Promise<void>}
+ */
+exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
+  if (!transporter) {
+    const errorMsg = 'Email transporter not configured. OTP email not sent.';
+    console.error('❌', errorMsg);
+    console.error('   EMAIL_USER:', process.env.EMAIL_USER ? 'SET' : 'NOT SET');
+    console.error('   EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET');
+    console.error('   Please set EMAIL_USER and EMAIL_PASSWORD environment variables');
+    throw new Error(errorMsg);
+  }
+  
+  // Warn if transporter hasn't been verified yet
+  if (!transporterVerified) {
+    console.warn('⚠️  Email transporter not yet verified. Attempting to send anyway...');
+  }
+
+  // SendGrid requires a verified sender email
+  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  if (!fromEmail) {
+    throw new Error('EMAIL_FROM or EMAIL_USER must be set for SendGrid');
+  }
+
+  const mailOptions = {
+    from: `"${process.env.COMPANY_NAME || 'Supplier Onboarding Portal'}" <${fromEmail}>`,
+    to: email,
+    subject: 'Email Verification Code - Supplier Onboarding Portal',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin: 0 0 10px 0;">Email Verification</h2>
+        </div>
+        
+        <div style="color: #666; font-size: 16px; line-height: 1.6;">
+          <p>Hello ${userName || 'User'},</p>
+          
+          <p>Thank you for registering with the Supplier Onboarding Portal. To complete your registration, please verify your email address using the code below:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="display: inline-block; padding: 20px 40px; background-color: #f0f0f0; 
+                        border-radius: 8px; border: 2px dashed #578A18;">
+              <div style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #578A18; font-family: 'Courier New', monospace;">
+                ${otpCode}
+              </div>
+            </div>
+          </div>
+          
+          <p style="color: #d32f2f; font-weight: 600;">This code will expire in 10 minutes.</p>
+          
+          <p>If you did not create an account, please ignore this email.</p>
+          
+          <p>Best regards,<br>
+          ${process.env.COMPANY_NAME || 'Supplier Onboarding Portal'} Team</p>
+        </div>
+        
+        <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated message. Please do not reply to this email.
+        </p>
+      </div>
+    `
+  };
+
+  try {
+    console.log(`📧 Attempting to send OTP email...`);
+    console.log(`   From: ${fromEmail}`);
+    console.log(`   To: ${email}`);
+    console.log(`   OTP Code: ${otpCode}`);
+    
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ OTP email sent successfully to ${email}`);
+    console.log(`   Message ID: ${info.messageId}`);
+    console.log(`   Response: ${info.response || 'No response'}`);
+    return info;
+  } catch (error) {
+    console.error('❌ Error sending OTP email:', error);
+    console.error('   Error message:', error.message);
+    console.error('   Error code:', error.code);
+    console.error('   Error command:', error.command);
+    console.error('   Error response:', error.response);
+    console.error('   Error responseCode:', error.responseCode);
+    throw error;
+  }
+};
+
+/**
  * Get email transporter status
  * @returns {Object} Status information
  */

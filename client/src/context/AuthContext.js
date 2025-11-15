@@ -43,6 +43,16 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/login', { email, password });
       console.log('Login response:', response.data);
       
+      // Check if email verification is required
+      if (response.data.requiresVerification) {
+        return { 
+          success: false, 
+          requiresVerification: true,
+          email: response.data.email,
+          message: response.data.message || 'Please verify your email'
+        };
+      }
+      
       const { token, user } = response.data;
       
       if (!token || !user) {
@@ -62,6 +72,16 @@ export const AuthProvider = ({ children }) => {
       console.error('Response status:', error.response?.status);
       console.error('Response headers:', error.response?.headers);
       
+      // Check if it's a verification requirement
+      if (error.response?.data?.requiresVerification) {
+        return { 
+          success: false, 
+          requiresVerification: true,
+          email: error.response.data.email,
+          message: error.response.data.message || 'Please verify your email'
+        };
+      }
+      
       const message = error.response?.data?.message || error.message || 'Login failed';
       toast.error(message);
       return { success: false, message };
@@ -71,7 +91,22 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await api.post('/auth/register', userData);
+      
+      // Check if email verification is required
+      if (response.data.requiresVerification) {
+        return { 
+          success: true, 
+          requiresVerification: true,
+          email: response.data.email,
+          message: response.data.message || 'Please verify your email'
+        };
+      }
+      
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('token', token);
       setUser(user);
@@ -80,6 +115,38 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
+  const verifyOTP = async (email, otpCode) => {
+    try {
+      const response = await api.post('/auth/verify-otp', { email, otpCode });
+      
+      if (response.data.success) {
+        const { token, user } = response.data;
+        localStorage.setItem('token', token);
+        setUser(user);
+        toast.success('Email verified successfully!');
+        return { success: true, user };
+      } else {
+        throw new Error(response.data.message || 'OTP verification failed');
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'OTP verification failed';
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
+  const resendOTP = async (email) => {
+    try {
+      const response = await api.post('/auth/resend-otp', { email });
+      toast.success('OTP code has been resent to your email');
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to resend OTP';
       toast.error(message);
       return { success: false, message };
     }
@@ -102,6 +169,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    verifyOTP,
+    resendOTP,
     isAuthenticated: !!user,
   };
 

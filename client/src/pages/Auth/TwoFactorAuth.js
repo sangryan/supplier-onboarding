@@ -4,20 +4,30 @@ import { useTheme } from '@mui/material/styles';
 import { Box, Typography, TextField, Button } from '@mui/material';
 import AuthLayout from '../../components/Auth/AuthLayout';
 import { useAuth } from '../../context/AuthContext';
+import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 
 const TwoFactorAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const { login } = useAuth();
+  const { verifyOTP, resendOTP } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(300); // 5 minutes in seconds
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(600); // 10 minutes in seconds
   const inputRefs = useRef([]);
 
-  // Get email from location state (passed from login)
+  // Get email and source from location state
   const email = location.state?.email || '';
+  const from = location.state?.from || 'register'; // 'register' or 'login'
+
+  // Redirect if no email provided
+  useEffect(() => {
+    if (!email) {
+      navigate(from === 'login' ? '/login' : '/register');
+    }
+  }, [email, from, navigate]);
 
   // Countdown timer
   useEffect(() => {
@@ -35,15 +45,18 @@ const TwoFactorAuth = () => {
   };
 
   const handleOtpChange = (index, value) => {
-    // Only allow numbers
-    if (value && !/^\d$/.test(value)) return;
+    // Allow alphanumeric characters (numbers and uppercase letters)
+    if (value && !/^[0-9A-Z]$/i.test(value)) return;
+
+    // Convert to uppercase
+    const upperValue = value.toUpperCase();
 
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = upperValue;
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 5) {
+    if (upperValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -57,8 +70,8 @@ const TwoFactorAuth = () => {
 
   const handlePaste = (e) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6);
-    if (!/^\d+$/.test(pastedData)) return;
+    const pastedData = e.clipboardData.getData('text').toUpperCase().slice(0, 6);
+    if (!/^[0-9A-Z]+$/.test(pastedData)) return;
 
     const newOtp = pastedData.split('');
     while (newOtp.length < 6) newOtp.push('');
@@ -73,39 +86,67 @@ const TwoFactorAuth = () => {
     e.preventDefault();
     setError('');
 
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
+
     // Check if all fields are filled
     const otpCode = otp.join('');
     if (otpCode.length < 6) {
-      setError('Please enter all 6 digits');
+      setError('Please enter all 6 characters');
       return;
     }
 
     setLoading(true);
 
-    // TODO: Implement 2FA verification API call
-    // const result = await verify2FA(email, otpCode);
-    // if (result.success) {
-    //   navigate('/dashboard');
-    // } else {
-    //   setError(result.message);
-    // }
-
-    // Temporary: Just navigate to dashboard for now
-    setTimeout(() => {
-      navigate('/dashboard');
+    try {
+      const result = await verifyOTP(email, otpCode);
+      
+      if (result.success) {
+        // Check if supplier profile is complete
+        if (result.user?.role === 'supplier') {
+          const profileComplete = await checkSupplierProfileComplete(result.user);
+          if (profileComplete) {
+            navigate('/dashboard');
+          } else {
+            navigate('/profile');
+          }
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        setError(result.message || 'Invalid OTP code');
+        setLoading(false);
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to verify OTP');
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const handleResendCode = async () => {
-    if (countdown > 0) return; // Don't allow resend if countdown is active
+    if (countdown > 0 || resending) return; // Don't allow resend if countdown is active or already resending
+    
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
     
     setError('');
-    setCountdown(300); // Reset countdown to 5 minutes
-    setOtp(['', '', '', '', '', '']); // Clear OTP inputs
+    setResending(true);
     
-    // TODO: Implement resend code API call
-    // await resend2FACode(email);
+    try {
+      const result = await resendOTP(email);
+      if (result.success) {
+        setCountdown(600); // Reset countdown to 10 minutes
+        setOtp(['', '', '', '', '', '']); // Clear OTP inputs
+      }
+    } catch (error) {
+      setError('Failed to resend OTP code');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -126,13 +167,16 @@ const TwoFactorAuth = () => {
         sx={{ 
           color: '#666', 
           mb: 4, 
-          textAlign: 'center', 
-          fontSize: { xs: '13px', sm: '14px' }, 
-          lineHeight: 1.6,
-          px: { xs: 2, sm: 0 }
+          textAlign: { xs: 'center', sm: 'left' }, 
+          fontSize: { xs: '14px', sm: '16px' }, 
+          lineHeight: 1.6
         }}
       >
-        We've sent a verification code to your phone number. Enter the code below to confirm your identity.
+        {email ? (
+          <>We've sent a 6-character verification code to <strong>{email}</strong>. Enter the code below to verify your email address.</>
+        ) : (
+          <>We've sent a 6-character verification code to your email. Enter the code below to verify your email address.</>
+        )}
       </Typography>
 
       {/* Error Message */}
@@ -178,6 +222,7 @@ const TwoFactorAuth = () => {
               sx={{
                 width: { xs: '40px', sm: '48px', md: '56px' },
                 '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#fff',
                   '& fieldset': {
                     borderColor: '#d1d5db',
                     borderRadius: '8px',
@@ -187,7 +232,7 @@ const TwoFactorAuth = () => {
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#1976d2',
-                    borderWidth: '2px',
+                    borderWidth: '1px',
                   },
                 },
                 '& .MuiOutlinedInput-input': {
@@ -195,6 +240,8 @@ const TwoFactorAuth = () => {
                   fontSize: { xs: '16px', sm: '18px', md: '20px' },
                   fontWeight: 600,
                   color: '#000',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
                 },
               }}
             />
@@ -233,24 +280,26 @@ const TwoFactorAuth = () => {
         <Typography
           sx={{
             textAlign: 'center',
-            fontSize: '14px',
+            fontSize: '13px',
             color: '#666',
+            mt: 2,
           }}
         >
-          Didn't receive a code ?{' '}
+          Didn't receive a code?{' '}
           <Box
             component="span"
             onClick={handleResendCode}
             sx={{
-              color: countdown > 0 ? '#999' : '#1976d2',
-              cursor: countdown > 0 ? 'default' : 'pointer',
+              color: (countdown > 0 || resending) ? '#999' : '#578A18',
+              cursor: (countdown > 0 || resending) ? 'default' : 'pointer',
               fontWeight: 500,
-              '&:hover': countdown === 0 ? {
+              '&:hover': (countdown === 0 && !resending) ? {
+                color: '#467014',
                 textDecoration: 'underline',
               } : {},
             }}
           >
-            Resend in {formatTime(countdown)}
+            {resending ? 'Sending...' : countdown > 0 ? `Resend in ${formatTime(countdown)}` : 'Resend Code'}
           </Box>
         </Typography>
       </Box>
