@@ -87,7 +87,15 @@ function App() {
         />
         <Route 
           path="/2fa" 
-          element={!user ? <TwoFactorAuth /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
+          element={
+            !user ? (
+              <TwoFactorAuth />
+            ) : (
+              // If user is already authenticated, they shouldn't be on 2FA page
+              // But check if email is verified - if not, allow 2FA
+              <Navigate to="/dashboard" replace />
+            )
+          } 
         />
         <Route 
           path="/forgot-password" 

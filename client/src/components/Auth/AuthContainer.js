@@ -74,6 +74,12 @@ const AuthContainer = ({ mode = 'login' }) => {
         }
 
         setLoading(true);
+        
+        // Clear any existing token/user before registration to prevent conflicts
+        console.log('🟡 [AUTH] Clearing any existing auth state before registration');
+        localStorage.removeItem('token');
+        // Note: We can't directly clear user from context here, but removing token
+        // will prevent checkAuth from setting user on next check
 
         // Split name into firstName and lastName
         const nameParts = formData.name.trim().split(' ');
@@ -87,24 +93,45 @@ const AuthContainer = ({ mode = 'login' }) => {
           password: formData.password,
         };
 
-        const result = await register(userData);
+        try {
+          const result = await register(userData);
+          console.log('🟢 [AUTH] Registration result:', JSON.stringify(result, null, 2));
 
-        if (result.success) {
-          // Check if email verification is required
-          if (result.requiresVerification) {
-            // Redirect to 2FA page with email
-            navigate('/2fa', { state: { email: formData.email, from: 'register' } });
-          } else if (result.user?.role === 'supplier') {
-            // New suppliers should be directed to the application form first
-            navigate('/application/new');
+          if (result && result.success) {
+            // Check if email verification is required
+            if (result.requiresVerification) {
+              console.log('🟡 [AUTH] Email verification required - navigating to 2FA');
+              console.log('🟡 [AUTH] Email:', formData.email);
+              // Clear any existing error
+              setError('');
+              // IMPORTANT: Use setTimeout to ensure state updates complete before navigation
+              setTimeout(() => {
+                console.log('🟡 [AUTH] Executing navigation to /2fa');
+                navigate('/2fa', { 
+                  replace: true,
+                  state: { email: formData.email || result.email, from: 'register' } 
+                });
+              }, 100);
+              setLoading(false);
+              return; // Exit early to prevent setLoading(false) from running again
+            } else if (result.user?.role === 'supplier') {
+              // New suppliers should be directed to the application form first
+              console.log('🟢 [AUTH] Supplier registered, navigating to application form');
+              navigate('/application/new');
+            } else {
+              console.log('🟢 [AUTH] User registered, navigating to dashboard');
+              navigate('/dashboard');
+            }
           } else {
-            navigate('/dashboard');
+            console.error('🔴 [AUTH] Registration failed:', result?.message);
+            setError(result?.message || 'Registration failed');
           }
-        } else {
-          setError(result.message);
+        } catch (error) {
+          console.error('🔴 [AUTH] Registration error in handleSubmit:', error);
+          setError(error.message || 'Registration failed. Please try again.');
+        } finally {
+          setLoading(false);
         }
-
-        setLoading(false);
       } else {
         // Login
         setLoading(true);

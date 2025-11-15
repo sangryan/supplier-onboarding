@@ -25,7 +25,10 @@ const TwoFactorAuth = () => {
   // Redirect if no email provided
   useEffect(() => {
     if (!email) {
+      console.log('🟡 [2FA] No email provided, redirecting to', from === 'login' ? '/login' : '/register');
       navigate(from === 'login' ? '/login' : '/register');
+    } else {
+      console.log('🟢 [2FA] Email provided:', email, 'from:', from);
     }
   }, [email, from, navigate]);
 

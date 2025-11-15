@@ -26,11 +26,25 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       try {
         const response = await api.get('/auth/me');
-        setUser(response.data.user);
+        const userData = response.data.user;
+        // Only set user if email is verified (for 2FA flow)
+        // Note: isEmailVerified might not be in the response, so we check for it
+        if (userData && (userData.isEmailVerified !== false)) {
+          setUser(userData);
+        } else {
+          // If email not verified, clear token to allow 2FA flow
+          console.log('🟡 [AUTH] User email not verified, clearing token for 2FA flow');
+          localStorage.removeItem('token');
+          setUser(null);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('token');
+        setUser(null);
       }
+    } else {
+      // Ensure user is null if no token
+      setUser(null);
     }
     setLoading(false);
   };
@@ -90,31 +104,55 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
+      console.log('🔵 [REGISTER] Starting registration for:', userData.email);
       const response = await api.post('/auth/register', userData);
+      console.log('🔵 [REGISTER] Response status:', response.status);
+      console.log('🔵 [REGISTER] Response data:', JSON.stringify(response.data, null, 2));
       
       // Check if email verification is required
-      if (response.data.requiresVerification) {
+      if (response.data && response.data.requiresVerification) {
+        console.log('🟡 [REGISTER] Email verification required - NOT setting user or token');
+        console.log('🟡 [REGISTER] Returning requiresVerification flag');
+        // IMPORTANT: Do NOT set user or token - user must verify email first
         return { 
           success: true, 
           requiresVerification: true,
-          email: response.data.email,
+          email: response.data.email || userData.email,
           message: response.data.message || 'Please verify your email'
         };
       }
       
-      const { token, user } = response.data;
+      // Only set token and user if verification is NOT required
+      const { token, user } = response.data || {};
       
       if (!token || !user) {
+        console.error('🔴 [REGISTER] Missing token or user in response');
         throw new Error('Invalid response from server');
       }
       
+      console.log('🟢 [REGISTER] Setting token and user');
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Registration successful!');
       
       return { success: true, user };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      console.error('🔴 [REGISTER] Error caught:', error);
+      console.error('🔴 [REGISTER] Error response:', error.response?.data);
+      console.error('🔴 [REGISTER] Error status:', error.response?.status);
+      
+      // Check if it's a verification requirement in error response
+      if (error.response?.data?.requiresVerification) {
+        console.log('🟡 [REGISTER] Email verification required (from error response)');
+        return { 
+          success: true, 
+          requiresVerification: true,
+          email: error.response.data.email || userData.email,
+          message: error.response.data.message || 'Please verify your email'
+        };
+      }
+      
+      const message = error.response?.data?.message || error.message || 'Registration failed';
       toast.error(message);
       return { success: false, message };
     }
