@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const Supplier = require('../models/Supplier');
 const User = require('../models/User');
@@ -540,7 +541,6 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
   try {
     // Use MongoDB collection directly to load supplier and bypass Mongoose validation
     // This prevents validation errors if the document has unmapped enum values
-    const mongoose = require('mongoose');
     const collection = Supplier.collection;
     const supplierId = new mongoose.Types.ObjectId(req.params.id);
     
@@ -560,7 +560,6 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
     // If not, set it to draft so it can be submitted
     // Use direct MongoDB update to avoid validation issues
     if (supplier.status !== 'draft' && supplier.status !== 'more_info_required') {
-      const mongoose = require('mongoose');
       const collection = Supplier.collection;
       const supplierId = new mongoose.Types.ObjectId(req.params.id);
       
