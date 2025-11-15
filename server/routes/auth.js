@@ -300,9 +300,12 @@ router.post('/forgot-password', [
         resetToken: resetToken,
         userName: `${user.firstName} ${user.lastName}`
       });
+      console.log(`✅ Password reset email sent to ${user.email}`);
     } catch (emailError) {
-      console.error('Error sending password reset email:', emailError);
-      // Don't fail the request if email fails, but log it
+      console.error('❌ Failed to send password reset email:', emailError.message);
+      console.error('   This may be due to missing email configuration or SMTP server issues');
+      // Still return success to user (security best practice - don't reveal if email was sent)
+      // But log the error for debugging
     }
 
     res.json({
