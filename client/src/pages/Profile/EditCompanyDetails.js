@@ -191,27 +191,42 @@ const EditCompanyDetails = () => {
       };
 
       if (supplier?._id) {
-        // Update existing supplier
+        // Update existing supplier profile
         await api.put(`/suppliers/${supplier._id}`, updateData);
         toast.success('Company details update submitted for approval');
         navigate('/profile');
       } else {
-        // Create new supplier if one doesn't exist
-        // Use draft endpoint to create supplier with company details
-        const draftData = {
-          supplierName: formData.supplierName || 'Draft Application',
-          registeredCountry: formData.registeredCountry,
-          companyRegistrationNumber: formData.companyRegistrationNumber,
-          companyEmail: formData.companyEmail,
-          companyWebsite: formData.companyWebsite,
-          legalNature: legalNatureDb,
-          physicalAddress: typeof formData.physicalAddress === 'string' ? formData.physicalAddress : undefined,
-          companyPhysicalAddress: physicalAddressData,
-          companyUpdateComment: formData.comment,
+        // Create supplier profile (not an application) - use PUT with upsert-like behavior
+        // First create a minimal supplier record, then update it
+        const registeredFullName = user?.firstName && user?.lastName 
+          ? `${user.firstName} ${user.lastName}`.trim()
+          : (user?.firstName || user?.lastName || 'Profile');
+        
+        const initialData = {
+          supplierName: formData.supplierName || registeredFullName,
+          legalNature: legalNatureDb || 'company', // Required field
+          serviceType: 'professional_services', // Default required field
+          authorizedPerson: {
+            name: registeredFullName,
+            relationship: '',
+            idPassportNumber: '',
+            phone: '',
+            email: user?.email || '',
+          },
+          status: 'draft', // Required, but this is just for profile storage
         };
         
-        const response = await api.post('/suppliers/draft', draftData);
-        if (response.data.success) {
+        // Create the supplier record first with isProfileOnly flag
+        const createResponse = await api.post('/suppliers/draft', {
+          ...initialData,
+          isProfileOnly: true, // Mark as profile-only, not an application
+        });
+        if (createResponse.data.success && createResponse.data.data?._id) {
+          // Now update it with the full profile data
+          await api.put(`/suppliers/${createResponse.data.data._id}`, {
+            ...updateData,
+            isProfileOnly: true, // Ensure it stays marked as profile-only
+          });
           toast.success('Company details saved successfully');
           navigate('/profile');
         } else {

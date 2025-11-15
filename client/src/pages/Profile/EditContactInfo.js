@@ -228,28 +228,38 @@ const EditContactInfo = () => {
       };
 
       if (supplier?._id) {
-        // Update existing supplier
+        // Update existing supplier profile
         await api.put(`/suppliers/${supplier._id}`, updateData);
         toast.success('Contact information update submitted for approval');
         navigate('/profile');
       } else {
-        // Create new supplier if one doesn't exist
-        // Use draft endpoint to create supplier with minimal required fields
-        const draftData = {
-          supplierName: formData.fullName || 'Draft Application',
+        // Create supplier profile (not an application) - use PUT with upsert-like behavior
+        // First create a minimal supplier record, then update it
+        const initialData = {
+          supplierName: formData.fullName || user?.firstName || 'Profile',
+          legalNature: 'company', // Default required field
+          serviceType: 'professional_services', // Default required field
           authorizedPerson: {
-            name: formData.fullName,
-            relationship: formData.relationship,
-            idPassportNumber: formData.idPassport,
-            phone: formData.phone,
-            email: formData.email,
+            name: formData.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : ''),
+            relationship: formData.relationship || '',
+            idPassportNumber: formData.idPassport || '',
+            phone: formData.phone || '',
+            email: formData.email || user?.email || '',
           },
-          additionalContacts: additionalContacts,
-          profileUpdateComment: formData.comment,
+          status: 'draft', // Required, but this is just for profile storage
         };
         
-        const response = await api.post('/suppliers/draft', draftData);
-        if (response.data.success) {
+        // Create the supplier record first with isProfileOnly flag
+        const createResponse = await api.post('/suppliers/draft', {
+          ...initialData,
+          isProfileOnly: true, // Mark as profile-only, not an application
+        });
+        if (createResponse.data.success && createResponse.data.data?._id) {
+          // Now update it with the full profile data
+          await api.put(`/suppliers/${createResponse.data.data._id}`, {
+            ...updateData,
+            isProfileOnly: true, // Ensure it stays marked as profile-only
+          });
           toast.success('Contact information saved successfully');
           navigate('/profile');
         } else {

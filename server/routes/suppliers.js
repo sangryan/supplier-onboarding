@@ -169,11 +169,16 @@ router.post('/create-complete', protect, authorize('supplier'), async (req, res)
 });
 
 // @route   GET /api/suppliers/my-applications
-// @desc    Get current user's applications
+// @desc    Get current user's applications (exclude profile-only records)
 // @access  Private (Supplier)
 router.get('/my-applications', protect, authorize('supplier'), async (req, res) => {
   try {
-    const suppliers = await Supplier.find({ submittedBy: req.user.id })
+    // Get all suppliers, but exclude profile-only records
+    // Profile-only records are those marked with isProfileOnly: true
+    const suppliers = await Supplier.find({ 
+      submittedBy: req.user.id,
+      isProfileOnly: { $ne: true } // Exclude records marked as profile-only (includes records where field doesn't exist)
+    })
       .sort({ lastModified: -1, updatedAt: -1, createdAt: -1 })
       .lean();
 
@@ -531,7 +536,7 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
 });
 
 // @route   DELETE /api/suppliers/:id
-// @desc    Delete supplier application
+// @desc    Delete supplier application (preserve profile information)
 // @access  Private (Supplier - only for drafts)
 router.delete('/:id', protect, authorize('supplier'), supplierAccess, async (req, res) => {
   try {
@@ -552,11 +557,78 @@ router.delete('/:id', protect, authorize('supplier'), supplierAccess, async (req
       });
     }
 
+    // Preserve profile information before deletion
+    // Profile fields to preserve: authorizedPerson, additionalContacts, companyEmail, companyWebsite, companyPhysicalAddress
+    const profileData = {
+      authorizedPerson: supplier.authorizedPerson,
+      additionalContacts: supplier.additionalContacts || [],
+      companyEmail: supplier.companyEmail,
+      companyWebsite: supplier.companyWebsite,
+      companyPhysicalAddress: supplier.companyPhysicalAddress,
+      physicalAddress: supplier.physicalAddress,
+      supplierName: supplier.supplierName,
+      registeredCountry: supplier.registeredCountry,
+      companyRegistrationNumber: supplier.companyRegistrationNumber,
+      legalNature: supplier.legalNature,
+    };
+
+    // Check if there are other supplier records for this user
+    const otherSuppliers = await Supplier.find({ 
+      submittedBy: supplier.submittedBy,
+      _id: { $ne: supplier._id }
+    });
+
+    if (otherSuppliers.length > 0) {
+      // If other suppliers exist, preserve profile data in the first one
+      const targetSupplier = otherSuppliers[0];
+      await Supplier.findByIdAndUpdate(targetSupplier._id, {
+        $set: {
+          authorizedPerson: profileData.authorizedPerson,
+          additionalContacts: profileData.additionalContacts,
+          companyEmail: profileData.companyEmail,
+          companyWebsite: profileData.companyWebsite,
+          companyPhysicalAddress: profileData.companyPhysicalAddress,
+          physicalAddress: profileData.physicalAddress,
+          supplierName: profileData.supplierName || targetSupplier.supplierName,
+          registeredCountry: profileData.registeredCountry || targetSupplier.registeredCountry,
+          companyRegistrationNumber: profileData.companyRegistrationNumber || targetSupplier.companyRegistrationNumber,
+          legalNature: profileData.legalNature || targetSupplier.legalNature,
+        }
+      });
+    } else {
+      // If no other suppliers exist, create a minimal profile record to preserve the data
+      // This ensures profile information is not lost
+      // Mark it as profile-only so it doesn't show up in applications list
+      await Supplier.create({
+        supplierName: profileData.supplierName || 'Profile',
+        legalNature: profileData.legalNature || 'company',
+        serviceType: 'professional_services',
+        status: 'draft',
+        isProfileOnly: true, // Mark as profile-only, not an application
+        authorizedPerson: profileData.authorizedPerson || {
+          name: req.user.firstName && req.user.lastName ? `${req.user.firstName} ${req.user.lastName}` : 'Profile',
+          relationship: '',
+          idPassportNumber: '',
+          phone: '',
+          email: req.user.email || ''
+        },
+        additionalContacts: profileData.additionalContacts,
+        companyEmail: profileData.companyEmail,
+        companyWebsite: profileData.companyWebsite,
+        companyPhysicalAddress: profileData.companyPhysicalAddress,
+        physicalAddress: profileData.physicalAddress,
+        registeredCountry: profileData.registeredCountry,
+        companyRegistrationNumber: profileData.companyRegistrationNumber,
+        submittedBy: supplier.submittedBy,
+      });
+    }
+
+    // Now delete the application
     await Supplier.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
-      message: 'Application deleted successfully'
+      message: 'Application deleted successfully. Profile information has been preserved.'
     });
   } catch (error) {
     console.error('Delete supplier error:', error);
