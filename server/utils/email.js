@@ -3,8 +3,15 @@ const crypto = require('crypto');
 
 // Create email transporter
 let transporter = null;
+let transporterVerified = false;
+
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
+    console.log('📧 Initializing email transporter...');
+    console.log('   Host:', process.env.EMAIL_HOST || 'smtp.gmail.com');
+    console.log('   Port:', process.env.EMAIL_PORT || 587);
+    console.log('   User:', process.env.EMAIL_USER);
+    
     transporter = nodemailer.createTransporter({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT) || 587,
@@ -15,23 +22,35 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
       },
       tls: {
         rejectUnauthorized: false // Allow self-signed certificates
-      }
+      },
+      debug: process.env.NODE_ENV === 'development', // Enable debug output in development
+      logger: process.env.NODE_ENV === 'development' // Enable logging in development
     });
     
-    // Verify transporter configuration
+    // Verify transporter configuration asynchronously
     transporter.verify((error, success) => {
       if (error) {
-        console.error('Email transporter verification failed:', error);
+        console.error('❌ Email transporter verification FAILED:', error.message);
+        console.error('   Error code:', error.code);
+        console.error('   Error command:', error.command);
+        console.error('   This means emails will NOT be sent until this is fixed');
+        transporterVerified = false;
       } else {
-        console.log('✅ Email transporter is ready to send emails');
+        console.log('✅ Email transporter verified and ready to send emails');
+        transporterVerified = true;
       }
     });
   } catch (error) {
-    console.error('Email transporter configuration error:', error.message);
+    console.error('❌ Email transporter configuration error:', error.message);
+    transporterVerified = false;
   }
 } else {
-  console.warn('⚠️  Email configuration missing: EMAIL_USER and/or EMAIL_PASSWORD not set');
-  console.warn('   Password reset emails will not be sent');
+  console.error('❌ Email configuration MISSING:');
+  console.error('   EMAIL_USER:', process.env.EMAIL_USER ? '✅ SET' : '❌ NOT SET');
+  console.error('   EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '✅ SET' : '❌ NOT SET');
+  console.error('   Password reset emails will NOT be sent');
+  console.error('   Please set EMAIL_USER and EMAIL_PASSWORD in your environment variables');
+  transporterVerified = false;
 }
 
 /**
@@ -46,8 +65,15 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
   if (!transporter) {
     const errorMsg = 'Email transporter not configured. Password reset email not sent.';
     console.error('❌', errorMsg);
+    console.error('   EMAIL_USER:', process.env.EMAIL_USER ? 'SET' : 'NOT SET');
+    console.error('   EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET');
     console.error('   Please set EMAIL_USER and EMAIL_PASSWORD environment variables');
     throw new Error(errorMsg);
+  }
+  
+  // Warn if transporter hasn't been verified yet
+  if (!transporterVerified) {
+    console.warn('⚠️  Email transporter not yet verified. Attempting to send anyway...');
   }
 
   const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;

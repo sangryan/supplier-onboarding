@@ -294,18 +294,37 @@ router.post('/forgot-password', [
 
     // Send email
     const { sendPasswordResetEmail } = require('../utils/email');
+    let emailSent = false;
     try {
       await sendPasswordResetEmail({
         email: user.email,
         resetToken: resetToken,
         userName: `${user.firstName} ${user.lastName}`
       });
-      console.log(`✅ Password reset email sent to ${user.email}`);
+      emailSent = true;
+      console.log(`✅ Password reset email sent successfully to ${user.email}`);
     } catch (emailError) {
-      console.error('❌ Failed to send password reset email:', emailError.message);
-      console.error('   This may be due to missing email configuration or SMTP server issues');
+      emailSent = false;
+      console.error('❌ FAILED to send password reset email to', user.email);
+      console.error('   Error:', emailError.message);
+      console.error('   Error code:', emailError.code);
+      console.error('   Error command:', emailError.command);
+      console.error('   Error response:', emailError.response);
+      console.error('   Full error:', JSON.stringify(emailError, null, 2));
+      console.error('   This may be due to:');
+      console.error('   1. Missing EMAIL_USER or EMAIL_PASSWORD environment variables');
+      console.error('   2. Incorrect SMTP credentials');
+      console.error('   3. Gmail requires App Password (not regular password)');
+      console.error('   4. SMTP server connection issues');
+      console.error('   5. Firewall blocking SMTP port');
       // Still return success to user (security best practice - don't reveal if email was sent)
       // But log the error for debugging
+    }
+    
+    // Log summary for monitoring
+    if (!emailSent) {
+      console.error(`⚠️  WARNING: Password reset requested for ${user.email} but email was NOT sent`);
+      console.error('   User will not receive the reset link. Check email configuration.');
     }
 
     res.json({
