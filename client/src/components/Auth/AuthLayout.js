@@ -78,11 +78,11 @@ const AuthLayout = ({ children }) => {
           width: { xs: '100%', md: '50%' },
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: { xs: 3, sm: 3, md: 4 },
+          justifyContent: { xs: 'flex-start', sm: 'center' },
+          padding: { xs: '16px', sm: 3, md: 4 },
         }}
       >
-        <Box sx={{ width: '100%', maxWidth: { xs: '100%', sm: '500px' } }}>
+        <Box sx={{ width: '100%', maxWidth: { xs: '100%', sm: '500px', md: '500px' } }}>
           {/* Header */}
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, justifyContent: { xs: 'center', sm: 'flex-start' } }}>
             <Box

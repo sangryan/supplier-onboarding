@@ -2,12 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
-  Container,
   Typography,
   TextField,
   Button,
-  Paper,
-  Alert,
   InputAdornment,
   IconButton,
 } from '@mui/material';
@@ -97,23 +94,23 @@ const ResetPassword = () => {
   if (!tokenValid && !success) {
     return (
       <AuthLayout>
-        <Container maxWidth="sm">
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 3, sm: 4 },
-              borderRadius: 2,
-              backgroundColor: '#fff',
-            }}
-          >
-            <Alert severity="error" sx={{ mb: 3 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                Invalid or Expired Link
-              </Typography>
-              <Typography variant="body2">
-                This password reset link is invalid or has expired. Please request a new password reset link.
-              </Typography>
-            </Alert>
+        <Box
+          sx={{
+            mb: 2,
+            p: 1.5,
+            backgroundColor: '#ffebee',
+            borderRadius: 1,
+            color: '#c62828',
+            fontSize: '14px',
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            Invalid or Expired Link
+          </Typography>
+          <Typography variant="body2">
+            This password reset link is invalid or has expired. Please request a new password reset link.
+          </Typography>
+        </Box>
             <Button
               fullWidth
               variant="contained"
@@ -154,8 +151,6 @@ const ResetPassword = () => {
             >
               Back to Sign In
             </Button>
-          </Paper>
-        </Container>
       </AuthLayout>
     );
   }
@@ -163,23 +158,23 @@ const ResetPassword = () => {
   if (success) {
     return (
       <AuthLayout>
-        <Container maxWidth="sm">
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 3, sm: 4 },
-              borderRadius: 2,
-              backgroundColor: '#fff',
-            }}
-          >
-            <Alert severity="success" sx={{ mb: 3 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                Password Reset Successful
-              </Typography>
-              <Typography variant="body2">
-                Your password has been reset successfully. Redirecting to sign in...
-              </Typography>
-            </Alert>
+        <Box
+          sx={{
+            mb: 2,
+            p: 1.5,
+            backgroundColor: '#e8f5e9',
+            borderRadius: 1,
+            color: '#2e7d32',
+            fontSize: '14px',
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            Password Reset Successful
+          </Typography>
+          <Typography variant="body2">
+            Your password has been reset successfully. Redirecting to sign in...
+          </Typography>
+        </Box>
             <Button
               fullWidth
               variant="contained"
@@ -199,69 +194,70 @@ const ResetPassword = () => {
             >
               Go to Sign In
             </Button>
-          </Paper>
-        </Container>
       </AuthLayout>
     );
   }
 
   return (
     <AuthLayout>
-      <Container maxWidth="sm">
-        <Paper
-          elevation={0}
+      {/* Back Button */}
+      <Box sx={{ mb: 2 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/login')}
           sx={{
-            p: { xs: 3, sm: 4 },
-            borderRadius: 2,
-            backgroundColor: '#fff',
+            color: '#6b7280',
+            textTransform: 'none',
+            fontSize: '14px',
+            pl: 0,
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: '#374151'
+            }
           }}
         >
-          {/* Back Button */}
-          <Box sx={{ mb: 3 }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={() => navigate('/login')}
-              sx={{
-                color: '#6b7280',
-                textTransform: 'none',
-                fontSize: '14px',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#374151'
-                }
-              }}
-            >
-              Back to Sign In
-            </Button>
-          </Box>
+          Back to Sign In
+        </Button>
+      </Box>
 
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 'bold',
-              mb: 1,
-              color: '#000',
-              fontSize: { xs: '24px', sm: '28px' }
-            }}
-          >
-            Reset Your Password
-          </Typography>
-          <Typography
-            sx={{
-              color: '#666',
-              mb: 4,
-              fontSize: '15px',
-              lineHeight: 1.6
-            }}
-          >
-            Enter your new password below.
-          </Typography>
+      {/* Title */}
+      <Typography 
+        variant="h4" 
+        sx={{ 
+          fontWeight: 'bold', 
+          mb: 1, 
+          color: '#000',
+          fontSize: { xs: '24px', sm: '28px', md: '34px' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}
+      >
+        Reset Your Password
+      </Typography>
+      <Typography 
+        sx={{ 
+          color: '#666', 
+          mb: 4,
+          fontSize: { xs: '14px', sm: '16px' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}
+      >
+        Enter your new password below.
+      </Typography>
 
           <Box component="form" onSubmit={handleSubmit}>
             {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 1.5,
+                  backgroundColor: '#ffebee',
+                  borderRadius: 1,
+                  color: '#c62828',
+                  fontSize: '14px',
+                }}
+              >
                 {error}
-              </Alert>
+              </Box>
             )}
 
             <Box sx={{ mb: 2.5 }}>
@@ -408,8 +404,6 @@ const ResetPassword = () => {
               </Box>
             </Typography>
           </Box>
-        </Paper>
-      </Container>
     </AuthLayout>
   );
 };

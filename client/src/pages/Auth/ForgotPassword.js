@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
-  Container,
   Typography,
   TextField,
   Button,
-  Paper,
-  Alert,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import api from '../../utils/api';
@@ -60,59 +57,62 @@ const ForgotPassword = () => {
 
   return (
     <AuthLayout>
-      <Container maxWidth="sm">
-        <Paper
-          elevation={0}
+      {/* Back Button */}
+      <Box sx={{ mb: 2 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/login')}
           sx={{
-            p: { xs: 3, sm: 4 },
-            borderRadius: 2,
-            backgroundColor: '#fff',
+            color: '#6b7280',
+            textTransform: 'none',
+            fontSize: '14px',
+            pl: 0,
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: '#374151'
+            }
           }}
         >
-          {/* Back Button */}
-          <Box sx={{ mb: 3 }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={() => navigate('/login')}
-              sx={{
-                color: '#6b7280',
-                textTransform: 'none',
-                fontSize: '14px',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#374151'
-                }
-              }}
-            >
-              Back to Sign In
-            </Button>
-          </Box>
+          Back to Sign In
+        </Button>
+      </Box>
 
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 'bold',
-              mb: 1,
-              color: '#000',
-              fontSize: { xs: '24px', sm: '28px' }
-            }}
-          >
-            Forgot Password?
-          </Typography>
-          <Typography
-            sx={{
-              color: '#666',
-              mb: 4,
-              fontSize: '15px',
-              lineHeight: 1.6
-            }}
-          >
-            No worries! Enter your email address and we'll send you a link to reset your password.
-          </Typography>
+      {/* Title */}
+      <Typography 
+        variant="h4" 
+        sx={{ 
+          fontWeight: 'bold', 
+          mb: 1, 
+          color: '#000',
+          fontSize: { xs: '24px', sm: '28px', md: '34px' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}
+      >
+        Forgot Password?
+      </Typography>
+      <Typography 
+        sx={{ 
+          color: '#666', 
+          mb: 4,
+          fontSize: { xs: '14px', sm: '16px' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}
+      >
+        No worries! Enter your email address and we'll send you a link to reset your password.
+      </Typography>
 
           {success ? (
             <Box>
-              <Alert severity="success" sx={{ mb: 3 }}>
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 1.5,
+                  backgroundColor: '#e8f5e9',
+                  borderRadius: 1,
+                  color: '#2e7d32',
+                  fontSize: '14px',
+                }}
+              >
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                   Check your email
                 </Typography>
@@ -123,7 +123,7 @@ const ForgotPassword = () => {
                 <Typography variant="body2" sx={{ mt: 1, fontSize: '13px', color: '#666' }}>
                   The link will expire in 1 hour.
                 </Typography>
-              </Alert>
+              </Box>
               <Button
                 fullWidth
                 variant="outlined"
@@ -148,9 +148,18 @@ const ForgotPassword = () => {
           ) : (
             <Box component="form" onSubmit={handleSubmit}>
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    backgroundColor: '#ffebee',
+                    borderRadius: 1,
+                    color: '#c62828',
+                    fontSize: '14px',
+                  }}
+                >
                   {error}
-                </Alert>
+                </Box>
               )}
 
               <Box sx={{ mb: 3 }}>
@@ -235,8 +244,6 @@ const ForgotPassword = () => {
               </Typography>
             </Box>
           )}
-        </Paper>
-      </Container>
     </AuthLayout>
   );
 };
