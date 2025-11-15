@@ -138,8 +138,27 @@ const AuthContainer = ({ mode = 'login' }) => {
 
         try {
           const result = await login(formData.email, formData.password);
+          console.log('🟢 [AUTH] Login result:', JSON.stringify(result, null, 2));
 
-          if (result.success) {
+          // Check for email verification requirement FIRST (before checking success)
+          if (result && result.requiresVerification) {
+            // Email verification required - redirect to 2FA page
+            console.log('🟡 [AUTH] Email verification required for login - navigating to 2FA');
+            setHasFailedLogin(false);
+            setError(''); // Clear any error messages
+            // Use setTimeout to ensure state updates complete before navigation
+            setTimeout(() => {
+              console.log('🟡 [AUTH] Executing navigation to /2fa for login');
+              navigate('/2fa', { 
+                replace: true,
+                state: { email: formData.email || result.email, from: 'login' } 
+              });
+            }, 100);
+            setLoading(false);
+            return; // Exit early to prevent further processing
+          }
+
+          if (result && result.success) {
             // Reset failed login flag on success
             setHasFailedLogin(false);
             
@@ -154,25 +173,10 @@ const AuthContainer = ({ mode = 'login' }) => {
             } else {
               navigate('/dashboard');
             }
-          } else if (result.requiresVerification) {
-            // Email verification required - redirect to 2FA page
-            console.log('🟡 [AUTH] Email verification required for login - navigating to 2FA');
-            setHasFailedLogin(false);
-            setError(''); // Clear any error messages
-            // Use setTimeout to ensure state updates complete before navigation
-            setTimeout(() => {
-              console.log('🟡 [AUTH] Executing navigation to /2fa for login');
-              navigate('/2fa', { 
-                replace: true,
-                state: { email: formData.email || result.email, from: 'login' } 
-              });
-            }, 100);
-            setLoading(false);
           } else {
             console.error('🔴 [AUTH] Login failed:', result?.message);
-            setError(result.message);
+            setError(result?.message || 'Login failed');
             setHasFailedLogin(true); // Mark that login has failed
-            setLoading(false);
           }
         } catch (error) {
           // Handle any unexpected errors
