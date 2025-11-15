@@ -51,47 +51,51 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('Login attempt:', { email, password: password.substring(0, 3) + '***' });
+      console.log('🔵 [LOGIN] Starting login for:', email);
       console.log('API baseURL:', api.defaults.baseURL);
       
       const response = await api.post('/auth/login', { email, password });
-      console.log('Login response:', response.data);
+      console.log('🔵 [LOGIN] Response status:', response.status);
+      console.log('🔵 [LOGIN] Response data:', JSON.stringify(response.data, null, 2));
       
-      // Check if email verification is required
-      if (response.data.requiresVerification) {
+      // Check if email verification is required (can be in success: false or success: true response)
+      if (response.data && response.data.requiresVerification) {
+        console.log('🟡 [LOGIN] Email verification required - NOT setting user or token');
+        // Return success: true to indicate the login attempt was valid, just needs verification
         return { 
-          success: false, 
+          success: true, 
           requiresVerification: true,
-          email: response.data.email,
+          email: response.data.email || email,
           message: response.data.message || 'Please verify your email'
         };
       }
       
-      const { token, user } = response.data;
+      // Only proceed if we have token and user (normal successful login)
+      const { token, user } = response.data || {};
       
       if (!token || !user) {
-        console.error('Invalid response format:', response.data);
+        console.error('🔴 [LOGIN] Invalid response format - missing token or user:', response.data);
         throw new Error('Invalid response from server');
       }
       
-      console.log('Storing token and user:', { token: token.substring(0, 20) + '...', user });
+      console.log('🟢 [LOGIN] Setting token and user');
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Login successful!');
       
       return { success: true, user };
     } catch (error) {
-      console.error('Login error full:', error);
-      console.error('Response data:', error.response?.data);
-      console.error('Response status:', error.response?.status);
-      console.error('Response headers:', error.response?.headers);
+      console.error('🔴 [LOGIN] Error caught:', error);
+      console.error('🔴 [LOGIN] Error response:', error.response?.data);
+      console.error('🔴 [LOGIN] Error status:', error.response?.status);
       
-      // Check if it's a verification requirement
+      // Check if it's a verification requirement in error response
       if (error.response?.data?.requiresVerification) {
+        console.log('🟡 [LOGIN] Email verification required (from error response)');
         return { 
-          success: false, 
+          success: true, 
           requiresVerification: true,
-          email: error.response.data.email,
+          email: error.response.data.email || email,
           message: error.response.data.message || 'Please verify your email'
         };
       }

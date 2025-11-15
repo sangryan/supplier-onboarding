@@ -156,10 +156,20 @@ const AuthContainer = ({ mode = 'login' }) => {
             }
           } else if (result.requiresVerification) {
             // Email verification required - redirect to 2FA page
+            console.log('🟡 [AUTH] Email verification required for login - navigating to 2FA');
             setHasFailedLogin(false);
-            navigate('/2fa', { state: { email: formData.email, from: 'login' } });
+            setError(''); // Clear any error messages
+            // Use setTimeout to ensure state updates complete before navigation
+            setTimeout(() => {
+              console.log('🟡 [AUTH] Executing navigation to /2fa for login');
+              navigate('/2fa', { 
+                replace: true,
+                state: { email: formData.email || result.email, from: 'login' } 
+              });
+            }, 100);
             setLoading(false);
           } else {
+            console.error('🔴 [AUTH] Login failed:', result?.message);
             setError(result.message);
             setHasFailedLogin(true); // Mark that login has failed
             setLoading(false);
