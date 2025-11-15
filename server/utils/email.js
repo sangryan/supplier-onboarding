@@ -52,7 +52,12 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
     });
   } catch (error) {
     console.error('❌ Email transporter configuration error:', error.message);
+    console.error('   Full error:', error);
     transporterVerified = false;
+    transporterError = {
+      message: error.message,
+      type: 'configuration_error'
+    };
   }
 } else {
   console.error('❌ Email configuration MISSING:');
@@ -165,28 +170,33 @@ exports.generateResetToken = () => {
  * @returns {Object} Status information
  */
 exports.getEmailStatus = () => {
+  const isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+  
   let status = 'unknown';
-  if (transporterVerifying) {
+  if (!isConfigured) {
+    status = 'not_configured';
+  } else if (!transporter) {
+    status = 'creation_failed';
+  } else if (transporterVerifying) {
     status = 'verifying';
   } else if (transporterVerified) {
     status = 'verified';
   } else if (transporterError) {
     status = 'failed';
-  } else if (transporter) {
-    status = 'pending';
   } else {
-    status = 'not_configured';
+    status = 'pending';
   }
 
   return {
-    configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD),
+    configured: isConfigured,
     verified: transporterVerified,
     status: status,
     error: transporterError,
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
     user: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
-    password: process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET'
+    password: process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET',
+    transporterExists: !!transporter
   };
 };
 
