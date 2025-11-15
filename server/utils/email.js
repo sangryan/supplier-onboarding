@@ -103,7 +103,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
   }
 
   const mailOptions = {
-    from: fromEmail,
+    from: `"${process.env.COMPANY_NAME || 'Supplier Onboarding Portal'}" <${fromEmail}>`,
     to: email,
     subject: 'Password Reset Request - Supplier Onboarding Portal',
     html: `
