@@ -5,6 +5,7 @@ const crypto = require('crypto');
 let transporter = null;
 let transporterVerified = false;
 let transporterError = null;
+let transporterVerifying = false;
 
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
@@ -29,7 +30,9 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
     });
     
     // Verify transporter configuration asynchronously
+    transporterVerifying = true;
     transporter.verify((error, success) => {
+      transporterVerifying = false;
       if (error) {
         console.error('❌ Email transporter verification FAILED:', error.message);
         console.error('   Error code:', error.code);
@@ -162,9 +165,23 @@ exports.generateResetToken = () => {
  * @returns {Object} Status information
  */
 exports.getEmailStatus = () => {
+  let status = 'unknown';
+  if (transporterVerifying) {
+    status = 'verifying';
+  } else if (transporterVerified) {
+    status = 'verified';
+  } else if (transporterError) {
+    status = 'failed';
+  } else if (transporter) {
+    status = 'pending';
+  } else {
+    status = 'not_configured';
+  }
+
   return {
     configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD),
     verified: transporterVerified,
+    status: status,
     error: transporterError,
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
