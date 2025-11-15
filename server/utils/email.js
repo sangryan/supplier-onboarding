@@ -96,8 +96,14 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
 
   const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
 
+  // SendGrid requires a verified sender email
+  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  if (!fromEmail) {
+    throw new Error('EMAIL_FROM or EMAIL_USER must be set for SendGrid');
+  }
+
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: fromEmail,
     to: email,
     subject: 'Password Reset Request - Supplier Onboarding Portal',
     html: `
@@ -144,18 +150,39 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
   };
 
   try {
+    console.log(`📧 Attempting to send password reset email...`);
+    console.log(`   From: ${fromEmail}`);
+    console.log(`   To: ${email}`);
+    console.log(`   Subject: Password Reset Request`);
+    
     const info = await transporter.sendMail(mailOptions);
     console.log(`✅ Password reset email sent successfully to ${email}`);
     console.log(`   Message ID: ${info.messageId}`);
+    console.log(`   Response: ${info.response || 'No response'}`);
     return info;
   } catch (error) {
     console.error('❌ Error sending password reset email:', error);
-    console.error('   Error details:', {
-      code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode
-    });
+    console.error('   Error message:', error.message);
+    console.error('   Error code:', error.code);
+    console.error('   Error command:', error.command);
+    console.error('   Error response:', error.response);
+    console.error('   Error responseCode:', error.responseCode);
+    console.error('   Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    
+    // Check for SendGrid-specific errors
+    if (error.response) {
+      console.error('   SendGrid response:', error.response);
+    }
+    if (error.responseCode) {
+      console.error(`   HTTP Status: ${error.responseCode}`);
+      if (error.responseCode === 403) {
+        console.error('   ⚠️  403 Forbidden: Check if sender email is verified in SendGrid');
+      }
+      if (error.responseCode === 401) {
+        console.error('   ⚠️  401 Unauthorized: Check API key is correct');
+      }
+    }
+    
     throw error;
   }
 };
