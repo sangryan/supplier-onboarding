@@ -209,9 +209,22 @@ const supplierSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     }
+  },
+  
+  // Application Progress Tracking
+  currentStep: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 3
+  },
+  lastModified: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false // Allow fields not defined in schema to be saved and retrieved
 });
 
 // Indexes

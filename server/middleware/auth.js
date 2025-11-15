@@ -77,7 +77,28 @@ exports.supplierAccess = async (req, res, next) => {
     
     // Suppliers can only access their own data
     if (req.user.role === 'supplier') {
-      if (!req.user.supplier || req.user.supplier.toString() !== supplierId) {
+      // Check if the supplier application belongs to this user
+      const Supplier = require('../models/Supplier');
+      // Use lean() with populate to avoid Mongoose validation (in case document has unmapped enum values)
+      // But we need to populate submittedBy to check ownership
+      const supplier = await Supplier.findById(supplierId)
+        .populate('submittedBy', '_id')
+        .lean();
+      
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier not found'
+        });
+      }
+      
+      // Check if the supplier application was submitted by this user
+      // Handle both ObjectId and string formats (with lean, populated fields are objects)
+      const submittedById = supplier.submittedBy 
+        ? (supplier.submittedBy._id ? supplier.submittedBy._id.toString() : supplier.submittedBy.toString())
+        : null;
+      
+      if (submittedById && submittedById !== req.user.id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this supplier'
@@ -87,6 +108,7 @@ exports.supplierAccess = async (req, res, next) => {
     
     next();
   } catch (error) {
+    console.error('Supplier access error:', error);
     return res.status(500).json({
       success: false,
       message: 'Error checking supplier access'

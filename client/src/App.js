@@ -92,6 +92,7 @@ function App() {
           
           {/* Supplier Routes */}
           <Route path="/application/new" element={<SupplierApplication />} />
+          <Route path="/application/:id/edit" element={<SupplierApplication />} />
           <Route path="/application/:id" element={<ApplicationStatus />} />
           
           {/* Admin/Procurement/Legal Routes */}

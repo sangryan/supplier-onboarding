@@ -5,61 +5,47 @@ import {
   Paper,
   Typography,
   Box,
-  Stepper,
-  Step,
-  StepLabel,
   Button,
   Chip,
-  Alert,
-  Card,
-  CardContent,
   Grid,
-  List,
-  ListItem,
-  ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   CircularProgress,
   Divider,
 } from '@mui/material';
 import {
-  Upload,
-  Download,
+  ArrowBack,
+  ExpandMore,
+  Check,
   Description,
-  CheckCircle,
+  Visibility,
 } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
+import { format, parse, isValid } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 
 const ApplicationStatus = () => {
-  const { id: paramId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [uploadDialog, setUploadDialog] = useState(false);
-  const [uploadFile, setUploadFile] = useState(null);
-  const [documentType, setDocumentType] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [expandedAccordion, setExpandedAccordion] = useState('basicInformation');
 
   useEffect(() => {
-    fetchSupplierApplication();
-  }, []);
+    if (id) {
+      fetchSupplierApplication();
+    }
+  }, [id]);
 
   const fetchSupplierApplication = async () => {
     try {
-      // If no ID in params, get supplier's own application
-      const response = await api.get('/suppliers');
-      const myApplications = response.data.data;
-      
-      if (myApplications.length > 0) {
-        const appId = paramId || myApplications[0]._id;
-        const detailResponse = await api.get(`/suppliers/${appId}`);
-        setSupplier(detailResponse.data.data);
-      }
+      const response = await api.get(`/suppliers/${id}`);
+      setSupplier(response.data.data);
     } catch (error) {
       toast.error('Failed to load application');
       console.error(error);
@@ -68,78 +54,60 @@ const ApplicationStatus = () => {
     }
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile || !documentType) {
-      toast.error('Please select a file and document type');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('document', uploadFile);
-    formData.append('supplierId', supplier._id);
-    formData.append('documentType', documentType);
-
-    setUploading(true);
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
     try {
-      await api.post('/documents/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      toast.success('Document uploaded successfully');
-      setUploadDialog(false);
-      setUploadFile(null);
-      setDocumentType('');
-      fetchSupplierApplication();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to upload document');
-    } finally {
-      setUploading(false);
+      const date = new Date(dateString);
+      if (isValid(date)) {
+        return format(date, 'do MMMM, yyyy');
+      }
+      return dateString;
+    } catch (e) {
+      return dateString;
     }
   };
 
-  const handleSubmitApplication = async () => {
-    if (!supplier.documents || supplier.documents.length === 0) {
-      toast.error('Please upload at least one document before submitting');
-      return;
-    }
-
-    try {
-      await api.post(`/suppliers/${supplier._id}/submit`);
-      toast.success('Application submitted successfully!');
-      fetchSupplierApplication();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit application');
-    }
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      draft: 'Draft',
+      submitted: 'Pending Procurement Approval',
+      pending_procurement: 'Pending Procurement Approval',
+      pending_legal: 'Pending Legal Approval',
+      under_review: 'Under Review',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      more_info_required: 'More Info Required'
+    };
+    return statusMap[status] || status;
   };
 
-  const getStepStatus = () => {
+  const getApprovalStep = () => {
+    if (!supplier) return 0;
     const statusMap = {
       draft: 0,
       submitted: 1,
       pending_procurement: 1,
       pending_legal: 2,
+      under_review: 2,
       approved: 3,
-      rejected: 1,
+      rejected: 0,
       more_info_required: 1,
     };
-    return statusMap[supplier?.status] || 0;
+    return statusMap[supplier.status] || 0;
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      draft: 'default',
-      submitted: 'primary',
-      pending_procurement: 'warning',
-      pending_legal: 'info',
-      approved: 'success',
-      rejected: 'error',
-      more_info_required: 'warning',
-    };
-    return colors[status] || 'default';
-  };
+  const approvalSteps = [
+    { number: 1, title: 'Application Created', description: 'Your application has been submitted' },
+    { number: 2, title: 'Procurement Review', description: 'Under review by procurement team' },
+    { number: 3, title: 'Legal Review', description: 'Under review by legal team' },
+    { number: 4, title: 'Approved', description: 'Application has been approved' },
+  ];
+
+  const activeStep = getApprovalStep();
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
         </Box>
@@ -149,239 +117,810 @@ const ApplicationStatus = () => {
 
   if (!supplier) {
     return (
-      <Container maxWidth="md">
+      <Container maxWidth="lg">
         <Paper sx={{ p: 4, textAlign: 'center', mt: 4 }}>
           <Typography variant="h5" gutterBottom>
             No Application Found
           </Typography>
           <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
-            You haven't started an application yet.
+            Application not found.
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate('/application/new')}
+            onClick={() => navigate('/dashboard')}
           >
-            Start New Application
+            Back to Dashboard
           </Button>
         </Paper>
       </Container>
     );
   }
 
-  const steps = ['Application Created', 'Procurement Review', 'Legal Review', 'Approved'];
+  // Map supplier data to formData-like structure for display
+  const formData = {
+    supplierName: supplier.supplierName || '',
+    legalNature: supplier.legalNature || '',
+    entityType: supplier.entityType || '',
+    companyRegistrationNumber: supplier.companyRegistrationNumber || '',
+    companyEmail: supplier.companyEmail || '',
+    companyWebsite: supplier.companyWebsite || '',
+    registeredCountry: supplier.registeredCountry || '',
+    companyPhysicalAddress: supplier.companyPhysicalAddress || {},
+    contactFullName: supplier.authorizedPerson?.name || '',
+    contactRelationship: supplier.authorizedPerson?.relationship || '',
+    contactIdPassport: supplier.authorizedPerson?.idPassportNumber || '',
+    contactPhone: supplier.authorizedPerson?.phone || '',
+    contactEmail: supplier.authorizedPerson?.email || '',
+    bankName: supplier.bankName || '',
+    bankAccountNumber: supplier.bankAccountNumber || '',
+    bankBranch: supplier.bankBranch || '',
+    creditPeriod: supplier.creditPeriod || '',
+    serviceTypes: supplier.serviceTypes || [],
+    certificateOfIncorporation: supplier.certificateOfIncorporation || null,
+    kraPinCertificate: supplier.kraPinCertificate || null,
+    etimsProof: supplier.etimsProof || null,
+    financialStatements: supplier.financialStatements || null,
+    cr12: supplier.cr12 || null,
+    companyProfile: supplier.companyProfile || null,
+    bankReferenceLetter: supplier.bankReferenceLetter || null,
+    directorsIds: supplier.directorsIds || [],
+    practicingCertificates: supplier.practicingCertificates || [],
+    keyMembersResumes: supplier.keyMembersResumes || [],
+    sourceOfWealth: supplier.sourceOfWealth || '',
+    declarantFullName: supplier.declarantFullName || '',
+    declarantCapacity: supplier.declarantCapacity || '',
+    declarantIdPassport: supplier.declarantIdPassport || '',
+    declarationDate: supplier.declarationDate || '',
+    declarationSignatureFile: supplier.declarationSignatureFile || null,
+  };
+
+  const renderDocumentCard = (fileName, documentName) => {
+    if (!fileName) return null;
+    const displayName = typeof fileName === 'string' ? fileName : 'File selected';
+    const fileExtension = displayName.split('.').pop()?.toUpperCase() || 'PDF';
+    
+    return (
+      <Box
+        key={documentName}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 1.5,
+          mb: 1,
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          backgroundColor: '#fff',
+          '&:hover': {
+            borderColor: '#d1d5db',
+            backgroundColor: '#f9fafb'
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+          <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
+              {documentName}
+            </Typography>
+            <Typography sx={{ fontSize: '12px', color: '#9ca3af' }}>
+              {fileExtension} • 2.3 MB
+            </Typography>
+          </Box>
+        </Box>
+        <Button
+          size="small"
+          startIcon={<Visibility sx={{ fontSize: 20 }} />}
+          sx={{
+            color: '#6b7280',
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: '#374151'
+            }
+          }}
+        >
+          View
+        </Button>
+      </Box>
+    );
+  };
+
+  const renderMultipleDocumentCards = (files, documentName) => {
+    if (!files || files.length === 0) return null;
+    return files.map((file, index) => {
+      const displayName = files.length > 1 
+        ? `${documentName} ${index + 1}`
+        : (typeof file === 'string' ? file : documentName);
+      const fileExtension = (typeof file === 'string' ? file : '').split('.').pop()?.toUpperCase() || 'PDF';
+      
+      return (
+        <Box
+          key={index}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.5,
+            mb: 1,
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            backgroundColor: '#fff',
+            '&:hover': {
+              borderColor: '#d1d5db',
+              backgroundColor: '#f9fafb'
+            }
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+            <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
+                {displayName}
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: '#9ca3af' }}>
+                {fileExtension} • 2.3 MB
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            size="small"
+            startIcon={<Visibility sx={{ fontSize: 20 }} />}
+            sx={{
+              color: '#6b7280',
+              textTransform: 'none',
+              '&:hover': {
+                backgroundColor: 'transparent',
+                color: '#374151'
+              }
+            }}
+          >
+            View
+          </Button>
+        </Box>
+      );
+    });
+  };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Application Status
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h6" color="textSecondary">
-            {supplier.supplierName}
-          </Typography>
-          <Chip 
-            label={supplier.status.replace('_', ' ').toUpperCase()} 
-            color={getStatusColor(supplier.status)}
-          />
-          {supplier.vendorNumber && (
-            <Chip 
-              label={`Vendor #: ${supplier.vendorNumber}`} 
-              color="success"
-              icon={<CheckCircle />}
-            />
-          )}
+    <Box sx={{ backgroundColor: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', pb: 0 }}>
+      <Container maxWidth="lg" sx={{ pt: 3, pb: 4, flex: 1 }}>
+        {/* Back Button */}
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/dashboard')}
+          sx={{
+            color: '#6b7280',
+            textTransform: 'none',
+            fontSize: '14px',
+            mb: 3,
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: '#374151'
+            }
+          }}
+        >
+          Back to Dashboard
+        </Button>
+
+        {/* Approval Workflow Steps */}
+        <Box sx={{ mb: 4 }}>
+          {/* Mobile View */}
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+            {approvalSteps.map((step, index) => (
+              <Box key={step.number} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: index <= activeStep ? theme.palette.green.main : 'transparent',
+                    color: index <= activeStep ? '#fff' : theme.palette.green.main,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 600,
+                    fontSize: '16px',
+                    position: 'relative',
+                    zIndex: 1
+                  }}
+                >
+                  {index < activeStep ? <Check sx={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }} /> : step.number}
+                </Box>
+                {index < approvalSteps.length - 1 && (
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: '1px',
+                      backgroundColor: '#e5e7eb',
+                      mx: 2
+                    }}
+                  />
+                )}
+              </Box>
+            ))}
+          </Box>
+
+          {/* Desktop View */}
+          <Grid container spacing={2} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            {approvalSteps.map((step, index) => (
+              <Grid item xs={3} key={step.number}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      backgroundColor: index <= activeStep ? theme.palette.green.main : 'transparent',
+                      color: index <= activeStep ? '#fff' : theme.palette.green.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      margin: '0 auto 8px',
+                    }}
+                  >
+                    {index < activeStep ? <Check sx={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }} /> : step.number}
+                  </Box>
+                  <Typography sx={{ fontWeight: 600, fontSize: '14px', color: '#111827', mb: 0.5 }}>
+                    {step.title}
+                  </Typography>
+                  <Typography sx={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.4 }}>
+                    {step.description}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
         </Box>
-      </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Stepper activeStep={getStepStatus()} alternativeLabel>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-      </Paper>
-
-      {supplier.status === 'rejected' && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          <Typography variant="body1" fontWeight="bold">Application Rejected</Typography>
-          <Typography variant="body2">
-            Reason: {supplier.rejectionReason}
-          </Typography>
-        </Alert>
-      )}
-
-      {supplier.status === 'more_info_required' && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          <Typography variant="body1" fontWeight="bold">Additional Information Required</Typography>
-          <Typography variant="body2">
-            Please review the comments and provide the requested information.
-          </Typography>
-        </Alert>
-      )}
-
-      {supplier.status === 'approved' && !supplier.vendorNumber && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body1" fontWeight="bold">Application Approved!</Typography>
-          <Typography variant="body2">
-            Your vendor number will be assigned shortly by the procurement team.
-          </Typography>
-        </Alert>
-      )}
-
-      {supplier.vendorNumber && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          <Typography variant="body1" fontWeight="bold">Onboarding Complete!</Typography>
-          <Typography variant="body2">
-            Congratulations! You are now fully onboarded. Your vendor number is: {supplier.vendorNumber}
-          </Typography>
-        </Alert>
-      )}
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom color="primary">
-                Documents
+        {/* Application Details - Similar to Step 4 */}
+        <Paper
+          elevation={0}
+          sx={{
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Basic Information Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'basicInformation'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'basicInformation' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Basic Information
               </Typography>
-              <Divider sx={{ mb: 2 }} />
-              
-              {supplier.canSubmit && supplier.canSubmit() && (
-                <Button
-                  variant="contained"
-                  startIcon={<Upload />}
-                  onClick={() => setUploadDialog(true)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                >
-                  Upload Document
-                </Button>
-              )}
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Supplier Name
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.supplierName || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Legal Nature
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.legalNature || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Entity Type
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.entityType || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Company Registration Number
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.companyRegistrationNumber || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Company Email
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.companyEmail || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Company Website
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.companyWebsite || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Registered Country
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.registeredCountry || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Physical Address
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.companyPhysicalAddress?.street || '-'}, {formData.companyPhysicalAddress?.city || ''}, {formData.companyPhysicalAddress?.country || ''} {formData.companyPhysicalAddress?.postalCode || ''}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
 
-              {supplier.documents && supplier.documents.length > 0 ? (
-                <List>
-                  {supplier.documents.map((doc) => (
-                    <ListItem key={doc._id}>
-                      <Description sx={{ mr: 2 }} color="primary" />
-                      <ListItemText
-                        primary={doc.originalName}
-                        secondary={`Uploaded: ${new Date(doc.uploadedAt).toLocaleDateString()}`}
-                      />
-                      <Button
-                        size="small"
-                        startIcon={<Download />}
-                        onClick={() => window.open(`http://localhost:8000/api/documents/${doc._id}/download`, '_blank')}
-                      >
-                        Download
-                      </Button>
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
-                  No documents uploaded yet
-                </Typography>
-              )}
+          {/* Contact Details Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'contactDetails'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'contactDetails' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Contact Details
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Full Name
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.contactFullName || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Relationship
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.contactRelationship || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    ID/Passport Number
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.contactIdPassport || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Phone
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.contactPhone || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Email
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.contactEmail || '-'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
 
-              {supplier.status === 'draft' && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  fullWidth
-                  sx={{ mt: 2 }}
-                  onClick={handleSubmitApplication}
-                  disabled={!supplier.documents || supplier.documents.length === 0}
-                >
-                  Submit Application
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+          {/* Payment Details Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'paymentDetails'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'paymentDetails' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Payment Details
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Bank Name
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.bankName || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Account Number
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.bankAccountNumber || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Branch
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.bankBranch || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Applicable Credit Period
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.creditPeriod ? `${formData.creditPeriod} Days` : '-'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom color="primary">
+          {/* Entity Details Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'entityDetails'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'entityDetails' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Entity Details
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box>
+                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
+                {renderDocumentCard(formData.kraPinCertificate, 'KRA PIN Certificate')}
+                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                {renderDocumentCard(formData.financialStatements, 'Financial Statements')}
+                {renderDocumentCard(formData.cr12, 'Valid CR12')}
+                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
+                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Service Details Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'serviceDetails'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'serviceDetails' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Service Details
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box>
+                {renderMultipleDocumentCards(formData.practicingCertificates, 'Practicing Certificate')}
+                {renderMultipleDocumentCards(formData.keyMembersResumes, 'Resume')}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Source of Funds Declaration Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'sourceOfFunds'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'sourceOfFunds' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Source of Funds Declaration
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Source of wealth/Funds
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.sourceOfWealth || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Full Name of Declarant
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.declarantFullName || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Capacity
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.declarantCapacity || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    ID/Passport Number
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.declarantIdPassport || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Date
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formatDate(formData.declarationDate)}
+                  </Typography>
+                </Grid>
+                {formData.declarationSignatureFile && (
+                  <Grid item xs={12}>
+                    {renderDocumentCard(formData.declarationSignatureFile, 'Signature File')}
+                  </Grid>
+                )}
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Personal Information Processing Consent Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'consent'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'consent' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                Personal Information Processing Consent
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Full Name of Declarant
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formData.declarantFullName || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                    Date
+                  </Typography>
+                  <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                    {formatDate(formData.declarationDate)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Approval History Accordion */}
+          <Accordion
+            expanded={expandedAccordion === 'approvalHistory'}
+            onChange={(event, isExpanded) => {
+              setExpandedAccordion(isExpanded ? 'approvalHistory' : '');
+            }}
+            sx={{
+              boxShadow: 'none',
+              border: 'none',
+              borderRadius: 0,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': {
+                margin: 0
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+              sx={{
+                '& .MuiAccordionSummary-content': {
+                  my: 2
+                }
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
                 Approval History
               </Typography>
-              <Divider sx={{ mb: 2 }} />
+            </AccordionSummary>
+            <AccordionDetails>
               {supplier.approvalHistory && supplier.approvalHistory.length > 0 ? (
-                <List>
+                <Box>
                   {supplier.approvalHistory.map((history, index) => (
-                    <ListItem key={index}>
-                      <ListItemText
-                        primary={`${history.action.toUpperCase()}`}
-                        secondary={
-                          <>
-                            <Typography variant="body2" component="span">
-                              {new Date(history.timestamp).toLocaleString()}
-                            </Typography>
-                            {history.comments && (
-                              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                {history.comments}
-                              </Typography>
-                            )}
-                          </>
-                        }
-                      />
-                    </ListItem>
+                    <Box
+                      key={index}
+                      sx={{
+                        p: 2,
+                        mb: 2,
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        backgroundColor: '#fff'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Typography sx={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>
+                          {history.action || 'Status Update'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#6b7280' }}>
+                          {formatDate(history.timestamp || history.date)}
+                        </Typography>
+                      </Box>
+                      {history.approver && (
+                        <Typography sx={{ fontSize: '13px', color: '#6b7280', mb: 1 }}>
+                          By: {history.approver?.firstName || ''} {history.approver?.lastName || ''} ({history.approver?.role || ''})
+                        </Typography>
+                      )}
+                      {history.comments && (
+                        <Typography sx={{ fontSize: '13px', color: '#374151', mt: 1 }}>
+                          {history.comments}
+                        </Typography>
+                      )}
+                      {history.status && (
+                        <Chip
+                          label={getStatusLabel(history.status)}
+                          size="small"
+                          sx={{
+                            mt: 1,
+                            backgroundColor: '#f3f4f6',
+                            color: '#6b7280',
+                            fontSize: '12px',
+                            height: '24px'
+                          }}
+                        />
+                      )}
+                    </Box>
                   ))}
-                </List>
+                </Box>
               ) : (
-                <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
-                  No activity yet
+                <Typography sx={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', py: 2 }}>
+                  No approval history available yet
                 </Typography>
               )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Upload Dialog */}
-      <Dialog open={uploadDialog} onClose={() => setUploadDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Upload Document</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-              onChange={(e) => setUploadFile(e.target.files[0])}
-              style={{ marginBottom: 16 }}
-            />
-            <select
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-              style={{ width: '100%', padding: 8, marginTop: 16 }}
-            >
-              <option value="">Select Document Type</option>
-              <option value="certificate_of_incorporation">Certificate of Incorporation</option>
-              <option value="cr12">CR12</option>
-              <option value="pin_certificate">PIN Certificate</option>
-              <option value="directors_id">Directors ID</option>
-              <option value="company_profile">Company Profile</option>
-              <option value="bank_reference">Bank Reference</option>
-              <option value="audited_financials">Audited Financials</option>
-              <option value="etims_registration">e-TIMS Registration</option>
-              <option value="other">Other</option>
-            </select>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setUploadDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpload}
-            disabled={uploading || !uploadFile || !documentType}
-          >
-            {uploading ? 'Uploading...' : 'Upload'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+            </AccordionDetails>
+          </Accordion>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 
