@@ -48,10 +48,20 @@ app.use('/uploads', express.static('uploads'));
 
 // Health check endpoint (BEFORE rate limiting to avoid 429 errors from frequent health checks)
 app.get('/api/health', (req, res) => {
+  // Check email configuration status
+  const emailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+  
   res.status(200).json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    email: {
+      configured: emailConfigured,
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: process.env.EMAIL_PORT || 587,
+      user: emailConfigured ? 'SET' : 'NOT SET',
+      password: emailConfigured ? 'SET' : 'NOT SET'
+    }
   });
 });
 
