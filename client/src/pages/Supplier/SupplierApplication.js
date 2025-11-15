@@ -118,6 +118,8 @@ const SupplierApplication = () => {
   const theme = useTheme();
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
+  // Track which fields are prefilled from profile (read-only for new applications)
+  const [prefilledFields, setPrefilledFields] = useState(new Set());
   const [formData, setFormData] = useState({
     // Basic Information
     supplierName: '',
@@ -351,6 +353,67 @@ const SupplierApplication = () => {
               return updated;
             });
             
+            // Check which fields match profile data and mark as prefilled
+            // Fetch supplier profile to compare
+            const checkPrefilledFields = async () => {
+              try {
+                const profileResponse = await api.get('/suppliers');
+                const suppliers = profileResponse.data.data || [];
+                if (suppliers.length > 0) {
+                  const supplierData = suppliers[0];
+                  const registeredFullName = user?.firstName && user?.lastName 
+                    ? `${user.firstName} ${user.lastName}`.trim()
+                    : (user?.firstName || user?.lastName || '');
+                  
+                  const address = supplierData.companyPhysicalAddress;
+                  const fullAddress = address
+                    ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
+                    : supplierData.physicalAddress || '';
+                  
+                  const mapLegalNatureToDisplay = (dbValue) => {
+                    const mapping = {
+                      'company': 'Private Limited Company',
+                      'partnership': 'Partnership',
+                      'individual': 'Sole Proprietorship',
+                      'state_owned': 'Private Limited Company',
+                      'ngo': 'NGO',
+                      'foundation': 'Private Limited Company',
+                      'association': 'Private Limited Company',
+                      'foreign_company': 'Private Limited Company',
+                      'trust': 'Trust',
+                      'other': 'Other'
+                    };
+                    return mapping[dbValue] || '';
+                  };
+                  
+                  const legalNatureDisplay = supplierData.legalNature 
+                    ? mapLegalNatureToDisplay(supplierData.legalNature)
+                    : '';
+                  
+                  // Compare application data with profile data
+                  const prefilled = new Set();
+                  if (mappedData.contactFullName === registeredFullName) prefilled.add('contactFullName');
+                  if (mappedData.contactRelationship === (supplierData.authorizedPerson?.relationship || '')) prefilled.add('contactRelationship');
+                  if (mappedData.contactIdPassport === (supplierData.authorizedPerson?.idPassportNumber || '')) prefilled.add('contactIdPassport');
+                  if (mappedData.contactPhone === (supplierData.authorizedPerson?.phone || '')) prefilled.add('contactPhone');
+                  if (mappedData.contactEmail === (supplierData.authorizedPerson?.email || user?.email || '')) prefilled.add('contactEmail');
+                  if (mappedData.supplierName === (supplierData.supplierName || '')) prefilled.add('supplierName');
+                  if (mappedData.registeredCountry === (supplierData.registeredCountry || address?.country || '')) prefilled.add('registeredCountry');
+                  if (mappedData.companyRegistrationNumber === (supplierData.companyRegistrationNumber || '')) prefilled.add('companyRegistrationNumber');
+                  if (mappedData.companyEmail === (supplierData.companyEmail || '')) prefilled.add('companyEmail');
+                  if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.add('companyWebsite');
+                  if (mappedData.legalNature === legalNatureDisplay) prefilled.add('legalNature');
+                  if (mappedData.physicalAddress === fullAddress) prefilled.add('physicalAddress');
+                  
+                  setPrefilledFields(new Set(prefilled));
+                }
+              } catch (error) {
+                console.error('Error checking prefilled fields:', error);
+              }
+            };
+            
+            checkPrefilledFields();
+            
             // Set current month for date picker if date exists
             if (mappedData.declarationDate) {
               try {
@@ -413,6 +476,21 @@ const SupplierApplication = () => {
                 ? mapLegalNatureToDisplay(supplierData.legalNature)
                 : '';
               
+              // Mark fields as prefilled
+              const prefilled = new Set();
+              if (registeredFullName) prefilled.add('contactFullName');
+              if (supplierData.authorizedPerson?.relationship) prefilled.add('contactRelationship');
+              if (supplierData.authorizedPerson?.idPassportNumber) prefilled.add('contactIdPassport');
+              if (supplierData.authorizedPerson?.phone) prefilled.add('contactPhone');
+              if (supplierData.authorizedPerson?.email || user.email) prefilled.add('contactEmail');
+              if (supplierData.supplierName) prefilled.add('supplierName');
+              if (supplierData.registeredCountry || address?.country) prefilled.add('registeredCountry');
+              if (supplierData.companyRegistrationNumber) prefilled.add('companyRegistrationNumber');
+              if (supplierData.companyEmail) prefilled.add('companyEmail');
+              if (supplierData.companyWebsite) prefilled.add('companyWebsite');
+              if (legalNatureDisplay) prefilled.add('legalNature');
+              if (fullAddress) prefilled.add('physicalAddress');
+              
               setFormData(prev => ({
                 ...prev,
                 // Contact information
@@ -430,21 +508,38 @@ const SupplierApplication = () => {
                 legalNature: legalNatureDisplay,
                 physicalAddress: fullAddress,
               }));
+              
+              // Store prefilled fields for read-only check
+              setPrefilledFields(new Set(prefilled));
             } else {
               // No supplier data, just prefill contact info
+              const prefilled = new Set();
+              if (registeredFullName) prefilled.add('contactFullName');
+              if (user.email) prefilled.add('contactEmail');
+              
               setFormData(prev => ({
                 ...prev,
                 contactFullName: registeredFullName,
                 contactEmail: user.email || '',
               }));
+              
+              // Store prefilled fields for read-only check
+              setPrefilledFields(new Set(prefilled));
             }
           } catch (error) {
             // On error, just prefill contact info
+            const prefilled = new Set();
+            if (registeredFullName) prefilled.add('contactFullName');
+            if (user.email) prefilled.add('contactEmail');
+            
             setFormData(prev => ({
               ...prev,
               contactFullName: registeredFullName,
               contactEmail: user.email || '',
             }));
+            
+            // Store prefilled fields for read-only check
+            setPrefilledFields(new Set(prefilled));
           }
         };
         
@@ -914,10 +1009,17 @@ const SupplierApplication = () => {
                     fullWidth
                     value={formData.supplierName}
                     onChange={(e) => handleChange('supplierName', e.target.value)}
+                    disabled={prefilledFields.has('supplierName')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('supplierName') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -937,10 +1039,13 @@ const SupplierApplication = () => {
                         size="small"
                         value={selectedCountry ? selectedCountry.name : ''}
                         placeholder="Select country"
+                        disabled={prefilledFields.has('registeredCountry')}
                         onClick={(e) => {
-                          setCountryAnchorEl(e.currentTarget);
-                          setCountrySearchOpen(!countrySearchOpen);
-                          setCountrySearchTerm('');
+                          if (!prefilledFields.has('registeredCountry')) {
+                            setCountryAnchorEl(e.currentTarget);
+                            setCountrySearchOpen(!countrySearchOpen);
+                            setCountrySearchTerm('');
+                          }
                         }}
                         InputProps={{
                           readOnly: true,
@@ -953,7 +1058,12 @@ const SupplierApplication = () => {
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: '#fff',
-                            cursor: 'pointer',
+                            cursor: prefilledFields.has('registeredCountry') ? 'not-allowed' : 'pointer',
+                            ...(prefilledFields.has('registeredCountry') && {
+                              '& .MuiInputBase-input': {
+                                cursor: 'not-allowed',
+                              }
+                            })
                           }
                         }}
                       />
@@ -1026,9 +1136,11 @@ const SupplierApplication = () => {
                                 <Box
                                   key={country.code}
                                   onClick={() => {
-                                    handleChange('registeredCountry', country.name);
-                                    setCountrySearchOpen(false);
-                                    setCountrySearchTerm('');
+                                    if (!prefilledFields.has('registeredCountry')) {
+                                      handleChange('registeredCountry', country.name);
+                                      setCountrySearchOpen(false);
+                                      setCountrySearchTerm('');
+                                    }
                                   }}
                                   sx={{
                                     display: 'flex',
@@ -1036,10 +1148,14 @@ const SupplierApplication = () => {
                                     justifyContent: 'space-between',
                                     px: 1.5,
                                     py: 1.25,
-                                    cursor: 'pointer',
+                                    cursor: prefilledFields.has('registeredCountry') ? 'not-allowed' : 'pointer',
                                     borderRadius: '4px',
+                                    ...(prefilledFields.has('registeredCountry') && {
+                                      opacity: 0.6,
+                                      pointerEvents: 'none'
+                                    }),
                                     '&:hover': {
-                                      backgroundColor: '#f9fafb'
+                                      backgroundColor: prefilledFields.has('registeredCountry') ? 'transparent' : '#f9fafb'
                                     }
                                   }}
                                 >
@@ -1079,10 +1195,17 @@ const SupplierApplication = () => {
                     fullWidth
                     value={formData.companyRegistrationNumber}
                     onChange={(e) => handleChange('companyRegistrationNumber', e.target.value)}
+                    disabled={prefilledFields.has('companyRegistrationNumber')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('companyRegistrationNumber') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1100,10 +1223,17 @@ const SupplierApplication = () => {
                     type="email"
                     value={formData.companyEmail}
                     onChange={(e) => handleChange('companyEmail', e.target.value)}
+                    disabled={prefilledFields.has('companyEmail')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('companyEmail') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1120,10 +1250,17 @@ const SupplierApplication = () => {
                     fullWidth
                     value={formData.companyWebsite}
                     onChange={(e) => handleChange('companyWebsite', e.target.value)}
+                    disabled={prefilledFields.has('companyWebsite')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('companyWebsite') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1140,10 +1277,17 @@ const SupplierApplication = () => {
                     <Select
                       value={formData.legalNature}
                       onChange={(e) => handleChange('legalNature', e.target.value)}
+                      disabled={prefilledFields.has('legalNature')}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
                       sx={{ 
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('legalNature') && {
+                          cursor: 'not-allowed',
+                          '& .MuiSelect-select': {
+                            cursor: 'not-allowed',
+                          }
+                        }),
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
                         }
@@ -1175,10 +1319,17 @@ const SupplierApplication = () => {
                     value={formData.physicalAddress}
                     onChange={(e) => handleChange('physicalAddress', e.target.value)}
                     placeholder="Type your physical address here. Be as detailed as possible"
+                    disabled={prefilledFields.has('physicalAddress')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('physicalAddress') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1231,10 +1382,17 @@ const SupplierApplication = () => {
                     fullWidth
                     value={formData.contactFullName}
                     onChange={(e) => handleChange('contactFullName', e.target.value)}
+                    disabled={prefilledFields.has('contactFullName')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('contactFullName') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1252,10 +1410,17 @@ const SupplierApplication = () => {
                     value={formData.contactRelationship}
                     onChange={(e) => handleChange('contactRelationship', e.target.value)}
                     placeholder="e.g. CEO, CFO"
+                    disabled={prefilledFields.has('contactRelationship')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('contactRelationship') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1272,10 +1437,17 @@ const SupplierApplication = () => {
                     fullWidth
                     value={formData.contactIdPassport}
                     onChange={(e) => handleChange('contactIdPassport', e.target.value)}
+                    disabled={prefilledFields.has('contactIdPassport')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('contactIdPassport') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1293,10 +1465,17 @@ const SupplierApplication = () => {
                     value={formData.contactPhone}
                     onChange={(e) => handleChange('contactPhone', e.target.value)}
                     placeholder="e.g +254712345678"
+                    disabled={prefilledFields.has('contactPhone')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('contactPhone') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
@@ -1314,10 +1493,17 @@ const SupplierApplication = () => {
                     type="email"
                     value={formData.contactEmail}
                     onChange={(e) => handleChange('contactEmail', e.target.value)}
+                    disabled={prefilledFields.has('contactEmail')}
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
+                        ...(prefilledFields.has('contactEmail') && {
+                          cursor: 'not-allowed',
+                          '& .MuiInputBase-input': {
+                            cursor: 'not-allowed',
+                          }
+                        })
                       }
                     }}
                   />
