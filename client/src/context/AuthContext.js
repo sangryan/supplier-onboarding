@@ -27,14 +27,19 @@ export const AuthProvider = ({ children }) => {
       try {
         const response = await api.get('/auth/me');
         const userData = response.data.user;
-        // Only set user if email is verified (for 2FA flow)
-        // Note: isEmailVerified might not be in the response, so we check for it
-        if (userData && (userData.isEmailVerified !== false)) {
-          setUser(userData);
+        // Only require email verification for suppliers
+        // Internal users (procurement, legal, etc.) don't need email verification
+        if (userData) {
+          if (userData.role === 'supplier' && userData.isEmailVerified === false) {
+            // Supplier email not verified, clear token to allow 2FA flow
+            console.log('🟡 [AUTH] Supplier email not verified, clearing token for 2FA flow');
+            localStorage.removeItem('token');
+            setUser(null);
+          } else {
+            // Non-supplier or verified supplier - allow access
+            setUser(userData);
+          }
         } else {
-          // If email not verified, clear token to allow 2FA flow
-          console.log('🟡 [AUTH] User email not verified, clearing token for 2FA flow');
-          localStorage.removeItem('token');
           setUser(null);
         }
       } catch (error) {

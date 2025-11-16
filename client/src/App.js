@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Context
 import { useAuth } from './context/AuthContext';
+import { getDefaultRoute } from './utils/getDefaultRoute';
 
 // Theme
 import theme from './theme/theme';
@@ -28,7 +29,7 @@ import SupplierApplication from './pages/Supplier/SupplierApplication';
 import ApplicationStatus from './pages/Supplier/ApplicationStatus';
 import SupplierList from './pages/Admin/SupplierList';
 import SupplierDetails from './pages/Admin/SupplierDetails';
-import TaskList from './pages/Admin/TaskList';
+import TaskListWrapper from './pages/Admin/TaskListWrapper';
 import ContractList from './pages/Contracts/ContractList';
 import ContractDetails from './pages/Contracts/ContractDetails';
 import UserManagement from './pages/Admin/UserManagement';
@@ -73,17 +74,17 @@ function App() {
         {/* Landing Page */}
         <Route 
           path="/" 
-          element={!user ? <LandingPage /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
+          element={!user ? <LandingPage /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
         />
 
         {/* Public Routes */}
         <Route 
           path="/login" 
-          element={!user ? <Login /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
+          element={!user ? <Login /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
         />
         <Route 
           path="/register" 
-          element={!user ? <Register /> : <SupplierProfileGuard><Navigate to="/dashboard" /></SupplierProfileGuard>} 
+          element={!user ? <Register /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
         />
         <Route 
           path="/2fa" 
@@ -93,17 +94,17 @@ function App() {
             ) : (
               // If user is already authenticated, they shouldn't be on 2FA page
               // But check if email is verified - if not, allow 2FA
-              <Navigate to="/dashboard" replace />
+              <Navigate to={getDefaultRoute(user)} replace />
             )
           } 
         />
         <Route 
           path="/forgot-password" 
-          element={!user ? <ForgotPassword /> : <Navigate to="/dashboard" />} 
+          element={!user ? <ForgotPassword /> : <Navigate to={getDefaultRoute(user)} />} 
         />
         <Route 
           path="/reset-password/:token" 
-          element={!user ? <ResetPassword /> : <Navigate to="/dashboard" />} 
+          element={!user ? <ResetPassword /> : <Navigate to={getDefaultRoute(user)} />} 
         />
 
         {/* Protected Routes */}
@@ -121,7 +122,7 @@ function App() {
           {/* Admin/Procurement/Legal Routes */}
           <Route path="/suppliers" element={<SupplierList />} />
           <Route path="/suppliers/:id" element={<SupplierDetails />} />
-          <Route path="/tasks" element={<TaskList />} />
+          <Route path="/tasks" element={<TaskListWrapper />} />
           
           {/* Contract Routes */}
           <Route path="/contracts" element={<ContractList />} />

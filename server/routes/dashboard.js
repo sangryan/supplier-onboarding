@@ -158,34 +158,146 @@ router.get('/recent-activities', protect, async (req, res) => {
 });
 
 // @route   GET /api/dashboard/tasks
-// @desc    Get pending tasks based on role
+// @desc    Get pending tasks based on role with counts and task list
 // @access  Private (Procurement, Legal)
 router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = '', requestType = '' } = req.query;
     let query = {};
+    let allTasks = [];
 
     if (req.user.role === 'procurement') {
-      query.status = { $in: ['submitted', 'pending_procurement', 'more_info_required'] };
+      // Get all suppliers that need procurement attention
+      query = {
+        $or: [
+          { status: { $in: ['submitted', 'pending_procurement', 'more_info_required'] }, isProfileOnly: { $ne: true } },
+          { 'profileUpdateRequests.status': 'pending' },
+          { status: 'approved', vendorNumber: { $exists: false } }
+        ]
+      };
     } else if (req.user.role === 'legal') {
-      query.status = 'pending_legal';
+      query = { status: 'pending_legal', isProfileOnly: { $ne: true } };
     }
 
-    const tasks = await Supplier.find(query)
+    // Fetch all tasks (we'll process them to categorize)
+    const suppliers = await Supplier.find(query)
       .populate('submittedBy', 'firstName lastName email')
-      .sort({ submittedAt: 1 }) // Oldest first (FIFO)
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .sort({ submittedAt: 1, 'profileUpdateRequests.requestedAt': 1 })
+      .lean();
 
-    const count = await Supplier.countDocuments(query);
+    // Process tasks to create unified task list
+    suppliers.forEach(supplier => {
+      // New supplier applications
+      if (supplier.status && ['submitted', 'pending_procurement', 'more_info_required'].includes(supplier.status) && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'New Supplier Application',
+          submissionDate: supplier.submittedAt || supplier.createdAt,
+          status: supplier.status === 'submitted' ? 'Pending Review' : 
+                 supplier.status === 'pending_procurement' ? 'Pending Review' : 
+                 supplier.status === 'more_info_required' ? 'More Info Required' : 'Pending Review',
+          supplier: supplier
+        });
+      }
+
+      // Vendor number assignments (approved but no vendor number)
+      if (supplier.status === 'approved' && !supplier.vendorNumber && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `VN-${new Date(supplier.approvedAt || supplier.updatedAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'Vendor Number Assignment',
+          submissionDate: supplier.approvedAt || supplier.updatedAt,
+          status: 'Pending Vendor Number Assignment',
+          supplier: supplier
+        });
+      }
+
+      // Profile update requests - check if supplier has pending profile updates
+      // Check for contact info updates (profileUpdateComment field exists)
+      if (supplier.profileUpdateComment && supplier.status !== 'draft') {
+        // Check if there are pending profile update requests related to contact info
+        const hasPendingContactUpdates = supplier.profileUpdateRequests && 
+          supplier.profileUpdateRequests.some(req => 
+            req.status === 'pending' && 
+            (req.field === 'authorizedPerson' || req.field === 'additionalContacts')
+          );
+        
+        if (hasPendingContactUpdates || supplier.profileUpdateComment) {
+          allTasks.push({
+            _id: `${supplier._id}-contact-update`,
+            taskId: `CI-${new Date(supplier.updatedAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+            supplierName: supplier.supplierName,
+            requestType: 'Contact Info Update',
+            submissionDate: supplier.updatedAt,
+            status: 'Pending Review',
+            supplier: supplier
+          });
+        }
+      }
+
+      // Check for company profile updates (companyUpdateComment field exists)
+      if (supplier.companyUpdateComment && supplier.status !== 'draft') {
+        // Check if there are pending profile update requests related to company info
+        const hasPendingCompanyUpdates = supplier.profileUpdateRequests && 
+          supplier.profileUpdateRequests.some(req => 
+            req.status === 'pending' && 
+            req.field !== 'authorizedPerson' && 
+            req.field !== 'additionalContacts'
+          );
+        
+        if (hasPendingCompanyUpdates || supplier.companyUpdateComment) {
+          allTasks.push({
+            _id: `${supplier._id}-company-update`,
+            taskId: `VN-${new Date(supplier.updatedAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+            supplierName: supplier.supplierName,
+            requestType: 'Company Profile Update',
+            submissionDate: supplier.updatedAt,
+            status: 'Pending Review',
+            supplier: supplier
+          });
+        }
+      }
+    });
+
+    // Apply search filter
+    if (search) {
+      allTasks = allTasks.filter(task => 
+        task.supplierName.toLowerCase().includes(search.toLowerCase()) ||
+        task.taskId.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Apply request type filter
+    if (requestType) {
+      allTasks = allTasks.filter(task => task.requestType === requestType);
+    }
+
+    // Calculate counts
+    const counts = {
+      pendingApplications: allTasks.filter(t => t.requestType === 'New Supplier Application').length,
+      pendingVendorAssignment: allTasks.filter(t => t.requestType === 'Vendor Number Assignment').length,
+      pendingProfileUpdate: allTasks.filter(t => t.requestType === 'Company Profile Update').length,
+      pendingContactUpdate: allTasks.filter(t => t.requestType === 'Contact Info Update').length
+    };
+
+    // Paginate
+    const total = allTasks.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedTasks = allTasks.slice(startIndex, endIndex);
 
     res.json({
       success: true,
-      data: tasks,
+      data: paginatedTasks,
+      counts,
       pagination: {
-        total: count,
+        total,
         page: parseInt(page),
-        pages: Math.ceil(count / limit)
+        pages: Math.ceil(total / limit),
+        limit: parseInt(limit)
       }
     });
   } catch (error) {

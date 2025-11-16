@@ -90,6 +90,7 @@ router.post('/', protect, authorize('super_admin'), [
     }
 
     // Create user
+    // Internal users (non-suppliers) don't need email verification
     const user = await User.create({
       firstName,
       lastName,
@@ -99,7 +100,8 @@ router.post('/', protect, authorize('super_admin'), [
       department,
       phone,
       createdBy: req.user.id,
-      isActive: true
+      isActive: true,
+      isEmailVerified: true // Internal users don't need email verification
     });
 
     res.status(201).json({

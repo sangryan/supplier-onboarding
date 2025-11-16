@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   AppBar,
@@ -30,14 +30,19 @@ import {
   NotificationsOutlined as NotificationsOutlinedIcon,
   AccountCircle,
   Logout,
+  HeadsetMic as HeadsetIcon,
+  History as HistoryIcon,
+  ExitToApp as ExitIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 
-const drawerWidth = 240;
+const drawerWidth = 280;
 
 const Layout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -67,56 +72,243 @@ const Layout = () => {
     navigate('/profile');
   };
 
-  // Menu items based on role
+  // Menu items based on role - matching the design
   const getMenuItems = () => {
-    const items = [
-      { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['all'] },
-    ];
-
     if (user.role === 'supplier') {
-      items.push(
-        { text: 'My Application', icon: <AssignmentIcon />, path: '/application/status', roles: ['supplier'] },
-        { text: 'New Application', icon: <BusinessIcon />, path: '/application/new', roles: ['supplier'] },
-      );
+      return [
+        { text: 'My Application', icon: <AssignmentIcon />, path: '/application/status' },
+        { text: 'New Application', icon: <BusinessIcon />, path: '/application/new' },
+      ];
+    } else if (user.role === 'procurement' || user.role === 'legal') {
+      return [
+        { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
+        { text: 'All tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
+        { text: 'Supplier List', icon: <BusinessIcon />, path: '/suppliers' },
+      ];
     } else {
-      items.push(
-        { text: 'Suppliers', icon: <BusinessIcon />, path: '/suppliers', roles: ['procurement', 'legal', 'management', 'super_admin'] },
-        { text: 'Tasks', icon: <AssignmentIcon />, path: '/tasks', roles: ['procurement', 'legal', 'super_admin'] },
-        { text: 'Contracts', icon: <DescriptionIcon />, path: '/contracts', roles: ['legal', 'procurement', 'management', 'super_admin'] },
-        { text: 'Reports', icon: <AssessmentIcon />, path: '/reports', roles: ['management', 'super_admin'] },
-      );
+      return [
+        { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+        { text: 'Suppliers', icon: <BusinessIcon />, path: '/suppliers' },
+        { text: 'Tasks', icon: <AssignmentIcon />, path: '/tasks' },
+        { text: 'Contracts', icon: <DescriptionIcon />, path: '/contracts' },
+        { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
+      ];
     }
+  };
 
-    if (user.role === 'super_admin') {
-      items.push(
-        { text: 'User Management', icon: <PeopleIcon />, path: '/users', roles: ['super_admin'] },
-      );
-    }
-
-    return items.filter(item => 
-      item.roles.includes('all') || item.roles.includes(user.role)
-    );
+  const menuItems = getMenuItems();
+  const isActive = (path) => {
+    // For procurement/legal users, "My tasks" should be active on /dashboard
+    if (path === '/dashboard' && (user?.role === 'procurement' || user?.role === 'legal') && location.pathname === '/dashboard') return true;
+    if (path === '/tasks' && location.pathname === '/tasks') return true;
+    if (path === '/tasks/all' && location.pathname === '/tasks/all') return true;
+    return location.pathname === path;
   };
 
   const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          Supplier Portal
-        </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#f3f4f6' }}>
+      {/* Header with Logo */}
+      <Toolbar sx={{ minHeight: '64px !important', px: 2, py: 1.5, backgroundColor: '#f3f4f6' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+          <Box
+            component="img"
+            src="/images/Icon.svg"
+            alt="Betika Logo"
+            sx={{
+              width: 32,
+              height: 32,
+              flexShrink: 0
+            }}
+          />
+          <Typography 
+            variant="h6" 
+            component="div"
+            sx={{
+              fontWeight: 600,
+              fontSize: '16px',
+              color: '#000',
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Supplier Onboarding Portal
+          </Typography>
+        </Box>
       </Toolbar>
-      <Divider />
-      <List>
-        {getMenuItems().map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => navigate(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </div>
+
+      {/* Platform Section */}
+      <Box sx={{ flexGrow: 1, py: 1, overflow: 'auto', backgroundColor: '#f3f4f6' }}>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography 
+            sx={{ 
+              fontSize: '12px', 
+              fontWeight: 600, 
+              color: '#6b7280', 
+              letterSpacing: '0.5px',
+              mb: 1
+            }}
+          >
+            Platform
+          </Typography>
+        </Box>
+        <List sx={{ px: 1 }}>
+          {menuItems.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => navigate(item.path)}
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: active ? '#d1d5db' : 'transparent',
+                    color: active ? '#111827' : '#374151',
+                    '&:hover': {
+                      backgroundColor: active ? '#d1d5db' : '#d1d5db',
+                    },
+                    py: 1.5,
+                    px: 2,
+                    minHeight: '44px'
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40, color: active ? '#111827' : '#6b7280' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '14px',
+                      fontWeight: active ? 600 : 400
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+
+        {/* Other Section */}
+        <Box sx={{ mt: 2, px: 1 }}>
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography 
+              sx={{ 
+                fontSize: '12px', 
+                fontWeight: 600, 
+                color: '#6b7280', 
+                letterSpacing: '0.5px',
+                mb: 1
+              }}
+            >
+              Other
+            </Typography>
+          </Box>
+          <List>
+            <ListItem disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton
+                sx={{
+                  borderRadius: '8px',
+                  color: '#374151',
+                              '&:hover': {
+                                backgroundColor: '#d1d5db',
+                              },
+                  py: 1.5,
+                  px: 2,
+                  minHeight: '44px'
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
+                  <HeadsetIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Help and Support"
+                  primaryTypographyProps={{
+                    fontSize: '14px',
+                    fontWeight: 400
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                sx={{
+                  borderRadius: '8px',
+                  color: '#374151',
+                              '&:hover': {
+                                backgroundColor: '#d1d5db',
+                              },
+                  py: 1.5,
+                  px: 2,
+                  minHeight: '44px'
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
+                  <HistoryIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Feedback"
+                  primaryTypographyProps={{
+                    fontSize: '14px',
+                    fontWeight: 400
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Box>
+      </Box>
+
+      {/* Footer */}
+      <Box sx={{ borderTop: '1px solid #e0e0e0', p: 2, backgroundColor: '#f3f4f6' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Avatar sx={{ 
+            width: 32, 
+            height: 32, 
+            bgcolor: '#fff',
+            color: '#6b7280',
+            fontSize: '12px',
+            fontWeight: 500,
+            flexShrink: 0,
+            border: '1px solid #e0e0e0'
+          }}>
+            {user?.firstName?.[0]}{user?.lastName?.[0]}
+          </Avatar>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '14px', color: '#111827', lineHeight: 1.2 }}>
+              {user?.firstName} {user?.lastName}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#6b7280', fontSize: '12px', textTransform: 'capitalize', lineHeight: 1.2 }}>
+              {user?.role}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={handleLogout}
+            sx={{
+              color: '#dc2626',
+              borderRadius: '8px',
+              p: 0.75,
+              flexShrink: 0,
+              '&:hover': {
+                backgroundColor: '#fee2e2',
+              }
+            }}
+          >
+            <Box
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: '4px',
+                backgroundColor: '#dc2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <ExitIcon sx={{ fontSize: 16, color: '#fff' }} />
+            </Box>
+          </IconButton>
+        </Box>
+      </Box>
+    </Box>
   );
 
   return (
@@ -125,113 +317,156 @@ const Layout = () => {
         position="fixed"
         sx={{ 
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          ...(isSupplier && {
-            backgroundColor: '#fff',
-            color: '#000',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          })
+          backgroundColor: '#fff',
+          color: '#000',
+          boxShadow: 'none',
+          borderBottom: '1px solid #e0e0e0',
+          width: isSupplier ? '100%' : { xs: '100%', sm: `calc(100% - ${drawerWidth}px)` },
+          left: isSupplier ? 0 : { xs: 0, sm: `${drawerWidth}px` },
+          right: 0,
+          transition: 'left 0.3s ease, width 0.3s ease'
         }}
       >
-        <Toolbar>
-          {!isSupplier && (
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ 
-                mr: 2, 
-                display: { xs: 'block', sm: 'none' }
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          
-          {isSupplier ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-              <Box
-                component="img"
-                src="/images/Icon.svg"
-                alt="Betika Logo"
-                sx={{
-                  width: { xs: 32, sm: 40 },
-                  height: { xs: 30, sm: 38 },
-                  mr: 1.5,
-                }}
-              />
-              {/* Mobile - Two lines */}
-              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-                <Typography 
-                  sx={{
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Supplier
-                </Typography>
-                <Typography 
-                  sx={{
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Onboarding
-                </Typography>
-              </Box>
-              {/* Desktop - One line */}
-              <Typography 
-                sx={{
-                  display: { xs: 'none', sm: 'block' },
+        <Toolbar sx={{ minHeight: '64px !important', px: { xs: 2, sm: 3 }, justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+            {!isSupplier && (
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ 
+                  mr: { xs: 0, sm: 2 },
+                  display: { xs: 'block', sm: 'none' },
                   color: '#000',
-                  fontWeight: 600,
-                  fontSize: '18px',
+                  p: 1
                 }}
               >
-                Supplier Onboarding Portal
-              </Typography>
-            </Box>
-          ) : (
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              Supplier Onboarding System
-            </Typography>
-          )}
+                <MenuIcon />
+              </IconButton>
+            )}
+            
+            {isSupplier ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  component="img"
+                  src="/images/Icon.svg"
+                  alt="Betika Logo"
+                  sx={{
+                    width: { xs: 32, sm: 40 },
+                    height: { xs: 32, sm: 40 },
+                    flexShrink: 0,
+                  }}
+                />
+                <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                  <Typography 
+                    sx={{
+                      color: '#000',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: 1.2,
+                      mb: 0,
+                    }}
+                  >
+                    Supplier
+                  </Typography>
+                  <Typography 
+                    sx={{
+                      color: '#000',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: 1.2,
+                      mt: 0,
+                    }}
+                  >
+                    Onboarding
+                  </Typography>
+                </Box>
+                <Typography 
+                  sx={{
+                    display: { xs: 'none', sm: 'block' },
+                    color: '#000',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                  }}
+                >
+                  Supplier Onboarding Portal
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 1 }}>
+                <Box
+                  component="img"
+                  src="/images/Icon.svg"
+                  alt="Betika Logo"
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    flexShrink: 0,
+                  }}
+                />
+                <Box>
+                  <Typography 
+                    sx={{
+                      color: '#000',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: 1.2,
+                      mb: 0,
+                    }}
+                  >
+                    Supplier
+                  </Typography>
+                  <Typography 
+                    sx={{
+                      color: '#000',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      lineHeight: 1.2,
+                      mt: 0,
+                    }}
+                  >
+                    Onboarding
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </Box>
 
-          <IconButton sx={{ mr: 1, color: isSupplier ? '#6b7280' : 'inherit' }}>
-            <Badge badgeContent={0} color="error">
-              {isSupplier ? (
-                <NotificationsOutlinedIcon sx={{ fontWeight: 'normal' }} />
-              ) : (
-                <NotificationsIcon />
-              )}
-            </Badge>
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton sx={{ color: '#6b7280', p: 1 }}>
+              <Badge badgeContent={0} color="error">
+                <NotificationsOutlinedIcon sx={{ color: '#6b7280' }} />
+              </Badge>
+            </IconButton>
 
-          <div>
             <IconButton
               size="large"
               aria-label="account of current user"
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleMenu}
-              sx={{ color: isSupplier ? '#000' : 'inherit' }}
+              sx={{ 
+                color: '#000',
+                p: 0,
+                '&:hover': {
+                  backgroundColor: 'transparent'
+                }
+              }}
             >
               <Avatar sx={{ 
                 width: 32, 
                 height: 32, 
-                bgcolor: isSupplier ? '#fff' : '#263d8e',
-                color: isSupplier ? '#374151' : '#fff',
+                bgcolor: '#fff',
+                color: '#6b7280',
                 fontSize: '11px',
-                fontWeight: 400,
-                border: isSupplier ? '1px solid #d1d5db' : 'none',
+                fontWeight: 500,
+                border: '1px solid #e0e0e0',
               }}>
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </Avatar>
             </IconButton>
+
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
@@ -271,16 +506,13 @@ const Layout = () => {
                 Logout
               </MenuItem>
             </Menu>
-          </div>
+          </Box>
         </Toolbar>
       </AppBar>
 
       {/* Sidebar - Hidden for suppliers */}
       {!isSupplier && (
-        <Box
-          component="nav"
-          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        >
+        <>
           <Drawer
             variant="temporary"
             open={mobileOpen}
@@ -290,7 +522,14 @@ const Layout = () => {
             }}
             sx={{
               display: { xs: 'block', sm: 'none' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box', 
+                width: drawerWidth,
+                borderRight: '1px solid #e0e0e0',
+                backgroundColor: '#f3f4f6',
+                height: '100vh',
+                top: 0
+              },
             }}
           >
             {drawer}
@@ -299,22 +538,36 @@ const Layout = () => {
             variant="permanent"
             sx={{
               display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box', 
+                width: `${drawerWidth}px`,
+                borderRight: '1px solid #e0e0e0',
+                backgroundColor: '#f3f4f6',
+                height: '100vh',
+                top: 0,
+                position: 'fixed',
+                left: 0
+              },
             }}
             open
           >
             {drawer}
           </Drawer>
-        </Box>
+        </>
       )}
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: isSupplier ? 0 : 3,
-          width: isSupplier ? '100%' : { sm: `calc(100% - ${drawerWidth}px)` },
+          p: 0,
+          width: isSupplier ? '100%' : { xs: '100%', sm: `calc(100% - ${drawerWidth}px)` },
+          ml: isSupplier ? 0 : { xs: 0, sm: `${drawerWidth}px` },
           mt: isSupplier ? 8 : 8,
+          backgroundColor: '#fff',
+          minHeight: '100vh',
+          transition: 'margin-left 0.3s ease, width 0.3s ease',
+          position: 'relative'
         }}
       >
         <Outlet />
@@ -324,4 +577,3 @@ const Layout = () => {
 };
 
 export default Layout;
-

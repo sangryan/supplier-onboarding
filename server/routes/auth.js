@@ -168,8 +168,8 @@ router.post('/login', [
       });
     }
 
-    // Check if email is verified
-    if (!user.isEmailVerified) {
+    // Check if email is verified - only required for suppliers
+    if (user.role === 'supplier' && !user.isEmailVerified) {
       // Generate new OTP and send email
       const { generateOTP, sendOTPEmail } = require('../utils/email');
       const otpCode = generateOTP();

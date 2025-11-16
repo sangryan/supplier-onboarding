@@ -38,7 +38,7 @@ async function createAdmin() {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('Admin@123', salt);
 
-    // Create admin user
+    // Create admin user (no email verification required for internal users)
     const admin = await User.create({
       firstName: 'Super',
       lastName: 'Admin',
@@ -48,6 +48,7 @@ async function createAdmin() {
       department: 'Administration',
       phone: '+254700000000',
       isActive: true,
+      isEmailVerified: true, // Internal users don't need email verification
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -58,7 +59,7 @@ async function createAdmin() {
     console.log('   Password: Admin@123');
     console.log('\n⚠️  IMPORTANT: Change this password immediately after first login!\n');
 
-    // Create sample procurement user
+    // Create sample procurement user (no email verification required for internal users)
     const procurementPassword = await bcrypt.hash('Procurement@123', salt);
     await User.create({
       firstName: 'John',
@@ -69,6 +70,7 @@ async function createAdmin() {
       department: 'Procurement',
       phone: '+254700000001',
       isActive: true,
+      isEmailVerified: true, // Internal users don't need email verification
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -77,7 +79,7 @@ async function createAdmin() {
     console.log('   Email: procurement@betika.com');
     console.log('   Password: Procurement@123\n');
 
-    // Create sample legal user
+    // Create sample legal user (no email verification required for internal users)
     const legalPassword = await bcrypt.hash('Legal@123', salt);
     await User.create({
       firstName: 'Jane',
@@ -88,6 +90,7 @@ async function createAdmin() {
       department: 'Legal',
       phone: '+254700000002',
       isActive: true,
+      isEmailVerified: true, // Internal users don't need email verification
       createdAt: new Date(),
       updatedAt: new Date()
     });

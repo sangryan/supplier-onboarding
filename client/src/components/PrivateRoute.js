@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDefaultRoute } from '../utils/getDefaultRoute';
 
 const PrivateRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
@@ -14,7 +15,7 @@ const PrivateRoute = ({ children, roles }) => {
   }
 
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to={getDefaultRoute(user)} />;
   }
 
   return children;
