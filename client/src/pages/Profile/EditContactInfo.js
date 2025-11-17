@@ -15,8 +15,6 @@ import {
 } from '@mui/material';
 import {
   ArrowBack,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Add as AddIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
@@ -482,14 +480,24 @@ const EditContactInfo = () => {
                       onClick={() => handleEditContact(contact, index)}
                       sx={{ mr: 1 }}
                     >
-                      <EditIcon fontSize="small" />
+                      <Box
+                        component="img"
+                        src="/images/Pencil.svg"
+                        alt="Edit icon"
+                        sx={{ width: 20, height: 20 }}
+                      />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => handleDeleteContact(index)}
                       sx={{ color: '#c62828' }}
                     >
-                      <DeleteIcon fontSize="small" />
+                      <Box
+                        component="img"
+                        src="/images/Trash2.svg"
+                        alt="Delete icon"
+                        sx={{ width: 20, height: 20 }}
+                      />
                     </IconButton>
                   </Box>
                 </Box>

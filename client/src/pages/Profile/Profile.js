@@ -16,8 +16,6 @@ import {
   InputAdornment,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Add as AddIcon,
   Visibility,
   VisibilityOff,
@@ -414,7 +412,14 @@ const Profile = () => {
             </Box>
             <Button
               variant="outlined"
-              startIcon={<EditIcon />}
+              startIcon={
+                <Box
+                  component="img"
+                  src="/images/Pencil.svg"
+                  alt="Edit icon"
+                  sx={{ width: 20, height: 20 }}
+                />
+              }
               sx={{
                 borderColor: '#d1d5db',
                 color: '#374151',
@@ -538,14 +543,24 @@ const Profile = () => {
                       onClick={() => handleEditContact(contact, index)}
                       sx={{ mr: 1 }}
                     >
-                      <EditIcon fontSize="small" />
+                      <Box
+                        component="img"
+                        src="/images/Pencil.svg"
+                        alt="Edit icon"
+                        sx={{ width: 20, height: 20 }}
+                      />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => handleDeleteContact(index)}
                       sx={{ color: '#c62828' }}
                     >
-                      <DeleteIcon fontSize="small" />
+                      <Box
+                        component="img"
+                        src="/images/Trash2.svg"
+                        alt="Delete icon"
+                        sx={{ width: 20, height: 20 }}
+                      />
                     </IconButton>
                   </Box>
                 </Box>
@@ -618,7 +633,14 @@ const Profile = () => {
               </Box>
               <Button
                 variant="outlined"
-                startIcon={<EditIcon />}
+                startIcon={
+                  <Box
+                    component="img"
+                    src="/images/Pencil.svg"
+                    alt="Edit icon"
+                    sx={{ width: 20, height: 20 }}
+                  />
+                }
                 sx={{
                   borderColor: '#d1d5db',
                   color: '#374151',

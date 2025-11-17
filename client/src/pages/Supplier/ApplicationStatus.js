@@ -6,6 +6,7 @@ import {
   Typography,
   Box,
   Button,
+  IconButton,
   Chip,
   Grid,
   Accordion,
@@ -18,8 +19,6 @@ import {
   ArrowBack,
   ExpandMore,
   Check,
-  Description,
-  Visibility,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { format, parse, isValid } from 'date-fns';
@@ -199,7 +198,12 @@ const ApplicationStatus = () => {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-          <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+          <Box
+            component="img"
+            src="/images/File.svg"
+            alt="File icon"
+            sx={{ width: 24, height: 24, color: '#6b7280' }}
+          />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
               {documentName}
@@ -209,20 +213,23 @@ const ApplicationStatus = () => {
             </Typography>
           </Box>
         </Box>
-        <Button
+        <IconButton
           size="small"
-          startIcon={<Visibility sx={{ fontSize: 20 }} />}
           sx={{
             color: '#6b7280',
-            textTransform: 'none',
             '&:hover': {
               backgroundColor: 'transparent',
               color: '#374151'
             }
           }}
         >
-          View
-        </Button>
+          <Box
+            component="img"
+            src="/images/eye.svg"
+            alt="View icon"
+            sx={{ width: 20, height: 20 }}
+          />
+        </IconButton>
       </Box>
     );
   };
@@ -254,7 +261,12 @@ const ApplicationStatus = () => {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-            <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+            <Box
+              component="img"
+              src="/images/File.svg"
+              alt="File icon"
+              sx={{ width: 24, height: 24, color: '#6b7280' }}
+            />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                 {displayName}
@@ -264,20 +276,23 @@ const ApplicationStatus = () => {
               </Typography>
             </Box>
           </Box>
-          <Button
+          <IconButton
             size="small"
-            startIcon={<Visibility sx={{ fontSize: 20 }} />}
             sx={{
               color: '#6b7280',
-              textTransform: 'none',
               '&:hover': {
                 backgroundColor: 'transparent',
                 color: '#374151'
               }
             }}
           >
-            View
-          </Button>
+            <Box
+              component="img"
+              src="/images/eye.svg"
+              alt="View icon"
+              sx={{ width: 20, height: 20 }}
+            />
+          </IconButton>
         </Box>
       );
     });

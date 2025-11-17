@@ -11,13 +11,9 @@ import {
   IconButton,
 } from '@mui/material';
 import {
-  FolderOpenOutlined as FolderIcon,
   HelpOutlineOutlined as HelpIcon,
   MailOutline as EmailIcon,
   Add as AddIcon,
-  Visibility as ViewIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../context/AuthContext';
@@ -270,11 +266,14 @@ const SupplierDashboard = () => {
                 backgroundColor: '#fafafa'
               }}
             >
-              <FolderIcon 
+              <Box
+                component="img"
+                src="/images/File.svg"
+                alt="File icon"
                 sx={{ 
-                  fontSize: 40, 
+                  width: 40,
+                  height: 40,
                   color: '#9ca3af',
-                  fontWeight: 'normal',
                   mb: 1.5,
                 }} 
               />
@@ -329,7 +328,12 @@ const SupplierDashboard = () => {
                           }
                         }}
                       >
-                        <EditIcon fontSize="small" />
+                        <Box
+                          component="img"
+                          src="/images/Pencil.svg"
+                          alt="Edit icon"
+                          sx={{ width: 20, height: 20 }}
+                        />
                       </IconButton>
                       <IconButton
                         size="small"
@@ -343,7 +347,12 @@ const SupplierDashboard = () => {
                           }
                         }}
                       >
-                        <DeleteIcon fontSize="small" />
+                        <Box
+                          component="img"
+                          src="/images/Trash2.svg"
+                          alt="Delete icon"
+                          sx={{ width: 20, height: 20 }}
+                        />
                       </IconButton>
                     </Box>
                   </Box>
@@ -405,31 +414,27 @@ const SupplierDashboard = () => {
                         <Typography sx={{ fontWeight: 600, fontSize: '18px', color: '#111827', flex: 1, minWidth: 0 }}>
                           {formatApplicationId(app._id, app.createdAt)}
                         </Typography>
-                        {/* View Button - White with light gray border */}
-                        <Button
-                          variant="outlined"
-                          startIcon={<ViewIcon />}
+                        {/* View Button - Icon only */}
+                        <IconButton
                           onClick={(e) => handleView(app, e)}
                           sx={{
-                            textTransform: 'none',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            px: 2,
-                            py: 0.75,
-                            borderRadius: '6px',
-                            borderColor: '#e5e7eb',
-                            backgroundColor: '#fff',
-                            color: '#374151',
+                            color: '#6b7280',
                             ml: 1.5,
                             flexShrink: 0,
+                            padding: '4px',
                             '&:hover': {
-                              borderColor: '#d1d5db',
-                              backgroundColor: '#fff'
+                              backgroundColor: 'transparent',
+                              color: '#374151'
                             }
                           }}
                         >
-                          View
-                        </Button>
+                          <Box
+                            component="img"
+                            src="/images/eye.svg"
+                            alt="View icon"
+                            sx={{ width: 20, height: 20 }}
+                          />
+                        </IconButton>
                       </Box>
                       
                       {/* Second Row: Last Modified Date */}

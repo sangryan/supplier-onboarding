@@ -24,7 +24,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CloudUpload, CalendarToday, NavigateBefore, NavigateNext, ExpandMore, Description, Visibility } from '@mui/icons-material';
+import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CalendarToday, NavigateBefore, NavigateNext, ExpandMore } from '@mui/icons-material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
@@ -2256,7 +2256,12 @@ const SupplierApplication = () => {
                         e.target.value = '';
                       }}
                     />
-                    <CloudUpload sx={{ fontSize: 40, color: '#000', mb: 1.5 }} />
+                    <Box
+                      component="img"
+                      src="/images/upload.svg"
+                      alt="Upload icon"
+                      sx={{ width: 40, height: 40, mb: 1.5 }}
+                    />
                     <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
                       Upload files
                     </Typography>
@@ -2391,7 +2396,12 @@ const SupplierApplication = () => {
                         e.target.value = '';
                       }}
                     />
-                    <CloudUpload sx={{ fontSize: 40, color: '#000', mb: 1.5 }} />
+                    <Box
+                      component="img"
+                      src="/images/upload.svg"
+                      alt="Upload icon"
+                      sx={{ width: 40, height: 40, mb: 1.5 }}
+                    />
                     <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
                       Upload files
                     </Typography>
@@ -2458,7 +2468,12 @@ const SupplierApplication = () => {
                         e.target.value = '';
                       }}
                     />
-                    <CloudUpload sx={{ fontSize: 40, color: '#000', mb: 1.5 }} />
+                    <Box
+                      component="img"
+                      src="/images/upload.svg"
+                      alt="Upload icon"
+                      sx={{ width: 40, height: 40, mb: 1.5 }}
+                    />
                     <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
                       Upload files
                     </Typography>
@@ -2810,7 +2825,12 @@ const SupplierApplication = () => {
                         e.target.value = '';
                       }}
                     />
-                    <CloudUpload sx={{ fontSize: 40, color: '#000', mb: 1.5 }} />
+                    <Box
+                      component="img"
+                      src="/images/upload.svg"
+                      alt="Upload icon"
+                      sx={{ width: 40, height: 40, mb: 1.5 }}
+                    />
                     <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
                       Upload file
                     </Typography>
@@ -3223,7 +3243,12 @@ const SupplierApplication = () => {
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                              <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+                              <Box
+                                component="img"
+                                src="/images/File.svg"
+                                alt="File icon"
+                                sx={{ width: 24, height: 24, color: '#6b7280' }}
+                              />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                   {documentName}
@@ -3243,7 +3268,12 @@ const SupplierApplication = () => {
                                 }
                               }}
                             >
-                              <Visibility sx={{ fontSize: 20 }} />
+                              <Box
+                                component="img"
+                                src="/images/eye.svg"
+                                alt="View icon"
+                                sx={{ width: 20, height: 20 }}
+                              />
                             </IconButton>
                           </Box>
                         );
@@ -3276,7 +3306,12 @@ const SupplierApplication = () => {
                               }}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                                <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+                                <Box
+                                component="img"
+                                src="/images/File.svg"
+                                alt="File icon"
+                                sx={{ width: 24, height: 24, color: '#6b7280' }}
+                              />
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
                                   <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                     {displayName}
@@ -3296,7 +3331,12 @@ const SupplierApplication = () => {
                                   }
                                 }}
                               >
-                                <Visibility sx={{ fontSize: 20 }} />
+                                <Box
+                                component="img"
+                                src="/images/eye.svg"
+                                alt="View icon"
+                                sx={{ width: 20, height: 20 }}
+                              />
                               </IconButton>
                             </Box>
                           );
@@ -3380,7 +3420,12 @@ const SupplierApplication = () => {
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                              <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+                              <Box
+                                component="img"
+                                src="/images/File.svg"
+                                alt="File icon"
+                                sx={{ width: 24, height: 24, color: '#6b7280' }}
+                              />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                   {documentName}
@@ -3400,7 +3445,12 @@ const SupplierApplication = () => {
                                 }
                               }}
                             >
-                              <Visibility sx={{ fontSize: 20 }} />
+                              <Box
+                                component="img"
+                                src="/images/eye.svg"
+                                alt="View icon"
+                                sx={{ width: 20, height: 20 }}
+                              />
                             </IconButton>
                           </Box>
                         );
@@ -3433,7 +3483,12 @@ const SupplierApplication = () => {
                               }}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                                <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+                                <Box
+                                component="img"
+                                src="/images/File.svg"
+                                alt="File icon"
+                                sx={{ width: 24, height: 24, color: '#6b7280' }}
+                              />
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
                                   <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                     {displayName}
@@ -3453,7 +3508,12 @@ const SupplierApplication = () => {
                                   }
                                 }}
                               >
-                                <Visibility sx={{ fontSize: 20 }} />
+                                <Box
+                                component="img"
+                                src="/images/eye.svg"
+                                alt="View icon"
+                                sx={{ width: 20, height: 20 }}
+                              />
                               </IconButton>
                             </Box>
                           );
@@ -3575,7 +3635,12 @@ const SupplierApplication = () => {
                           }}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                            <Description sx={{ fontSize: 24, color: '#6b7280' }} />
+                            <Box
+                              component="img"
+                              src="/images/File.svg"
+                              alt="File icon"
+                              sx={{ width: 24, height: 24, color: '#6b7280' }}
+                            />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                 {formData.declarationSignatureFile instanceof File 
@@ -3610,7 +3675,12 @@ const SupplierApplication = () => {
                               }
                             }}
                           >
-                            <Visibility sx={{ fontSize: 20 }} />
+                            <Box
+                              component="img"
+                              src="/images/eye.svg"
+                              alt="View icon"
+                              sx={{ width: 20, height: 20 }}
+                            />
                           </IconButton>
                         </Box>
                       </Grid>
