@@ -109,6 +109,7 @@ const ContractDetails = () => {
   const handleSaveContract = async (data) => {
     const formData = new FormData();
     formData.append('contract', data.file);
+    if (data.startDate) formData.append('startDate', data.startDate);
     if (data.validityMonths) formData.append('validityMonths', data.validityMonths);
     if (data.noticePeriodMonths) formData.append('noticePeriodMonths', data.noticePeriodMonths);
     if (data.department) formData.append('department', data.department);

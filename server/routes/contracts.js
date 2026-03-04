@@ -421,7 +421,22 @@ router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), up
     contract.status = 'active';
 
     // Update additional fields from request body
-    if (req.body.validityMonths) contract.validityMonths = Number(req.body.validityMonths);
+    if (req.body.startDate) {
+      contract.startDate = new Date(req.body.startDate);
+    } else {
+      contract.startDate = new Date();
+    }
+
+    if (req.body.validityMonths) {
+      const validity = Number(req.body.validityMonths);
+      contract.validityMonths = validity;
+
+      // Calculate end date
+      const endDate = new Date(contract.startDate);
+      endDate.setMonth(endDate.getMonth() + validity);
+      contract.endDate = endDate;
+    }
+
     if (req.body.noticePeriodMonths) contract.noticePeriodMonths = Number(req.body.noticePeriodMonths);
     if (req.body.department) contract.department = req.body.department;
     if (req.body.comment) contract.notes = req.body.comment;

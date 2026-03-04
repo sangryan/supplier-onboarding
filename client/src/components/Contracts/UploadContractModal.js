@@ -66,10 +66,28 @@ const HelperText = styled(Typography)({
 
 const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
     const [file, setFile] = useState(null);
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [validity, setValidity] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
     const [noticePeriod, setNoticePeriod] = useState('');
     const [department, setDepartment] = useState('');
     const [comment, setComment] = useState('');
+
+    React.useEffect(() => {
+        if (startDate && validity) {
+            const start = new Date(startDate);
+            const months = parseInt(validity);
+            if (!isNaN(months)) {
+                const expiry = new Date(start);
+                expiry.setMonth(expiry.getMonth() + months);
+                setExpiryDate(expiry.toISOString().split('T')[0]);
+            } else {
+                setExpiryDate('');
+            }
+        } else {
+            setExpiryDate('');
+        }
+    }, [startDate, validity]);
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -78,6 +96,7 @@ const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
     const handleSave = () => {
         onSave({
             file,
+            startDate,
             validityMonths: validity,
             noticePeriodMonths: noticePeriod,
             department,
@@ -119,6 +138,36 @@ const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
                                     onChange={handleFileChange}
                                 />
                             </FileInputWrapper>
+                        </Box>
+
+                        {/* Contract Dates */}
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Box sx={{ flex: 1 }}>
+                                <Label>Contract Start Date</Label>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    size="small"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    InputProps={{ sx: { borderRadius: '8px' } }}
+                                />
+                                <HelperText>When does the contract start?</HelperText>
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Label>Calculated Expiry Date</Label>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    value={expiryDate}
+                                    placeholder="Auto-calculated"
+                                    disabled
+                                    InputProps={{
+                                        sx: { bgcolor: '#f9fafb', borderRadius: '8px', '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#374151' } }
+                                    }}
+                                />
+                                <HelperText>Auto-calculated based on validity</HelperText>
+                            </Box>
                         </Box>
 
                         {/* Contract Validity */}
