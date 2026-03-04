@@ -27,7 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { format, parse, isValid } from 'date-fns';
-import api from '../../utils/api';
+import api, { API_BASE_URL } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 
@@ -205,14 +205,13 @@ const ApplicationStatus = () => {
         } else if (file.startsWith('./uploads/')) {
           fileUrl = file.replace('./uploads/', '/uploads/');
         } else {
-          // If it's just a filename, construct the path with supplier ID
           // Files are stored in uploads/supplierId/filename format
           const supplierId = supplier?._id || id;
           if (supplierId) {
-            fileUrl = `/uploads/${supplierId}/${file}`;
+            fileUrl = `${API_BASE_URL}/uploads/${supplierId}/${file}`;
           } else {
             // Fallback: try without supplier ID (might work for some files)
-            fileUrl = `/uploads/${file}`;
+            fileUrl = `${API_BASE_URL}/uploads/${file}`;
           }
         }
       }

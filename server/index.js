@@ -49,8 +49,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static files for uploads - use absolute path to ensure correct directory
-// Uploads are stored at project root, so go up one level from server directory
-const uploadsPath = path.join(__dirname, '..', 'uploads');
+const uploadsPath = path.resolve(process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads'));
+
+// Fallback middleware to check temp folder if file not found in supplier folder
+app.use('/uploads', (req, res, next) => {
+  const filePath = path.join(uploadsPath, req.path);
+  const fs = require('fs');
+  if (fs.existsSync(filePath)) {
+    return next();
+  }
+
+  // Try in temp folder
+  const filename = path.basename(req.path);
+  const tempPath = path.join(uploadsPath, 'temp', filename);
+  if (fs.existsSync(tempPath)) {
+    req.url = '/temp/' + filename;
+  }
+  next();
+});
+
 app.use('/uploads', express.static(uploadsPath));
 
 // Health check endpoint (BEFORE rate limiting to avoid 429 errors from frequent health checks)

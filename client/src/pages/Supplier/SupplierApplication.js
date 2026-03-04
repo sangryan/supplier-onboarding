@@ -1917,6 +1917,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('certificateOfIncorporation', e.target.files[0]);
@@ -1928,6 +1929,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.certificateOfIncorporation && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -1969,6 +1973,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('kraPinCertificate', e.target.files[0]);
@@ -1979,6 +1984,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.kraPinCertificate && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2020,6 +2028,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('etimsProof', e.target.files[0]);
@@ -2030,6 +2039,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.etimsProof && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2071,6 +2083,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('financialStatements', e.target.files[0]);
@@ -2081,6 +2094,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.financialStatements && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2124,6 +2140,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('cr12', e.target.files[0]);
@@ -2134,6 +2151,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.cr12 && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2175,6 +2195,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('companyProfile', e.target.files[0]);
@@ -2185,6 +2206,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.companyProfile && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2226,6 +2250,7 @@ const SupplierApplication = () => {
                       <input
                         type="file"
                         hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleChange('bankReferenceLetter', e.target.files[0]);
@@ -2236,6 +2261,9 @@ const SupplierApplication = () => {
                         }}
                       />
                     </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Excel, Images (Max 10MB)
+                    </Typography>
                     {!formData.bankReferenceLetter && (
                       <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
                         No file chosen
@@ -2280,6 +2308,7 @@ const SupplierApplication = () => {
                       type="file"
                       multiple
                       hidden
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {
                           const files = Array.from(e.target.files).slice(0, 10); // Limit to 10 files
@@ -2420,6 +2449,7 @@ const SupplierApplication = () => {
                       type="file"
                       multiple
                       hidden
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {
                           const files = Array.from(e.target.files).slice(0, 10); // Limit to 10 files
@@ -2492,6 +2522,7 @@ const SupplierApplication = () => {
                       type="file"
                       multiple
                       hidden
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {
                           const files = Array.from(e.target.files).slice(0, 10); // Limit to 10 files

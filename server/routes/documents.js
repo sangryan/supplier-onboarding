@@ -61,7 +61,7 @@ router.post('/upload', protect, upload.single('document'), async (req, res) => {
     });
   } catch (error) {
     console.error('Upload document error:', error);
-    
+
     // Clean up file if error occurs
     if (req.file) {
       try {
@@ -70,7 +70,7 @@ router.post('/upload', protect, upload.single('document'), async (req, res) => {
         console.error('Error deleting file:', unlinkError);
       }
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Error uploading document'
@@ -167,10 +167,12 @@ router.get('/:id/download', protect, async (req, res) => {
       }
     }
 
-    // Check if file exists
+    // Check if file exists - ensure path is resolved absolutely
+    const absolutePath = path.resolve(document.filePath);
     try {
-      await fs.access(document.filePath);
+      await fs.access(absolutePath);
     } catch (error) {
+      console.error(`File not found: ${absolutePath}`);
       return res.status(404).json({
         success: false,
         message: 'File not found on server'
@@ -178,7 +180,7 @@ router.get('/:id/download', protect, async (req, res) => {
     }
 
     // Send file
-    res.download(document.filePath, document.originalName);
+    res.download(absolutePath, document.originalName);
   } catch (error) {
     console.error('Download document error:', error);
     res.status(500).json({

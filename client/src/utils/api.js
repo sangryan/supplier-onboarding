@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const apiUrl = process.env.REACT_APP_API_URL || '';
+export const API_BASE_URL = apiUrl.replace('/api', '') || window.location.origin;
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: apiUrl || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,11 +29,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Don't redirect on 401 during login/register attempts
-    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
-                          error.config?.url?.includes('/auth/register') ||
-                          error.config?.url?.includes('/auth/forgot-password') ||
-                          error.config?.url?.includes('/auth/reset-password');
-    
+    const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
+      error.config?.url?.includes('/auth/register') ||
+      error.config?.url?.includes('/auth/forgot-password') ||
+      error.config?.url?.includes('/auth/reset-password');
+
     if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token');
       // Only redirect if not already on login page

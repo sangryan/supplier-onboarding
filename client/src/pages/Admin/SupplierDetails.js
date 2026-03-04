@@ -26,7 +26,7 @@ import {
   ChevronLeft,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import api from '../../utils/api';
+import api, { API_BASE_URL } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import ActionModal from '../../components/ActionModal/ActionModal';
@@ -177,19 +177,19 @@ const SupplierDetails = () => {
     let fileName = document.originalName || document.fileName || 'Document';
 
     // If document has _id and starts with 'doc-', it's a fallback document (filename string)
-    if (document._id && document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-')) {
+    if (document._id && (document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-'))) {
       // It's a filename string, construct URL
       const filePath = document.fileName || document.originalName;
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
         url = filePath;
       } else if (filePath.startsWith('uploads/')) {
-        url = `/${filePath}`;
+        url = `${API_BASE_URL}/${filePath}`;
       } else {
-        url = `/uploads/${id}/${filePath}`;
+        url = `${API_BASE_URL}/uploads/${id}/${filePath}`;
       }
     } else {
       // It's a proper document object from API
-      url = `/api/documents/${document._id}/download`;
+      url = `${API_BASE_URL}/api/documents/${document._id}/download`;
     }
 
     setFileViewerUrl(url);
@@ -207,13 +207,13 @@ const SupplierDetails = () => {
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
         url = filePath;
       } else if (filePath.startsWith('uploads/')) {
-        url = `/${filePath}`;
+        url = `${API_BASE_URL}/${filePath}`;
       } else {
-        url = `/uploads/${id}/${filePath}`;
+        url = `${API_BASE_URL}/uploads/${id}/${filePath}`;
       }
     } else {
       // It's a proper document object from API
-      url = `/api/documents/${document._id}/download`;
+      url = `${API_BASE_URL}/api/documents/${document._id}/download`;
     }
 
     window.open(url, '_blank');

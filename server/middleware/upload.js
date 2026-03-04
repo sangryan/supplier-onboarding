@@ -3,25 +3,26 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure upload directory exists - use absolute path
-const uploadDir = process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads');
+const uploadDir = path.resolve(process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads'));
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
+坐
+坐
 // Configure storage
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: function (req, file, cb) {
     // Create supplier-specific directory
     const supplierId = req.body.supplierId || req.params.supplierId || 'temp';
     const supplierDir = path.join(uploadDir, supplierId);
-    
+
     if (!fs.existsSync(supplierDir)) {
       fs.mkdirSync(supplierDir, { recursive: true });
     }
-    
+
     cb(null, supplierDir);
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
