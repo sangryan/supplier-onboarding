@@ -2,8 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directory exists
-const uploadDir = process.env.UPLOAD_PATH || './uploads';
+// Ensure upload directory exists - use absolute path
+const uploadDir = process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

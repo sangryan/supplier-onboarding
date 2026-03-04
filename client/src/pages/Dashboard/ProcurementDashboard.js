@@ -46,7 +46,7 @@ const ProcurementDashboard = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
- const [selectedRows, setSelectedRows] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
 
   useEffect(() => {
     fetchTasks();
@@ -62,7 +62,7 @@ const ProcurementDashboard = () => {
           search
         }
       });
-      
+
       if (response.data.success) {
         setTasks(response.data.data || []);
         setCounts(response.data.counts || {
@@ -95,19 +95,28 @@ const ProcurementDashboard = () => {
   };
 
   const getStatusChip = (status) => {
+    const lowerStatus = (status || '').toLowerCase();
+    const isGreen = lowerStatus.includes('approved') || lowerStatus.includes('completed');
+    const isRed = lowerStatus.includes('rejected');
+
+    let bgColor = '#f3f4f6';
+    let textColor = '#374151';
+    if (isGreen) { bgColor = '#dcfce7'; textColor = '#166534'; }
+    if (isRed) { bgColor = '#fee2e2'; textColor = '#991b1b'; }
+
     return (
       <Chip
         label={status}
         size="small"
         sx={{
-          backgroundColor: '#f3f4f6',
-          color: '#374151',
-          fontWeight: 400,
-          fontSize: '13px',
+          backgroundColor: bgColor,
+          color: textColor,
+          fontWeight: 500,
+          fontSize: '12px',
           height: '24px',
           borderRadius: '12px',
           '& .MuiChip-label': {
-            padding: '0 8px'
+            padding: '0 10px'
           }
         }}
       />
@@ -125,7 +134,7 @@ const ProcurementDashboard = () => {
   };
 
   const handleAddVendor = () => {
-    console.log('Add new on-demand vendor');
+    navigate('/vendors/new');
   };
 
   const handleSearchChange = (e) => {
@@ -145,9 +154,9 @@ const ProcurementDashboard = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
-      <Container 
+      <Container
         maxWidth="lg"
-        sx={{ 
+        sx={{
           pt: { xs: 3, sm: 5 },
           pb: { xs: 3, sm: 4 },
           px: { xs: 2, sm: 3 },
@@ -155,7 +164,7 @@ const ProcurementDashboard = () => {
         }}
       >
         {/* Page Header */}
-        <Box sx={{ 
+        <Box sx={{
           mb: { xs: 3, sm: 4 },
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
@@ -164,10 +173,10 @@ const ProcurementDashboard = () => {
           gap: { xs: 2, sm: 3 }
         }}>
           <Box sx={{ flex: 1 }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 'bold', 
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 'bold',
                 mb: 1,
                 color: '#111827',
                 fontSize: { xs: '22px', sm: '28px' },
@@ -176,8 +185,8 @@ const ProcurementDashboard = () => {
             >
               My tasks
             </Typography>
-            <Typography 
-              sx={{ 
+            <Typography
+              sx={{
                 color: '#6b7280',
                 fontSize: { xs: '13px', sm: '14px' },
                 lineHeight: 1.6,
@@ -186,7 +195,7 @@ const ProcurementDashboard = () => {
               Manage your approvals and vendor number assignment effortlessly.
             </Typography>
           </Box>
-          
+
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -356,19 +365,19 @@ const ProcurementDashboard = () => {
         </Box>
 
         {/* Tasks Table Section */}
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             mb: { xs: 3, sm: 4 }
           }}
         >
           {/* Search and Download */}
-          <Box sx={{ 
-            display: 'flex', 
+          <Box sx={{
+            display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between', 
-            alignItems: { xs: 'stretch', sm: 'center' }, 
-            mb: 3, 
-            gap: 2 
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+            mb: 3,
+            gap: 2
           }}>
             <TextField
               placeholder="Search"
@@ -430,9 +439,9 @@ const ProcurementDashboard = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer 
-              elevation={0} 
-              sx={{ 
+            <TableContainer
+              elevation={0}
+              sx={{
                 border: '1px solid #e0e0e0',
                 borderRadius: 2,
                 overflow: 'hidden',
@@ -444,36 +453,36 @@ const ProcurementDashboard = () => {
                   <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>ID</TableCell>
                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>Supplier Name</TableCell>
-                    <TableCell 
-                      sx={{ 
-                        fontSize: '13px', 
-                        fontWeight: 600, 
-                        color: '#4b5563', 
-                        py: 1.5, 
+                    <TableCell
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#4b5563',
+                        py: 1.5,
                         borderBottom: '1px solid #e0e0e0',
                         display: { xs: 'none', md: 'table-cell' }
                       }}
                     >
                       Request Type
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        fontSize: '13px', 
-                        fontWeight: 600, 
-                        color: '#4b5563', 
-                        py: 1.5, 
+                    <TableCell
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#4b5563',
+                        py: 1.5,
                         borderBottom: '1px solid #e0e0e0',
                         display: { xs: 'none', md: 'table-cell' }
                       }}
                     >
                       Submission Date
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        fontSize: '13px', 
-                        fontWeight: 600, 
-                        color: '#4b5563', 
-                        py: 1.5, 
+                    <TableCell
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#4b5563',
+                        py: 1.5,
                         borderBottom: '1px solid #e0e0e0',
                         display: { xs: 'none', md: 'table-cell' }
                       }}
@@ -512,33 +521,33 @@ const ProcurementDashboard = () => {
                         <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
                           {task.supplierName}
                         </TableCell>
-                        <TableCell 
-                          sx={{ 
-                            fontSize: '14px', 
-                            color: '#111827', 
-                            py: 1.5, 
+                        <TableCell
+                          sx={{
+                            fontSize: '14px',
+                            color: '#111827',
+                            py: 1.5,
                             borderBottom: '1px solid #e0e0e0',
                             display: { xs: 'none', md: 'table-cell' }
                           }}
                         >
                           {task.requestType}
                         </TableCell>
-                        <TableCell 
-                          sx={{ 
-                            fontSize: '14px', 
-                            color: '#111827', 
-                            py: 1.5, 
+                        <TableCell
+                          sx={{
+                            fontSize: '14px',
+                            color: '#111827',
+                            py: 1.5,
                             borderBottom: '1px solid #e0e0e0',
                             display: { xs: 'none', md: 'table-cell' }
                           }}
                         >
                           {formatDate(task.submissionDate)}
                         </TableCell>
-                        <TableCell 
-                          sx={{ 
-                            fontSize: '14px', 
-                            color: '#111827', 
-                            py: 1.5, 
+                        <TableCell
+                          sx={{
+                            fontSize: '14px',
+                            color: '#111827',
+                            py: 1.5,
                             borderBottom: '1px solid #e0e0e0',
                             display: { xs: 'none', md: 'table-cell' }
                           }}
@@ -568,10 +577,10 @@ const ProcurementDashboard = () => {
               </Table>
 
               {/* Table Footer */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 p: 2,
                 borderTop: '1px solid #e0e0e0'
               }}>
@@ -583,9 +592,9 @@ const ProcurementDashboard = () => {
                     size="small"
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    sx={{ 
-                      textTransform: 'none', 
-                      color: '#374151', 
+                    sx={{
+                      textTransform: 'none',
+                      color: '#374151',
                       fontSize: '13px',
                       '&:disabled': {
                         color: '#9ca3af'
@@ -598,9 +607,9 @@ const ProcurementDashboard = () => {
                     size="small"
                     onClick={() => setPage(page + 1)}
                     disabled={page >= pagination.pages}
-                    sx={{ 
-                      textTransform: 'none', 
-                      color: '#374151', 
+                    sx={{
+                      textTransform: 'none',
+                      color: '#374151',
                       fontSize: '13px',
                       '&:disabled': {
                         color: '#9ca3af'

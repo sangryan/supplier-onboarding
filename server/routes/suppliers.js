@@ -19,12 +19,12 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
       supplierName: req.body.supplierName || 'Draft Application',
       legalNature: req.body.legalNature || 'company',
       serviceType: req.body.serviceTypes || req.body.serviceType || 'professional_services',
-      
+
       // Company Information
       companyRegistrationNumber: req.body.companyRegistrationNumber,
       companyEmail: req.body.companyEmail,
       companyPhysicalAddress: req.body.physicalAddress ? { street: req.body.physicalAddress } : undefined,
-      
+
       // Contact Person (map to authorizedPerson - required fields with defaults)
       authorizedPerson: {
         name: req.body.contactFullName || req.body.authorizedPerson?.name || (req.user.firstName && req.user.lastName ? `${req.user.firstName} ${req.user.lastName}` : 'Draft'),
@@ -33,7 +33,7 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
         phone: req.body.contactPhone || req.body.authorizedPerson?.phone || '',
         email: req.body.contactEmail || req.body.authorizedPerson?.email || req.user.email || ''
       },
-      
+
       // Credit Period - extract number from string if needed
       creditPeriod: req.body.creditPeriod ? (() => {
         const value = req.body.creditPeriod;
@@ -43,7 +43,7 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
         }
         return parseInt(value, 10);
       })() : undefined,
-      
+
       // Source of Funds (map declarations)
       sourceOfFunds: req.body.sourceOfWealth ? {
         source: req.body.sourceOfWealth,
@@ -52,29 +52,29 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
         declarantIdPassport: req.body.declarantIdPassport,
         declarationDate: req.body.declarationDate ? new Date(req.body.declarationDate) : undefined
       } : undefined,
-      
+
       // Data Processing Consent
       dataProcessingConsent: req.body.consentToProcessing !== undefined ? {
         granted: req.body.consentToProcessing
       } : undefined,
-      
+
       // Progress tracking
       currentStep: req.body.currentStep !== undefined ? parseInt(req.body.currentStep) : 0,
       lastModified: req.body.lastModified ? new Date(req.body.lastModified) : new Date(),
-      
+
       // Metadata
       submittedBy: req.user.id,
       status: 'draft'
     };
-    
+
     // Store all additional fields that don't match model schema (Mongoose will store them)
     // This allows us to save all form data even if not in schema
     Object.keys(req.body).forEach(key => {
-      if (!draftData.hasOwnProperty(key) && 
-          !['supplierName', 'legalNature', 'serviceType', 'serviceTypes', 
-            'contactFullName', 'contactRelationship', 'contactIdPassport', 'contactPhone', 'contactEmail',
-            'sourceOfWealth', 'declarantFullName', 'declarantCapacity', 'declarantIdPassport', 'declarationDate',
-            'consentToProcessing', 'currentStep', 'lastModified'].includes(key)) {
+      if (!draftData.hasOwnProperty(key) &&
+        !['supplierName', 'legalNature', 'serviceType', 'serviceTypes',
+          'contactFullName', 'contactRelationship', 'contactIdPassport', 'contactPhone', 'contactEmail',
+          'sourceOfWealth', 'declarantFullName', 'declarantCapacity', 'declarantIdPassport', 'declarationDate',
+          'consentToProcessing', 'currentStep', 'lastModified'].includes(key)) {
         draftData[key] = req.body[key];
       }
     });
@@ -175,7 +175,7 @@ router.get('/my-applications', protect, authorize('supplier'), async (req, res) 
   try {
     // Get all suppliers, but exclude profile-only records
     // Profile-only records are those marked with isProfileOnly: true
-    const suppliers = await Supplier.find({ 
+    const suppliers = await Supplier.find({
       submittedBy: req.user.id,
       isProfileOnly: { $ne: true } // Exclude records marked as profile-only (includes records where field doesn't exist)
     })
@@ -242,20 +242,22 @@ router.post('/', protect, authorize('supplier'), [
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
-    
+    const { status, search, page = 1, limit = 10, groupBy, source } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
+
     let query = {};
-    
+
     // Role-based filtering
     if (req.user.role === 'supplier') {
-      query.submittedBy = req.user.id;
+      query.submittedBy = new mongoose.Types.ObjectId(req.user.id);
     }
-    
+
     // Status filter
     if (status) {
       query.status = status;
     }
-    
+
     // Search filter
     if (search) {
       query.$or = [
@@ -265,15 +267,177 @@ router.get('/', protect, async (req, res) => {
       ];
     }
 
-    const suppliers = await Supplier.find(query)
-      .populate('submittedBy', 'firstName lastName email')
-      .populate('approvalHistory.approver', 'firstName lastName')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+    let suppliers;
+    let count;
 
-    const count = await Supplier.countDocuments(query);
+    if (source === 'users') {
+      // Find all supplier users and join with their applications
+      const userQuery = { role: 'supplier' };
+      if (search) {
+        userQuery.$or = [
+          { firstName: { $regex: search, $options: 'i' }, },
+          { lastName: { $regex: search, $options: 'i' }, },
+          { email: { $regex: search, $options: 'i' }, },
+        ];
+      }
+
+      // 1. Get all supplier users
+      const supplierUsers = await User.find(userQuery).lean();
+
+      // 2. Get all applications related to these users
+      const userIds = supplierUsers.map(u => u._id);
+      const userApplications = await Supplier.find({ submittedBy: { $in: userIds } })
+        .populate('submittedBy', 'firstName lastName email')
+        .lean();
+
+      // 3. Get all ad-hoc applications (no specific user linkage via submittedBy in some cases, or procurement-created)
+      let adHocQuery = { adHocVendorId: { $exists: true } };
+      if (search) {
+        adHocQuery.$or = [
+          { supplierName: { $regex: search, $options: 'i' } },
+          { vendorNumber: { $regex: search, $options: 'i' } }
+        ];
+      }
+      const adHocSuppliers = await Supplier.find(adHocQuery)
+        .populate('submittedBy', 'firstName lastName email')
+        .lean();
+
+      // 4. Combine and deduplicate
+      const allRecords = [...userApplications, ...adHocSuppliers.map(s => ({ ...s, isAdHoc: true }))];
+
+      // Add users who have NO applications as placeholders
+      supplierUsers.forEach(u => {
+        const hasApp = userApplications.some(a => a.submittedBy?._id?.toString() === u._id.toString());
+        if (!hasApp) {
+          allRecords.push({
+            _id: `user-${u._id}`,
+            supplierName: `${u.firstName} ${u.lastName}`,
+            status: 'not_approved',
+            submittedBy: {
+              _id: u._id,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email
+            },
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt,
+            isPlaceholder: true
+          });
+        }
+      });
+
+      // Status priority map for choosing the "best" record
+      const statusPriority = {
+        'pending_contract_upload': 100,
+        'approved': 90,
+        'completed': 80,
+        'pending_legal': 70,
+        'pending_procurement': 60,
+        'under_review': 50,
+        'submitted': 40,
+        'more_info_required': 30,
+        'rejected': 20,
+        'draft': 10,
+        'not_approved': 0
+      };
+
+      // Grouping logic
+      const groupedEntities = new Map();
+
+      allRecords.forEach(record => {
+        // Primary key: vendorNumber. Secondary: supplierName (normalized)
+        const vNum = record.vendorNumber;
+        const sName = (record.supplierName || '').trim().toLowerCase();
+
+        // Find if we already have a group for this vendor or name
+        let key = vNum ? `VENDOR_${vNum}` : `NAME_${sName}`;
+
+        // If it's a placeholder name match with a vendor record, we should merge them
+        if (!vNum && sName) {
+          // Check if any existing group with a vendor has this name
+          for (let [existingKey, existingRecord] of groupedEntities.entries()) {
+            if (existingRecord.supplierName?.trim().toLowerCase() === sName) {
+              key = existingKey;
+              break;
+            }
+          }
+        }
+
+        const existing = groupedEntities.get(key);
+        if (!existing) {
+          groupedEntities.set(key, record);
+        } else {
+          // Keep the one with higher status priority
+          const currentPrio = statusPriority[record.status] || 0;
+          const existingPrio = statusPriority[existing.status] || 0;
+
+          if (currentPrio > existingPrio) {
+            groupedEntities.set(key, record);
+          } else if (currentPrio === existingPrio) {
+            // If same priority, keep the more recent one
+            const currentDate = new Date(record.updatedAt || record.createdAt);
+            const existingDate = new Date(existing.updatedAt || existing.createdAt);
+            if (currentDate > existingDate) {
+              groupedEntities.set(key, record);
+            }
+          }
+        }
+      });
+
+      let finalSuppliers = Array.from(groupedEntities.values());
+
+      // Filter by status if requested (after grouping)
+      if (status) {
+        finalSuppliers = finalSuppliers.filter(s => s.status === status);
+      }
+
+      // Sort by recency
+      finalSuppliers.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+      count = finalSuppliers.length;
+      suppliers = finalSuppliers.slice(skip, skip + limitNum);
+    } else if (groupBy === 'name') {
+      // Aggregate to show unique suppliers (latest record for each supplierName)
+      const pipeline = [
+        { $match: query },
+        { $sort: { updatedAt: -1 } },
+        {
+          $group: {
+            _id: '$supplierName',
+            latestRecord: { $first: '$$ROOT' }
+          }
+        },
+        { $replaceRoot: { newRoot: '$latestRecord' } },
+        { $sort: { supplierName: 1 } }
+      ];
+
+      // Get count for pagination
+      const totalResults = await Supplier.aggregate([...pipeline, { $count: 'total' }]);
+      count = totalResults.length > 0 ? totalResults[0].total : 0;
+
+      // Get paginated results
+      suppliers = await Supplier.aggregate([
+        ...pipeline,
+        { $skip: skip },
+        { $limit: limitNum }
+      ]);
+
+      // Manually populate since aggregate doesn't do it automatically
+      suppliers = await Supplier.populate(suppliers, [
+        { path: 'submittedBy', select: 'firstName lastName email' },
+        { path: 'approvalHistory.approver', select: 'firstName lastName' }
+      ]);
+    } else {
+      suppliers = await Supplier.find(query)
+        .populate('submittedBy', 'firstName lastName email')
+        .populate('approvalHistory.approver', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(limitNum)
+        .skip(skip)
+        .lean();
+
+      count = await Supplier.countDocuments(query);
+    }
 
     res.json({
       success: true,
@@ -281,7 +445,7 @@ router.get('/', protect, async (req, res) => {
       pagination: {
         total: count,
         page: parseInt(page),
-        pages: Math.ceil(count / limit)
+        pages: Math.ceil(count / limitNum)
       }
     });
   } catch (error) {
@@ -357,11 +521,11 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
     const isMoreInfoRequired = supplier.status === 'more_info_required';
     const canUpdate = isDraft || isMoreInfoRequired; // Same logic as canSubmit() method
     const isAdmin = ['super_admin', 'procurement', 'legal', 'management'].includes(req.user.role);
-    
+
     // Profile-related fields that can always be updated (even when application is submitted/approved)
     const profileFields = ['additionalContacts', 'authorizedPerson', 'companyEmail', 'companyWebsite', 'companyPhysicalAddress', 'physicalAddress'];
     const isProfileUpdate = Object.keys(req.body).some(key => profileFields.includes(key));
-    
+
     // Allow profile updates regardless of status, or allow all updates if draft/more_info_required/admin
     if (req.user.role === 'supplier' && !canUpdate && !isAdmin && !isProfileUpdate) {
       return res.status(400).json({
@@ -374,7 +538,7 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
     // Use $set to ensure all fields are updated, including those not in schema
     // Build update object with all fields from req.body
     const updateData = {};
-    
+
     // Mapping functions to convert frontend display values to backend enum values
     const mapLegalNature = (value) => {
       const mapping = {
@@ -392,7 +556,7 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
       };
       return mapping[value] || value; // Return mapped value or original if not found
     };
-    
+
     const mapEntityType = (value) => {
       const mapping = {
         'Public/Private Company': 'private_company',
@@ -406,26 +570,26 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
       };
       return mapping[value] || value; // Return mapped value or original if not found
     };
-    
+
     // Copy all fields from req.body to updateData, excluding internal MongoDB fields
     Object.keys(req.body).forEach(key => {
       // Skip internal MongoDB fields and read-only fields
-      if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt' && 
-          key !== 'submittedBy' && key !== 'documents' && key !== 'approvalHistory' && 
-          key !== 'profileUpdateRequests' && key !== 'slaMetrics' && key !== 'vendorNumber') {
+      if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt' &&
+        key !== 'submittedBy' && key !== 'documents' && key !== 'approvalHistory' &&
+        key !== 'profileUpdateRequests' && key !== 'slaMetrics' && key !== 'vendorNumber') {
         // Handle null/undefined values - convert undefined to null for consistency
         let value = req.body[key];
-        
+
         // Map legalNature from frontend display value to backend enum
         if (key === 'legalNature' && typeof value === 'string' && value.trim() !== '') {
           value = mapLegalNature(value);
         }
-        
+
         // Map entityType from frontend display value to backend enum
         if (key === 'entityType' && typeof value === 'string' && value.trim() !== '') {
           value = mapEntityType(value);
         }
-        
+
         // Special handling for creditPeriod - extract number from string if needed
         if (key === 'creditPeriod' && typeof value === 'string') {
           // Extract number from string like "7 Days" or "30"
@@ -436,13 +600,13 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
             value = undefined; // Skip if no number found
           }
         }
-        
+
         if (value !== undefined) {
           updateData[key] = value;
         }
       }
     });
-    
+
     // Always update lastModified
     updateData.lastModified = new Date();
 
@@ -473,20 +637,20 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
         { $set: updateData },
         updateOptions
       );
-      
+
       if (!supplier) {
         return res.status(404).json({
           success: false,
           message: 'Supplier not found after update'
         });
       }
-      
+
       // If authorizedPerson.email was updated, also update the User's email
       if (updateData.authorizedPerson && updateData.authorizedPerson.email) {
         try {
           // Get the user ID from the original supplier's submittedBy field (before update)
           const userId = originalSubmittedBy.toString ? originalSubmittedBy.toString() : originalSubmittedBy;
-          
+
           // Check if email is actually different to avoid unnecessary updates
           const user = await User.findById(userId);
           if (user && user.email !== updateData.authorizedPerson.email.toLowerCase().trim()) {
@@ -496,7 +660,7 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
               { email: updateData.authorizedPerson.email.toLowerCase().trim() },
               { new: true, runValidators: true }
             );
-            
+
             console.log('User email updated from', user.email, 'to', updateData.authorizedPerson.email);
           }
         } catch (userUpdateError) {
@@ -505,11 +669,11 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
           // Log it but continue with the supplier update
         }
       }
-      
+
       // Convert to plain object to include all fields (including those not in schema)
       // Use lean() alternative - convert to object safely
       const supplierObj = supplier.toObject ? supplier.toObject() : supplier;
-      
+
       res.json({
         success: true,
         data: supplierObj
@@ -573,7 +737,7 @@ router.delete('/:id', protect, authorize('supplier'), supplierAccess, async (req
     };
 
     // Check if there are other supplier records for this user
-    const otherSuppliers = await Supplier.find({ 
+    const otherSuppliers = await Supplier.find({
       submittedBy: supplier.submittedBy,
       _id: { $ne: supplier._id }
     });
@@ -648,7 +812,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
     // This prevents validation errors if the document has unmapped enum values
     const collection = Supplier.collection;
     const supplierId = new mongoose.Types.ObjectId(req.params.id);
-    
+
     let supplier = await collection.findOne({ _id: supplierId });
 
     if (!supplier) {
@@ -657,7 +821,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         message: 'Supplier not found'
       });
     }
-    
+
     // Convert MongoDB _id to string for consistency
     supplier._id = supplier._id.toString();
 
@@ -667,12 +831,12 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
     if (supplier.status !== 'draft' && supplier.status !== 'more_info_required') {
       const collection = Supplier.collection;
       const supplierId = new mongoose.Types.ObjectId(req.params.id);
-      
+
       await collection.updateOne(
         { _id: supplierId },
         { $set: { status: 'draft' } }
       );
-      
+
       // Reload supplier using collection directly to avoid validation
       supplier = await collection.findOne({ _id: supplierId });
       if (supplier) {
@@ -709,7 +873,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       };
       return mapping[value] || value; // Return mapped value or original if not found
     };
-    
+
     const mapEntityType = (value) => {
       const mapping = {
         'Public/Private Company': 'private_company',
@@ -737,12 +901,12 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       },
       lastModified: new Date()
     };
-    
+
     // CRITICAL: Always map enum values from supplier object if they exist
     // Map ANY value that doesn't match the backend enum values exactly
     const validLegalNatureValues = ['state_owned', 'ngo', 'foundation', 'association', 'company', 'partnership', 'foreign_company', 'individual', 'trust', 'other'];
     const validEntityTypeValues = ['private_company', 'public_company', 'partnership', 'foreign_company', 'individual', 'trust', 'other'];
-    
+
     if (supplier.legalNature) {
       const currentValue = String(supplier.legalNature);
       // If it's not a valid enum value, map it
@@ -755,7 +919,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         comprehensiveUpdate.legalNature = supplier.legalNature;
       }
     }
-    
+
     if (supplier.entityType) {
       const currentValue = String(supplier.entityType);
       // If it's not a valid enum value, map it
@@ -768,18 +932,18 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         comprehensiveUpdate.entityType = supplier.entityType;
       }
     }
-    
+
     // Process all form data from req.body and map enum values
     // This will overwrite the values from supplier if provided
     if (req.body && Object.keys(req.body).length > 0) {
       Object.keys(req.body).forEach(key => {
         // Skip internal MongoDB fields and read-only fields
-        if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt' && 
-            key !== 'submittedBy' && key !== 'documents' && key !== 'approvalHistory' && 
-            key !== 'profileUpdateRequests' && key !== 'slaMetrics' && key !== 'vendorNumber' &&
-            key !== 'submittedAt' && key !== 'status') {
+        if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt' &&
+          key !== 'submittedBy' && key !== 'documents' && key !== 'approvalHistory' &&
+          key !== 'profileUpdateRequests' && key !== 'slaMetrics' && key !== 'vendorNumber' &&
+          key !== 'submittedAt' && key !== 'status') {
           let value = req.body[key];
-          
+
           // Map legalNature from frontend display value to backend enum
           if (key === 'legalNature' && value) {
             const originalValue = value;
@@ -787,7 +951,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
             console.log(`[SUBMIT] Mapped legalNature from req.body: "${originalValue}" -> "${value}"`);
             comprehensiveUpdate.legalNature = value; // Always overwrite with mapped value
           }
-          
+
           // Map entityType from frontend display value to backend enum
           if (key === 'entityType' && value) {
             const originalValue = value;
@@ -795,7 +959,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
             console.log(`[SUBMIT] Mapped entityType from req.body: "${originalValue}" -> "${value}"`);
             comprehensiveUpdate.entityType = value; // Always overwrite with mapped value
           }
-          
+
           // Special handling for creditPeriod - extract number from string if needed
           if (key === 'creditPeriod' && typeof value === 'string') {
             const numMatch = value.match(/\d+/);
@@ -805,7 +969,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
               value = undefined;
             }
           }
-          
+
           // Add to comprehensive update (only if value is defined and not an enum field we already handled)
           if (value !== undefined && value !== null && key !== 'legalNature' && key !== 'entityType') {
             comprehensiveUpdate[key] = value;
@@ -813,7 +977,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         }
       });
     }
-    
+
     // CRITICAL: Ensure enum values are ALWAYS set in the update, even if not in req.body
     // This prevents leaving unmapped values in the database
     if (!comprehensiveUpdate.legalNature && supplier.legalNature) {
@@ -825,7 +989,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         comprehensiveUpdate.legalNature = supplier.legalNature;
       }
     }
-    
+
     if (!comprehensiveUpdate.entityType && supplier.entityType) {
       const currentValue = String(supplier.entityType);
       if (!validEntityTypeValues.includes(currentValue)) {
@@ -835,7 +999,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         comprehensiveUpdate.entityType = supplier.entityType;
       }
     }
-    
+
     // FINAL CHECK: Ensure enum values are definitely mapped before update
     // Double-check and force mapping if needed
     if (comprehensiveUpdate.legalNature) {
@@ -845,7 +1009,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         console.log(`[SUBMIT] FINAL CHECK - Remapped legalNature: "${checkValue}" -> "${comprehensiveUpdate.legalNature}"`);
       }
     }
-    
+
     if (comprehensiveUpdate.entityType) {
       const checkValue = String(comprehensiveUpdate.entityType);
       if (!validEntityTypeValues.includes(checkValue)) {
@@ -853,7 +1017,7 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         console.log(`[SUBMIT] FINAL CHECK - Remapped entityType: "${checkValue}" -> "${comprehensiveUpdate.entityType}"`);
       }
     }
-    
+
     console.log('[SUBMIT] Comprehensive update object (FINAL - VERIFIED):', {
       legalNature: comprehensiveUpdate.legalNature,
       entityType: comprehensiveUpdate.entityType,
@@ -864,30 +1028,30 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       legalNatureIsValid: comprehensiveUpdate.legalNature ? validLegalNatureValues.includes(String(comprehensiveUpdate.legalNature)) : false,
       entityTypeIsValid: comprehensiveUpdate.entityType ? validEntityTypeValues.includes(String(comprehensiveUpdate.entityType)) : false
     });
-    
+
     // Perform a SINGLE update operation with all data including mapped enum values
     // Use MongoDB collection directly to completely bypass Mongoose validation
     try {
       // collection and supplierId are already defined at the top of the function
-      
+
       // Use MongoDB's native updateOne to completely bypass Mongoose validation
       const updateResult = await collection.updateOne(
         { _id: supplierId },
         { $set: comprehensiveUpdate }
       );
-      
+
       console.log('[SUBMIT] MongoDB update result:', {
         matchedCount: updateResult.matchedCount,
         modifiedCount: updateResult.modifiedCount
       });
-      
+
       if (updateResult.matchedCount === 0) {
         return res.status(404).json({
           success: false,
           message: 'Supplier not found'
         });
       }
-      
+
       // Don't reload supplier - just use the comprehensiveUpdate data we just saved
       // This avoids any Mongoose validation that might happen during findById
       // Create a response object from what we know was saved
@@ -895,13 +1059,13 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         ...supplier, // Start with original supplier data
         ...comprehensiveUpdate // Overwrite with what we just updated
       };
-      
+
       console.log('[SUBMIT] Supplier data after update (constructed):', {
         legalNature: updatedSupplier.legalNature,
         entityType: updatedSupplier.entityType,
         status: updatedSupplier.status
       });
-      
+
       // Use the constructed object for the response
       supplier = updatedSupplier;
     } catch (updateError) {
@@ -919,10 +1083,14 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       const procurementUsers = await User.find({ role: 'procurement', isActive: true });
       for (const user of procurementUsers) {
         try {
+          // Format application number manually since we're using a plain object
+          const year = supplier.createdAt ? new Date(supplier.createdAt).getFullYear() : new Date().getFullYear();
+          const appId = `APP-${year}-${supplier._id.toString().slice(-3).padStart(3, '0')}`;
+
           await createNotification({
             recipient: user._id,
             type: 'new_task_assigned',
-            title: 'New Supplier Application',
+            title: `[${appId}] New Supplier Application`,
             message: `New supplier application from ${supplier.supplierName || 'Unknown Supplier'} requires review`,
             relatedEntity: {
               entityType: 'supplier',
@@ -968,9 +1136,9 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
 router.post('/:id/profile-update-request', protect, authorize('supplier'), supplierAccess, async (req, res) => {
   try {
     const { field, newValue } = req.body;
-    
+
     const supplier = await Supplier.findById(req.params.id);
-    
+
     if (!supplier) {
       return res.status(404).json({
         success: false,
@@ -995,7 +1163,7 @@ router.post('/:id/profile-update-request', protect, authorize('supplier'), suppl
       await createNotification({
         recipient: user._id,
         type: 'profile_update_requested',
-        title: 'Profile Update Request',
+        title: `[${supplier.applicationNumber}] Profile Update Request`,
         message: `${supplier.supplierName} has requested a profile update`,
         relatedEntity: {
           entityType: 'supplier',

@@ -14,11 +14,16 @@ import {
   AccordionDetails,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   ArrowBack,
   ExpandMore,
   Check,
+  Close,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { format, parse, isValid } from 'date-fns';
@@ -34,6 +39,10 @@ const ApplicationStatus = () => {
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedAccordion, setExpandedAccordion] = useState('basicInformation');
+  const [fileViewerOpen, setFileViewerOpen] = useState(false);
+  const [fileViewerUrl, setFileViewerUrl] = useState(null);
+  const [fileViewerName, setFileViewerName] = useState('');
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -75,7 +84,7 @@ const ApplicationStatus = () => {
       under_review: 'Under Review',
       approved: 'Approved',
       rejected: 'Rejected',
-      more_info_required: 'More Info Required'
+      more_info_required: 'Requested More Info'
     };
     return statusMap[status] || status;
   };
@@ -174,11 +183,66 @@ const ApplicationStatus = () => {
     declarationSignatureFile: supplier.declarationSignatureFile || null,
   };
 
+  const handleViewFile = (file, fileName = '') => {
+    if (!file) return;
+
+    let fileUrl = null;
+    let displayName = fileName || 'File';
+
+    // If it's a File object (newly uploaded), create object URL
+    if (file instanceof File) {
+      fileUrl = URL.createObjectURL(file);
+      displayName = file.name;
+    } else if (typeof file === 'string') {
+      // Check if it's already a full URL
+      if (file.startsWith('http://') || file.startsWith('https://')) {
+        fileUrl = file;
+      } else {
+        // Files are stored in uploads/supplierId/filename format
+        // If the path already includes 'uploads/', use it directly
+        if (file.startsWith('uploads/')) {
+          fileUrl = `/${file}`;
+        } else if (file.startsWith('./uploads/')) {
+          fileUrl = file.replace('./uploads/', '/uploads/');
+        } else {
+          // If it's just a filename, construct the path with supplier ID
+          // Files are stored in uploads/supplierId/filename format
+          const supplierId = supplier?._id || id;
+          if (supplierId) {
+            fileUrl = `/uploads/${supplierId}/${file}`;
+          } else {
+            // Fallback: try without supplier ID (might work for some files)
+            fileUrl = `/uploads/${file}`;
+          }
+        }
+      }
+      displayName = fileName || file.split('/').pop() || 'File';
+    }
+
+    if (fileUrl) {
+      setFileViewerUrl(fileUrl);
+      setFileViewerName(displayName);
+      setImageLoadError(false);
+      setFileViewerOpen(true);
+    }
+  };
+
+  const handleCloseFileViewer = () => {
+    // Clean up object URL if it was created from a File object
+    if (fileViewerUrl && fileViewerUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(fileViewerUrl);
+    }
+    setFileViewerOpen(false);
+    setFileViewerUrl(null);
+    setFileViewerName('');
+    setImageLoadError(false);
+  };
+
   const renderDocumentCard = (fileName, documentName) => {
     if (!fileName) return null;
     const displayName = typeof fileName === 'string' ? fileName : 'File selected';
     const fileExtension = displayName.split('.').pop()?.toUpperCase() || 'PDF';
-    
+
     return (
       <Box
         key={documentName}
@@ -215,6 +279,7 @@ const ApplicationStatus = () => {
         </Box>
         <IconButton
           size="small"
+          onClick={() => handleViewFile(fileName, documentName)}
           sx={{
             color: '#6b7280',
             '&:hover': {
@@ -237,11 +302,11 @@ const ApplicationStatus = () => {
   const renderMultipleDocumentCards = (files, documentName) => {
     if (!files || files.length === 0) return null;
     return files.map((file, index) => {
-      const displayName = files.length > 1 
+      const displayName = files.length > 1
         ? `${documentName} ${index + 1}`
         : (typeof file === 'string' ? file : documentName);
       const fileExtension = (typeof file === 'string' ? file : '').split('.').pop()?.toUpperCase() || 'PDF';
-      
+
       return (
         <Box
           key={index}
@@ -278,6 +343,7 @@ const ApplicationStatus = () => {
           </Box>
           <IconButton
             size="small"
+            onClick={() => handleViewFile(file, displayName)}
             sx={{
               color: '#6b7280',
               '&:hover': {
@@ -937,6 +1003,82 @@ const ApplicationStatus = () => {
           </Accordion>
         </Paper>
       </Container>
+
+      {/* File Viewer Modal */}
+      <Dialog
+        open={fileViewerOpen}
+        onClose={handleCloseFileViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            maxHeight: '90vh',
+            borderRadius: '8px',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">{fileViewerName}</Typography>
+          <IconButton onClick={handleCloseFileViewer} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', backgroundColor: '#f5f5f5' }}>
+          {fileViewerUrl && (
+            <Box sx={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+              {fileViewerUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                imageLoadError ? (
+                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Image could not be loaded</Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => window.open(fileViewerUrl, '_blank')}
+                      sx={{ mt: 2 }}
+                    >
+                      Open in New Tab
+                    </Button>
+                  </Box>
+                ) : (
+                  <img
+                    src={fileViewerUrl}
+                    alt={fileViewerName}
+                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+                    onError={() => setImageLoadError(true)}
+                  />
+                )
+              ) : fileViewerUrl.match(/\.(pdf)$/i) ? (
+                <iframe
+                  src={fileViewerUrl}
+                  title={fileViewerName}
+                  style={{ width: '100%', height: '70vh', border: 'none' }}
+                />
+              ) : (
+                <Box sx={{ textAlign: 'center', p: 4 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>File Preview Not Available</Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => window.open(fileViewerUrl, '_blank')}
+                    sx={{ mt: 2 }}
+                  >
+                    Open in New Tab
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFileViewer}>Close</Button>
+          {fileViewerUrl && (
+            <Button
+              variant="contained"
+              onClick={() => window.open(fileViewerUrl, '_blank')}
+            >
+              Open in New Tab
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

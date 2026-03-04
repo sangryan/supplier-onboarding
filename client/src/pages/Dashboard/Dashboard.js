@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import SupplierDashboard from './SupplierDashboard';
 import ProcurementDashboard from './ProcurementDashboard';
+import LegalDashboard from './LegalDashboard';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
@@ -71,17 +72,22 @@ const Dashboard = () => {
     return <SupplierDashboard />;
   }
 
-  // Procurement and Legal Dashboard
-  if (user.role === 'procurement' || user.role === 'legal') {
+  // Procurement Dashboard
+  if (user.role === 'procurement') {
     return <ProcurementDashboard />;
+  }
+
+  // Legal Dashboard
+  if (user.role === 'legal') {
+    return <LegalDashboard />;
   }
 
   // Admin/Internal User Dashboard
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
-      <Container 
+      <Container
         maxWidth="lg"
-        sx={{ 
+        sx={{
           pt: { xs: 3, sm: 5 },
           pb: { xs: 3, sm: 4 },
           px: { xs: 2, sm: 3 },

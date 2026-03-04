@@ -17,10 +17,10 @@ router.get('/stats', protect, async (req, res) => {
     if (role === 'supplier') {
       // Supplier dashboard stats
       const supplier = await Supplier.findOne({ submittedBy: req.user.id });
-      
+
       if (supplier) {
         const documents = await Document.countDocuments({ supplier: supplier._id });
-        
+
         stats = {
           applicationStatus: supplier.status,
           vendorNumber: supplier.vendorNumber,
@@ -28,7 +28,7 @@ router.get('/stats', protect, async (req, res) => {
           hasContract: !!supplier.contract,
           applicationDate: supplier.submittedAt,
           approvalProgress: {
-            procurement: supplier.approvalHistory.some(h => 
+            procurement: supplier.approvalHistory.some(h =>
               h.action === 'approved' && h.approver
             ),
             legal: supplier.currentApprovalStage === 'completed'
@@ -36,22 +36,31 @@ router.get('/stats', protect, async (req, res) => {
         };
       }
     } else {
-      // Internal user dashboard stats
+      // Internal user dashboard stats - use unique supplier user account count
       const [
         totalSuppliers,
         pendingApplications,
-        approvedSuppliers,
-        rejectedSuppliers,
+        approvedSuppliersResult,
+        rejectedSuppliersResult,
         activeContracts,
         expiringContracts,
         overdueApplications
       ] = await Promise.all([
-        Supplier.countDocuments(),
-        Supplier.countDocuments({ 
-          status: { $in: ['submitted', 'under_review', 'pending_legal', 'pending_procurement'] }
+        User.countDocuments({ role: 'supplier' }),
+        Supplier.countDocuments({
+          status: { $in: ['submitted', 'under_review', 'pending_legal', 'pending_procurement'] },
+          isProfileOnly: { $ne: true }
         }),
-        Supplier.countDocuments({ status: 'approved' }),
-        Supplier.countDocuments({ status: 'rejected' }),
+        Supplier.aggregate([
+          { $match: { status: 'approved' } },
+          { $group: { _id: '$supplierName' } },
+          { $count: 'total' }
+        ]),
+        Supplier.aggregate([
+          { $match: { status: 'rejected' } },
+          { $group: { _id: '$supplierName' } },
+          { $count: 'total' }
+        ]),
         Contract.countDocuments({ status: 'active' }),
         Contract.countDocuments({
           status: 'active',
@@ -65,6 +74,8 @@ router.get('/stats', protect, async (req, res) => {
           status: { $nin: ['approved', 'rejected'] }
         })
       ]);
+      const approvedSuppliers = approvedSuppliersResult.length > 0 ? approvedSuppliersResult[0].total : 0;
+      const rejectedSuppliers = rejectedSuppliersResult.length > 0 ? rejectedSuppliersResult[0].total : 0;
 
       stats = {
         totalSuppliers,
@@ -115,7 +126,7 @@ router.get('/recent-activities', protect, async (req, res) => {
       // Get supplier's recent activities
       const supplier = await Supplier.findOne({ submittedBy: req.user.id })
         .populate('approvalHistory.approver', 'firstName lastName role');
-      
+
       if (supplier) {
         activities = supplier.approvalHistory
           .slice(-limit)
@@ -170,13 +181,13 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
       // Get all suppliers that need procurement attention
       query = {
         $or: [
-          { status: { $in: ['submitted', 'pending_procurement', 'more_info_required'] }, isProfileOnly: { $ne: true } },
+          { status: { $in: ['submitted', 'pending_procurement', 'more_info_required', 'rejected'] }, isProfileOnly: { $ne: true } },
           { 'profileUpdateRequests.status': 'pending' },
           { status: 'approved', vendorNumber: { $exists: false } }
         ]
       };
     } else if (req.user.role === 'legal') {
-      query = { status: 'pending_legal', isProfileOnly: { $ne: true } };
+      query = { status: { $in: ['pending_legal', 'approved', 'pending_contract_upload', 'rejected'] }, isProfileOnly: { $ne: true } };
     }
 
     // Fetch all tasks (we'll process them to categorize)
@@ -187,7 +198,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
 
     // Process tasks to create unified task list
     suppliers.forEach(supplier => {
-      // New supplier applications
+      // New supplier applications (procurement)
       if (supplier.status && ['submitted', 'pending_procurement', 'more_info_required'].includes(supplier.status) && !supplier.isProfileOnly) {
         allTasks.push({
           _id: supplier._id,
@@ -195,9 +206,69 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           supplierName: supplier.supplierName,
           requestType: 'New Supplier Application',
           submissionDate: supplier.submittedAt || supplier.createdAt,
-          status: supplier.status === 'submitted' ? 'Pending Review' : 
-                 supplier.status === 'pending_procurement' ? 'Pending Review' : 
-                 supplier.status === 'more_info_required' ? 'More Info Required' : 'Pending Review',
+          status: supplier.status === 'submitted' ? 'Pending Review' :
+            supplier.status === 'pending_procurement' ? 'Pending Review' :
+              supplier.status === 'more_info_required' ? 'More Info Required' : 'Pending Review',
+          rawStatus: supplier.status,
+          entityType: supplier.entityType || supplier.legalNature,
+          supplier: supplier
+        });
+      }
+
+      // Legal tasks: pending_legal, approved, pending_contract_upload
+      if (supplier.status === 'pending_legal' && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'Supplier Application',
+          submissionDate: supplier.submittedAt || supplier.createdAt,
+          status: 'Pending Approval',
+          rawStatus: 'pending_legal',
+          entityType: supplier.entityType || supplier.legalNature,
+          supplier: supplier
+        });
+      }
+
+      if (supplier.status === 'approved' && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'Supplier Application',
+          submissionDate: supplier.submittedAt || supplier.createdAt,
+          status: 'Approved',
+          rawStatus: 'approved',
+          entityType: supplier.entityType || supplier.legalNature,
+          supplier: supplier
+        });
+      }
+
+      if (supplier.status === 'pending_contract_upload' && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'Supplier Application',
+          submissionDate: supplier.submittedAt || supplier.createdAt,
+          status: 'Pending Contract Upload',
+          rawStatus: 'pending_contract_upload',
+          entityType: supplier.entityType || supplier.legalNature,
+          supplier: supplier
+        });
+      }
+
+      // Rejected suppliers
+      if (supplier.status === 'rejected' && !supplier.isProfileOnly) {
+        allTasks.push({
+          _id: supplier._id,
+          taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+          supplierName: supplier.supplierName,
+          requestType: 'Supplier Application',
+          submissionDate: supplier.submittedAt || supplier.createdAt,
+          status: 'Rejected',
+          rawStatus: 'rejected',
+          entityType: supplier.entityType || supplier.legalNature,
           supplier: supplier
         });
       }
@@ -219,12 +290,12 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
       // Check for contact info updates (profileUpdateComment field exists)
       if (supplier.profileUpdateComment && supplier.status !== 'draft') {
         // Check if there are pending profile update requests related to contact info
-        const hasPendingContactUpdates = supplier.profileUpdateRequests && 
-          supplier.profileUpdateRequests.some(req => 
-            req.status === 'pending' && 
+        const hasPendingContactUpdates = supplier.profileUpdateRequests &&
+          supplier.profileUpdateRequests.some(req =>
+            req.status === 'pending' &&
             (req.field === 'authorizedPerson' || req.field === 'additionalContacts')
           );
-        
+
         if (hasPendingContactUpdates || supplier.profileUpdateComment) {
           allTasks.push({
             _id: `${supplier._id}-contact-update`,
@@ -241,13 +312,13 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
       // Check for company profile updates (companyUpdateComment field exists)
       if (supplier.companyUpdateComment && supplier.status !== 'draft') {
         // Check if there are pending profile update requests related to company info
-        const hasPendingCompanyUpdates = supplier.profileUpdateRequests && 
-          supplier.profileUpdateRequests.some(req => 
-            req.status === 'pending' && 
-            req.field !== 'authorizedPerson' && 
+        const hasPendingCompanyUpdates = supplier.profileUpdateRequests &&
+          supplier.profileUpdateRequests.some(req =>
+            req.status === 'pending' &&
+            req.field !== 'authorizedPerson' &&
             req.field !== 'additionalContacts'
           );
-        
+
         if (hasPendingCompanyUpdates || supplier.companyUpdateComment) {
           allTasks.push({
             _id: `${supplier._id}-company-update`,
@@ -264,7 +335,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
 
     // Apply search filter
     if (search) {
-      allTasks = allTasks.filter(task => 
+      allTasks = allTasks.filter(task =>
         task.supplierName.toLowerCase().includes(search.toLowerCase()) ||
         task.taskId.toLowerCase().includes(search.toLowerCase())
       );
@@ -309,13 +380,82 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
   }
 });
 
+// @route   GET /api/dashboard/all-tasks
+// @desc    Get all supplier onboarding tasks (all statuses)
+// @access  Private (Procurement, Legal, Super Admin)
+router.get('/all-tasks', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    let query = { isProfileOnly: { $ne: true } };
+
+    if (search) {
+      query.supplierName = { $regex: search, $options: 'i' };
+    }
+
+    const total = await Supplier.countDocuments(query);
+    const suppliers = await Supplier.find(query)
+      .populate('submittedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean();
+
+    const statusMap = {
+      draft: 'Draft',
+      submitted: 'Pending Review',
+      pending_procurement: 'Pending Review',
+      under_review: 'Under Review',
+      pending_legal: 'Pending Legal Approval',
+      pending_contract_upload: 'Pending Contract Upload',
+      approved: 'Approved',
+      completed: 'Completed',
+      rejected: 'Rejected',
+      more_info_required: 'More Info Required',
+    };
+
+    const tasks = suppliers.map(supplier => ({
+      _id: supplier._id,
+      taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+      supplierName: supplier.supplierName,
+      entityType: supplier.entityType
+        ? supplier.entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        : supplier.legalNature
+          ? supplier.legalNature.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          : '-',
+      submissionDate: supplier.submittedAt || supplier.createdAt,
+      status: statusMap[supplier.status] || supplier.status,
+      rawStatus: supplier.status,
+    }));
+
+    res.json({
+      success: true,
+      data: tasks,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum),
+        limit: limitNum
+      }
+    });
+  } catch (error) {
+    console.error('Get all tasks error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching all tasks'
+    });
+  }
+});
+
 // @route   GET /api/dashboard/sla-report
 // @desc    Get SLA performance report
 // @access  Private (Management, Super Admin)
 router.get('/sla-report', protect, authorize('management', 'super_admin'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let query = {
       status: 'approved',
       'slaMetrics.submissionDate': { $exists: true }

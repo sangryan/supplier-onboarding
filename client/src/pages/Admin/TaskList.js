@@ -63,7 +63,7 @@ const TaskList = () => {
           search
         }
       });
-      
+
       if (response.data.success) {
         setTasks(response.data.data || []);
         setCounts(response.data.counts || {
@@ -95,10 +95,25 @@ const TaskList = () => {
     return task.taskId || `APP-${new Date().getFullYear()}-000`;
   };
 
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      pending_legal: 'Pending Legal Approval',
+      pending_contract_upload: 'Pending Contract Upload',
+      pending_procurement: 'Pending Procurement',
+      approved: 'Approved',
+      completed: 'Completed',
+      rejected: 'Rejected',
+      submitted: 'Submitted',
+      under_review: 'Under Review',
+      more_info_required: 'Requested More Info',
+    };
+    return statusMap[status] || status;
+  };
+
   const getStatusChip = (status) => {
     return (
       <Chip
-        label={status}
+        label={getStatusLabel(status)}
         size="small"
         sx={{
           backgroundColor: '#f3f4f6',
@@ -126,7 +141,7 @@ const TaskList = () => {
   };
 
   const handleAddVendor = () => {
-    console.log('Add new on-demand vendor');
+    navigate('/vendors/new');
   };
 
   const handleSearchChange = (e) => {
@@ -152,9 +167,9 @@ const TaskList = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
-      <Container 
+      <Container
         maxWidth="lg"
-        sx={{ 
+        sx={{
           pt: { xs: 3, sm: 5 },
           pb: { xs: 3, sm: 4 },
           px: { xs: 2, sm: 3 },
@@ -410,12 +425,12 @@ const TaskList = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer 
-            component={Paper} 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid #e0e0e0', 
-              borderRadius: 2, 
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              border: '1px solid #e0e0e0',
+              borderRadius: 2,
               overflow: 'hidden',
               backgroundColor: '#fff'
             }}
@@ -512,10 +527,10 @@ const TaskList = () => {
             </Table>
 
             {/* Table Footer */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               p: 2,
               borderTop: '1px solid #e0e0e0'
             }}>
@@ -527,9 +542,9 @@ const TaskList = () => {
                   size="small"
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
-                  sx={{ 
-                    textTransform: 'none', 
-                    color: '#374151', 
+                  sx={{
+                    textTransform: 'none',
+                    color: '#374151',
                     fontSize: '13px',
                     '&:disabled': {
                       color: '#9ca3af'
@@ -542,9 +557,9 @@ const TaskList = () => {
                   size="small"
                   onClick={() => setPage(page + 1)}
                   disabled={page >= pagination.pages}
-                  sx={{ 
-                    textTransform: 'none', 
-                    color: '#374151', 
+                  sx={{
+                    textTransform: 'none',
+                    color: '#374151',
                     fontSize: '13px',
                     '&:disabled': {
                       color: '#9ca3af'

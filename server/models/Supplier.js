@@ -9,15 +9,14 @@ const supplierSchema = new mongoose.Schema({
   },
   vendorNumber: {
     type: String,
-    unique: true,
     sparse: true // Only set when approved
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'pending_legal', 'pending_procurement', 'approved', 'rejected', 'more_info_required'],
+    enum: ['draft', 'submitted', 'under_review', 'pending_legal', 'pending_procurement', 'pending_contract_upload', 'approved', 'completed', 'rejected', 'more_info_required'],
     default: 'draft'
   },
-  
+
   // Legal Nature of Entity
   legalNature: {
     type: String,
@@ -27,13 +26,13 @@ const supplierSchema = new mongoose.Schema({
   legalNatureOther: {
     type: String
   },
-  
+
   // Entity Type Details
   entityType: {
     type: String,
     enum: ['private_company', 'public_company', 'partnership', 'foreign_company', 'individual', 'trust', 'other']
   },
-  
+
   // Company Information
   companyRegistrationNumber: {
     type: String,
@@ -44,13 +43,17 @@ const supplierSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  companyWebsite: {
+    type: String,
+    trim: true
+  },
   companyPhysicalAddress: {
     street: String,
     city: String,
     country: String,
     postalCode: String
   },
-  
+
   // Contact Person/Authorized Representative
   authorizedPerson: {
     name: {
@@ -75,7 +78,7 @@ const supplierSchema = new mongoose.Schema({
       lowercase: true
     }
   },
-  
+
   // Type of Services
   serviceType: {
     type: String,
@@ -85,13 +88,13 @@ const supplierSchema = new mongoose.Schema({
   serviceTypeOther: {
     type: String
   },
-  
+
   // Credit Period
   creditPeriod: {
     type: Number, // in days
     default: 30
   },
-  
+
   // Director Details
   directors: [{
     name: String,
@@ -101,7 +104,7 @@ const supplierSchema = new mongoose.Schema({
       ref: 'Document'
     }
   }],
-  
+
   // Source of Funds Declaration
   sourceOfFunds: {
     source: {
@@ -117,7 +120,7 @@ const supplierSchema = new mongoose.Schema({
       ref: 'Document'
     }
   },
-  
+
   // Data Processing Consent
   dataProcessingConsent: {
     granted: {
@@ -133,7 +136,7 @@ const supplierSchema = new mongoose.Schema({
       ref: 'Document'
     }
   },
-  
+
   // Approval Workflow
   approvalHistory: [{
     approver: {
@@ -142,7 +145,7 @@ const supplierSchema = new mongoose.Schema({
     },
     action: {
       type: String,
-      enum: ['approved', 'rejected', 'requested_info', 'assigned_vendor_number']
+      enum: ['approved', 'rejected', 'requested_info', 'assigned_vendor_number', 'contract_uploaded']
     },
     comments: String,
     timestamp: {
@@ -150,19 +153,19 @@ const supplierSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  
+
   currentApprovalStage: {
     type: String,
-    enum: ['procurement', 'legal', 'completed'],
+    enum: ['procurement', 'legal', 'contract_upload', 'completed'],
     default: 'procurement'
   },
-  
+
   // Contract Information
   contract: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Contract'
   },
-  
+
   // Metadata
   submittedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -180,7 +183,7 @@ const supplierSchema = new mongoose.Schema({
   rejectionReason: {
     type: String
   },
-  
+
   // Profile Updates
   profileUpdateRequests: [{
     field: String,
@@ -198,7 +201,7 @@ const supplierSchema = new mongoose.Schema({
     },
     processedAt: Date
   }],
-  
+
   // SLA Tracking
   slaMetrics: {
     submissionDate: Date,
@@ -210,7 +213,7 @@ const supplierSchema = new mongoose.Schema({
       default: false
     }
   },
-  
+
   // Application Progress Tracking
   currentStep: {
     type: Number,
@@ -227,6 +230,17 @@ const supplierSchema = new mongoose.Schema({
   strict: false // Allow fields not defined in schema to be saved and retrieved
 });
 
+// Application Number virtual (matching frontend logic)
+supplierSchema.virtual('applicationNumber').get(function () {
+  const year = this.createdAt ? new Date(this.createdAt).getFullYear() : new Date().getFullYear();
+  const shortId = this._id.toString().slice(-3).padStart(3, '0');
+  return `APP-${year}-${shortId}`;
+});
+
+// Ensure virtuals are included in toJSON and toObject
+supplierSchema.set('toJSON', { virtuals: true });
+supplierSchema.set('toObject', { virtuals: true });
+
 // Indexes
 supplierSchema.index({ supplierName: 'text' });
 supplierSchema.index({ status: 1 });
@@ -241,13 +255,40 @@ supplierSchema.virtual('documents', {
 });
 
 // Method to check if supplier can submit
-supplierSchema.methods.canSubmit = function() {
+supplierSchema.methods.canSubmit = function () {
   return this.status === 'draft' || this.status === 'more_info_required';
 };
 
 // Method to check if supplier is onboarded
-supplierSchema.methods.isOnboarded = function() {
+supplierSchema.methods.isOnboarded = function () {
   return this.status === 'approved' && this.vendorNumber;
+};
+
+// Centralized Vendor Number Generation
+supplierSchema.statics.generateVendorNumber = async function (type = 'standard') {
+  let prefix = 'VND-B';
+  let regex = /^VND-B(\d+)/;
+  let startNum = 100;
+
+  if (type === 'adhoc') {
+    prefix = 'VND-ADHOC-';
+    regex = /^VND-ADHOC-(\d+)/;
+    startNum = 1;
+  }
+
+  const lastSupplier = await this.findOne({
+    vendorNumber: regex
+  }).sort({ vendorNumber: -1 }).lean();
+
+  let nextNum = startNum;
+  if (lastSupplier && lastSupplier.vendorNumber) {
+    const match = lastSupplier.vendorNumber.match(regex);
+    if (match) {
+      nextNum = parseInt(match[1]) + 1;
+    }
+  }
+
+  return `${prefix}${String(nextNum).padStart(3, '0')}`;
 };
 
 module.exports = mongoose.model('Supplier', supplierSchema);

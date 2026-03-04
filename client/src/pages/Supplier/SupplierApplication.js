@@ -21,10 +21,14 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CalendarToday, NavigateBefore, NavigateNext, ExpandMore } from '@mui/icons-material';
+import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CalendarToday, NavigateBefore, NavigateNext, ExpandMore, Close } from '@mui/icons-material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
@@ -178,6 +182,10 @@ const SupplierApplication = () => {
   const [countryAnchorEl, setCountryAnchorEl] = useState(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [datePickerAnchorEl, setDatePickerAnchorEl] = useState(null);
+  const [fileViewerOpen, setFileViewerOpen] = useState(false);
+  const [fileViewerUrl, setFileViewerUrl] = useState(null);
+  const [fileViewerName, setFileViewerName] = useState('');
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   const filteredCountries = countries.filter(country =>
     country.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
@@ -197,6 +205,152 @@ const SupplierApplication = () => {
     if (value instanceof File || (Array.isArray(value) && value[0] instanceof File)) {
       console.log(`File uploaded for ${field}:`, value instanceof File ? value.name : value.map(f => f.name));
     }
+  };
+
+  const handleViewFile = (file, fileName = '') => {
+    if (!file) return;
+    
+    let fileUrl = null;
+    let displayName = fileName || 'File';
+    
+    // If it's a File object (newly uploaded), create object URL
+    if (file instanceof File) {
+      fileUrl = URL.createObjectURL(file);
+      displayName = file.name;
+    } else if (typeof file === 'string') {
+      // Check if it's already a full URL
+      if (file.startsWith('http://') || file.startsWith('https://')) {
+        fileUrl = file;
+      } else {
+        // Files are stored in uploads/supplierId/filename format
+        // If the path already includes 'uploads/', use it directly
+        if (file.startsWith('uploads/')) {
+          fileUrl = `/${file}`;
+        } else if (file.startsWith('./uploads/')) {
+          fileUrl = file.replace('./uploads/', '/uploads/');
+        } else {
+          // If it's just a filename, construct the path with supplier ID
+          // Files are stored in uploads/supplierId/filename format
+          const supplierId = applicationId || id;
+          if (supplierId) {
+            fileUrl = `/uploads/${supplierId}/${file}`;
+          } else {
+            // Fallback: try without supplier ID (might work for some files)
+            fileUrl = `/uploads/${file}`;
+          }
+        }
+      }
+      displayName = fileName || file.split('/').pop() || 'File';
+    }
+    
+    if (fileUrl) {
+      setFileViewerUrl(fileUrl);
+      setFileViewerName(displayName);
+      setImageLoadError(false);
+      setFileViewerOpen(true);
+    }
+  };
+
+  const handleCloseFileViewer = () => {
+    // Clean up object URL if it was created from a File object
+    if (fileViewerUrl && fileViewerUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(fileViewerUrl);
+    }
+    setFileViewerOpen(false);
+    setFileViewerUrl(null);
+    setFileViewerName('');
+    setImageLoadError(false);
+  };
+
+  // Map form field names to document types for upload
+  const getDocumentType = (fieldName) => {
+    const fieldToDocType = {
+      'certificateOfIncorporation': 'certificate_of_incorporation',
+      'kraPinCertificate': 'pin_certificate',
+      'etimsProof': 'etims_registration',
+      'financialStatements': 'audited_financials',
+      'cr12': 'cr12',
+      'companyProfile': 'company_profile',
+      'bankReferenceLetter': 'bank_reference',
+      'declarationSignatureFile': 'source_funds_declaration',
+      'directorsIds': 'directors_id',
+      'practicingCertificates': 'practicing_certificate',
+      'keyMembersResumes': 'member_resume'
+    };
+    return fieldToDocType[fieldName] || 'other';
+  };
+
+  // Upload a single file
+  const uploadFile = async (file, fieldName, supplierId) => {
+    if (!file || !(file instanceof File)) {
+      return null;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('supplierId', supplierId);
+      formData.append('documentType', getDocumentType(fieldName));
+
+      const response = await api.post('/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        // Return the filename from the uploaded document
+        return response.data.data.fileName;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error uploading ${fieldName}:`, error);
+      toast.error(`Failed to upload ${fieldName}`);
+      return null;
+    }
+  };
+
+  // Upload all files in the form
+  const uploadAllFiles = async (supplierId) => {
+    const updatedFormData = { ...formData };
+    
+    // Upload single file fields
+    const singleFileFields = [
+      'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
+      'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
+      'declarationSignatureFile'
+    ];
+
+    for (const field of singleFileFields) {
+      if (formData[field] instanceof File) {
+        const uploadedFileName = await uploadFile(formData[field], field, supplierId);
+        if (uploadedFileName) {
+          updatedFormData[field] = uploadedFileName;
+        }
+      }
+    }
+
+    // Upload array file fields
+    const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
+    for (const field of arrayFileFields) {
+      if (Array.isArray(formData[field]) && formData[field].length > 0) {
+        const uploadedFiles = [];
+        for (const file of formData[field]) {
+          if (file instanceof File) {
+            const uploadedFileName = await uploadFile(file, field, supplierId);
+            if (uploadedFileName) {
+              uploadedFiles.push(uploadedFileName);
+            }
+          } else if (typeof file === 'string') {
+            // Keep existing filenames
+            uploadedFiles.push(file);
+          }
+        }
+        updatedFormData[field] = uploadedFiles;
+      }
+    }
+
+    return updatedFormData;
   };
 
   const formatDateForDisplay = (dateString) => {
@@ -568,16 +722,38 @@ const SupplierApplication = () => {
   const handleSaveDraft = async () => {
     setLoading(true);
     try {
-      // Create payload with all form data, ensuring all fields are included
+      // First, ensure we have a supplier ID (create draft if needed)
+      let currentSupplierId = applicationId;
+      if (!currentSupplierId) {
+        // Create a minimal draft to get supplier ID
+        const draftPayload = {
+          supplierName: formData.supplierName || 'Draft Application',
+          legalNature: formData.legalNature || 'company',
+          serviceType: formData.serviceTypes || 'professional_services',
+          currentStep: activeStep,
+          lastModified: new Date().toISOString()
+        };
+        const createResponse = await api.post('/suppliers/draft', draftPayload);
+        if (createResponse.data.data?._id) {
+          currentSupplierId = createResponse.data.data._id;
+          setApplicationId(currentSupplierId);
+        } else {
+          throw new Error('Failed to create supplier draft');
+        }
+      }
+
+      // Upload all files first
+      const updatedFormData = await uploadAllFiles(currentSupplierId);
+      setFormData(updatedFormData);
+
       const payload = { 
-        ...formData, 
+        ...updatedFormData, 
         status: 'draft',
         currentStep: activeStep,
         lastModified: new Date().toISOString()
       };
       
-      // Handle file objects - extract filenames for storage
-      // File objects can't be serialized to JSON, so we store filenames instead
+      // Ensure file fields are strings (filenames) or null, not File objects
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
@@ -586,33 +762,29 @@ const SupplierApplication = () => {
       
       fileFields.forEach(field => {
         if (payload[field] instanceof File) {
-          // Store filename and keep File object in formData for potential upload
           payload[field] = payload[field].name;
         } else if (payload[field] === undefined || payload[field] === null) {
-          // Preserve existing filename if it's a non-empty string, otherwise keep null
-          // This ensures that when navigating, we don't lose previously saved filenames
-          if (typeof formData[field] === 'string' && formData[field].trim() !== '') {
-            payload[field] = formData[field];
+          if (typeof updatedFormData[field] === 'string' && updatedFormData[field].trim() !== '') {
+            payload[field] = updatedFormData[field];
           } else {
             payload[field] = null;
           }
         }
-        // If payload[field] is already a string (from previous load), keep it as is
       });
       
       // Handle array file fields
       const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
       arrayFileFields.forEach(field => {
         if (Array.isArray(payload[field]) && payload[field].length > 0) {
-          // If array contains File objects, extract filenames
-          if (payload[field][0] instanceof File) {
-            payload[field] = payload[field].map(file => file.name);
-          }
-          // If it's already an array of strings, keep it
+          payload[field] = payload[field].map(file => {
+            if (file instanceof File) {
+              return file.name;
+            }
+            return file;
+          }).filter(f => f && typeof f === 'string' && f.trim() !== '');
         } else if (payload[field] === undefined) {
-          // Preserve existing array if it has valid filenames
-          if (Array.isArray(formData[field]) && formData[field].length > 0) {
-            payload[field] = formData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
+          if (Array.isArray(updatedFormData[field]) && updatedFormData[field].length > 0) {
+            payload[field] = updatedFormData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
           } else {
             payload[field] = [];
           }
@@ -628,18 +800,8 @@ const SupplierApplication = () => {
           }
         }
       });
-      
-      let response;
-      if (applicationId) {
-        // Update existing application
-        response = await api.put(`/suppliers/${applicationId}`, payload);
-      } else {
-        // Create new application
-        response = await api.post('/suppliers/draft', payload);
-        if (response.data.data?._id) {
-          setApplicationId(response.data.data._id);
-        }
-      }
+
+      await api.put(`/suppliers/${currentSupplierId}`, payload);
       toast.success('Draft saved successfully!');
     } catch (error) {
       console.error('Save draft error:', error);
@@ -652,17 +814,39 @@ const SupplierApplication = () => {
   const handleSaveAndContinue = async () => {
     setLoading(true);
     try {
-      // Create payload with ALL form data from all steps
-      // This ensures all fields are saved before moving to the next step
+      // First, ensure we have a supplier ID (create draft if needed)
+      let currentSupplierId = applicationId;
+      if (!currentSupplierId) {
+        // Create a minimal draft to get supplier ID
+        const draftPayload = {
+          supplierName: formData.supplierName || 'Draft Application',
+          legalNature: formData.legalNature || 'company',
+          serviceType: formData.serviceTypes || 'professional_services',
+          currentStep: activeStep,
+          lastModified: new Date().toISOString()
+        };
+        const createResponse = await api.post('/suppliers/draft', draftPayload);
+        if (createResponse.data.data?._id) {
+          currentSupplierId = createResponse.data.data._id;
+          setApplicationId(currentSupplierId);
+        } else {
+          throw new Error('Failed to create supplier draft');
+        }
+      }
+
+      // Upload all files first
+      const updatedFormData = await uploadAllFiles(currentSupplierId);
+      setFormData(updatedFormData);
+
+      // Create payload with ALL form data from all steps (now with uploaded filenames)
       const payload = { 
-        ...formData, 
+        ...updatedFormData, 
         status: activeStep === steps.length - 1 ? 'submitted' : 'draft',
         currentStep: activeStep, // Save the current step the user is on
         lastModified: new Date().toISOString()
       };
       
-      // Handle file objects - extract filenames for storage
-      // File objects can't be serialized to JSON, so we store filenames instead
+      // Ensure file fields are strings (filenames) or null, not File objects
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
@@ -671,33 +855,33 @@ const SupplierApplication = () => {
       
       fileFields.forEach(field => {
         if (payload[field] instanceof File) {
-          // Store filename and keep File object in formData for potential upload
+          // This shouldn't happen after upload, but handle it just in case
           payload[field] = payload[field].name;
         } else if (payload[field] === undefined || payload[field] === null) {
           // Preserve existing filename if it's a non-empty string, otherwise keep null
-          // This ensures that when navigating, we don't lose previously saved filenames
-          if (typeof formData[field] === 'string' && formData[field].trim() !== '') {
-            payload[field] = formData[field];
+          if (typeof updatedFormData[field] === 'string' && updatedFormData[field].trim() !== '') {
+            payload[field] = updatedFormData[field];
           } else {
             payload[field] = null;
           }
         }
-        // If payload[field] is already a string (from previous load), keep it as is
       });
       
       // Handle array file fields
       const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
       arrayFileFields.forEach(field => {
         if (Array.isArray(payload[field]) && payload[field].length > 0) {
-          // If array contains File objects, extract filenames
-          if (payload[field][0] instanceof File) {
-            payload[field] = payload[field].map(file => file.name);
-          }
-          // If it's already an array of strings, keep it
+          // Ensure all items are strings (filenames), not File objects
+          payload[field] = payload[field].map(file => {
+            if (file instanceof File) {
+              return file.name;
+            }
+            return file;
+          }).filter(f => f && typeof f === 'string' && f.trim() !== '');
         } else if (payload[field] === undefined) {
           // Preserve existing array if it has valid filenames
-          if (Array.isArray(formData[field]) && formData[field].length > 0) {
-            payload[field] = formData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
+          if (Array.isArray(updatedFormData[field]) && updatedFormData[field].length > 0) {
+            payload[field] = updatedFormData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
           } else {
             payload[field] = [];
           }
@@ -742,166 +926,19 @@ const SupplierApplication = () => {
       
       // Check if this is the last step (submission)
       if (activeStep === steps.length - 1) {
-        // Submit application - save data and submit in one call
-        if (applicationId) {
-          // Prepare payload with all form data (convert File objects to filenames)
-          const submitPayload = { ...formData };
-          
-          // Convert File objects to filenames
-          const fileFields = [
-            'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
-            'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-            'declarationSignatureFile'
-          ];
-          
-          fileFields.forEach(field => {
-            if (submitPayload[field] instanceof File) {
-              submitPayload[field] = submitPayload[field].name;
-            } else if (submitPayload[field] === undefined || submitPayload[field] === null) {
-              if (typeof formData[field] === 'string' && formData[field].trim() !== '') {
-                submitPayload[field] = formData[field];
-              } else {
-                submitPayload[field] = null;
-              }
-            }
-          });
-          
-          // Handle array file fields
-          const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
-          arrayFileFields.forEach(field => {
-            if (Array.isArray(submitPayload[field]) && submitPayload[field].length > 0) {
-              if (submitPayload[field][0] instanceof File) {
-                submitPayload[field] = submitPayload[field].map(file => file.name);
-              }
-            } else if (submitPayload[field] === undefined) {
-              if (Array.isArray(formData[field]) && formData[field].length > 0) {
-                submitPayload[field] = formData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
-              } else {
-                submitPayload[field] = [];
-              }
-            }
-          });
-          
-          submitPayload.currentStep = activeStep;
-          submitPayload.lastModified = new Date().toISOString();
-          
-          // Submit the application - the submit endpoint will save the form data and change status to 'pending_procurement'
-          await api.post(`/suppliers/${applicationId}/submit`, submitPayload);
-        } else {
-          // Create new application first, then submit
-          // Prepare submit payload (same as above)
-          const submitPayload = { ...formData };
-          
-          // Convert File objects to filenames
-          const fileFields = [
-            'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
-            'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-            'declarationSignatureFile'
-          ];
-          
-          fileFields.forEach(field => {
-            if (submitPayload[field] instanceof File) {
-              submitPayload[field] = submitPayload[field].name;
-            } else if (submitPayload[field] === undefined || submitPayload[field] === null) {
-              if (typeof formData[field] === 'string' && formData[field].trim() !== '') {
-                submitPayload[field] = formData[field];
-              } else {
-                submitPayload[field] = null;
-              }
-            }
-          });
-          
-          // Handle array file fields
-          const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
-          arrayFileFields.forEach(field => {
-            if (Array.isArray(submitPayload[field]) && submitPayload[field].length > 0) {
-              if (submitPayload[field][0] instanceof File) {
-                submitPayload[field] = submitPayload[field].map(file => file.name);
-              }
-            } else if (submitPayload[field] === undefined) {
-              if (Array.isArray(formData[field]) && formData[field].length > 0) {
-                submitPayload[field] = formData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
-              } else {
-                submitPayload[field] = [];
-              }
-            }
-          });
-          
-          submitPayload.currentStep = activeStep;
-          submitPayload.lastModified = new Date().toISOString();
-          
-          const createResponse = await api.post('/suppliers/draft', payload);
-          if (createResponse.data.data?._id) {
-            setApplicationId(createResponse.data.data._id);
-            // Now submit the newly created application
-            await api.post(`/suppliers/${createResponse.data.data._id}/submit`, submitPayload);
-          }
-        }
+        // Submit application - save data and submit
+        payload.status = 'submitted';
+        await api.put(`/suppliers/${currentSupplierId}`, payload);
+        await api.post(`/suppliers/${currentSupplierId}/submit`, payload);
         toast.success('Application submitted successfully!');
         navigate('/dashboard');
       } else {
         // Not the last step - save and continue
-        let response;
-        if (applicationId) {
-          // Update existing application with ALL form data
-          response = await api.put(`/suppliers/${applicationId}`, payload);
-        } else {
-          // Create new application with ALL form data
-          response = await api.post('/suppliers/draft', payload);
-          if (response.data.data?._id) {
-            setApplicationId(response.data.data._id);
-          }
-        }
-
-        // Move to next step and update currentStep
+        await api.put(`/suppliers/${currentSupplierId}`, payload);
+        
+        // Move to next step
         const nextStep = activeStep + 1;
         setActiveStep(nextStep);
-        
-        // Update currentStep after moving to next step (with all form data again to ensure nothing is lost)
-        if (applicationId) {
-          // Create a payload with formData, converting File objects to filenames
-          const stepUpdatePayload = { ...formData };
-          
-          // Convert File objects to filenames
-          const fileFields = [
-            'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
-            'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-            'declarationSignatureFile'
-          ];
-          
-          fileFields.forEach(field => {
-            if (stepUpdatePayload[field] instanceof File) {
-              stepUpdatePayload[field] = stepUpdatePayload[field].name;
-            } else if (stepUpdatePayload[field] === undefined || stepUpdatePayload[field] === null) {
-              if (typeof formData[field] === 'string' && formData[field].trim() !== '') {
-                stepUpdatePayload[field] = formData[field];
-              } else {
-                stepUpdatePayload[field] = null;
-              }
-            }
-          });
-          
-          // Handle array file fields
-          const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
-          arrayFileFields.forEach(field => {
-            if (Array.isArray(stepUpdatePayload[field]) && stepUpdatePayload[field].length > 0) {
-              if (stepUpdatePayload[field][0] instanceof File) {
-                stepUpdatePayload[field] = stepUpdatePayload[field].map(file => file.name);
-              }
-            } else if (stepUpdatePayload[field] === undefined) {
-              if (Array.isArray(formData[field]) && formData[field].length > 0) {
-                stepUpdatePayload[field] = formData[field].filter(f => f && typeof f === 'string' && f.trim() !== '');
-              } else {
-                stepUpdatePayload[field] = [];
-              }
-            }
-          });
-          
-          stepUpdatePayload.currentStep = nextStep;
-          stepUpdatePayload.lastModified = new Date().toISOString();
-          
-          await api.put(`/suppliers/${applicationId}`, stepUpdatePayload);
-        }
         toast.success('Progress saved!');
       }
     } catch (error) {
@@ -3260,6 +3297,7 @@ const SupplierApplication = () => {
                             </Box>
                             <IconButton
                               size="small"
+                              onClick={() => handleViewFile(fileName, documentName)}
                               sx={{
                                 color: '#6b7280',
                                 '&:hover': {
@@ -3437,6 +3475,7 @@ const SupplierApplication = () => {
                             </Box>
                             <IconButton
                               size="small"
+                              onClick={() => handleViewFile(fileName, documentName)}
                               sx={{
                                 color: '#6b7280',
                                 '&:hover': {
@@ -3992,6 +4031,82 @@ const SupplierApplication = () => {
           </Box>
         </Box>
       </Container>
+
+      {/* File Viewer Modal */}
+      <Dialog
+        open={fileViewerOpen}
+        onClose={handleCloseFileViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            maxHeight: '90vh',
+            borderRadius: '8px',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">{fileViewerName}</Typography>
+          <IconButton onClick={handleCloseFileViewer} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', backgroundColor: '#f5f5f5' }}>
+          {fileViewerUrl && (
+            <Box sx={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+              {fileViewerUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                imageLoadError ? (
+                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Image could not be loaded</Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => window.open(fileViewerUrl, '_blank')}
+                      sx={{ mt: 2 }}
+                    >
+                      Open in New Tab
+                    </Button>
+                  </Box>
+                ) : (
+                  <img
+                    src={fileViewerUrl}
+                    alt={fileViewerName}
+                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+                    onError={() => setImageLoadError(true)}
+                  />
+                )
+              ) : fileViewerUrl.match(/\.(pdf)$/i) ? (
+                <iframe
+                  src={fileViewerUrl}
+                  title={fileViewerName}
+                  style={{ width: '100%', height: '70vh', border: 'none' }}
+                />
+              ) : (
+                <Box sx={{ textAlign: 'center', p: 4 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>File Preview Not Available</Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => window.open(fileViewerUrl, '_blank')}
+                    sx={{ mt: 2 }}
+                  >
+                    Open in New Tab
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFileViewer}>Close</Button>
+          {fileViewerUrl && (
+            <Button
+              variant="contained"
+              onClick={() => window.open(fileViewerUrl, '_blank')}
+            >
+              Open in New Tab
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       <Footer />
     </Box>

@@ -47,7 +47,7 @@ const contractSchema = new mongoose.Schema({
     enum: ['draft', 'active', 'expired', 'terminated', 'renewed'],
     default: 'draft'
   },
-  
+
   // Contract Documents
   signedContract: {
     type: mongoose.Schema.Types.ObjectId,
@@ -57,7 +57,7 @@ const contractSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Document'
   }],
-  
+
   // Payment Terms
   paymentTerms: {
     creditPeriod: {
@@ -78,7 +78,7 @@ const contractSchema = new mongoose.Schema({
       }
     }]
   },
-  
+
   // Renewal Information
   renewalOptions: {
     autoRenew: {
@@ -90,7 +90,7 @@ const contractSchema = new mongoose.Schema({
     },
     renewalTerms: String
   },
-  
+
   // Amendment History
   amendments: [{
     amendmentNumber: String,
@@ -109,7 +109,7 @@ const contractSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  
+
   // Compliance
   complianceRequirements: [{
     requirement: String,
@@ -120,7 +120,7 @@ const contractSchema = new mongoose.Schema({
     dueDate: Date,
     notes: String
   }],
-  
+
   // Notifications
   notifications: {
     expiryReminder: {
@@ -138,7 +138,7 @@ const contractSchema = new mongoose.Schema({
       }
     }
   },
-  
+
   // Metadata
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -158,6 +158,22 @@ const contractSchema = new mongoose.Schema({
   },
   notes: {
     type: String
+  },
+  validityMonths: {
+    type: Number
+  },
+  noticePeriodMonths: {
+    type: Number
+  },
+  department: {
+    type: String
+  },
+  terminatedAt: {
+    type: Date
+  },
+  terminatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true
@@ -170,32 +186,32 @@ contractSchema.index({ endDate: 1 });
 contractSchema.index({ contractNumber: 1 });
 
 // Virtual to check if contract is expiring soon
-contractSchema.virtual('isExpiringSoon').get(function() {
+contractSchema.virtual('isExpiringSoon').get(function () {
   if (!this.endDate) return false;
   const daysUntilExpiry = Math.ceil((this.endDate - new Date()) / (1000 * 60 * 60 * 24));
   return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
 });
 
 // Virtual to check if contract is expired
-contractSchema.virtual('isExpired').get(function() {
+contractSchema.virtual('isExpired').get(function () {
   return this.endDate && this.endDate < new Date();
 });
 
 // Method to generate contract number
-contractSchema.statics.generateContractNumber = async function() {
+contractSchema.statics.generateContractNumber = async function () {
   const currentYear = new Date().getFullYear();
   const prefix = `CTR-${currentYear}-`;
-  
+
   const lastContract = await this.findOne({
     contractNumber: new RegExp(`^${prefix}`)
   }).sort({ contractNumber: -1 });
-  
+
   let nextNumber = 1;
   if (lastContract) {
     const lastNumber = parseInt(lastContract.contractNumber.split('-')[2]);
     nextNumber = lastNumber + 1;
   }
-  
+
   return `${prefix}${String(nextNumber).padStart(4, '0')}`;
 };
 

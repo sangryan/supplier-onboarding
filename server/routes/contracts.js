@@ -72,20 +72,69 @@ router.post('/', protect, authorize('legal', 'procurement', 'super_admin'), [
   }
 });
 
+// @route   GET /api/contracts/stats
+// @desc    Get contract statistics
+// @access  Private
+router.get('/stats', protect, async (req, res) => {
+  try {
+    const active = await Contract.countDocuments({ status: 'active' });
+    const expired = await Contract.countDocuments({ status: 'expired' });
+
+    // Expiring soon: active contracts ending in 30 days
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 30);
+    const expiringSoon = await Contract.countDocuments({
+      status: 'active',
+      endDate: {
+        $gte: new Date(),
+        $lte: expiryDate
+      }
+    });
+
+    // AdHoc Vendors count (includes those with contracts and those pending upload)
+    const adHocSuppliersForStats = await Supplier.find({ vendorNumber: /^VND-ADHOC-/ }).select('_id status contract');
+    const adHocSupplierIdsForStats = adHocSuppliersForStats.map(s => s._id);
+
+    // Count contracts for adhoc suppliers
+    const adHocContractsCount = await Contract.countDocuments({ supplier: { $in: adHocSupplierIdsForStats } });
+
+    // Count adhoc suppliers who are pending_contract_upload but don't have a contract yet
+    const pendingAdHocSuppliersCount = adHocSuppliersForStats.filter(s => s.status === 'pending_contract_upload' && !s.contract).length;
+
+    const adHoc = adHocContractsCount + pendingAdHocSuppliersCount;
+
+    res.json({
+      success: true,
+      data: {
+        active,
+        expired,
+        expiringSoon,
+        adHoc
+      }
+    });
+  } catch (error) {
+    console.error('Get contract stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching contract statistics'
+    });
+  }
+});
+
 // @route   GET /api/contracts
 // @desc    Get all contracts
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
-    
+    const { status, search, page = 1, limit = 10, supplierType } = req.query;
+
     let query = {};
-    
+
     // Filter by status
     if (status) {
       query.status = status;
     }
-    
+
     // Search
     if (search) {
       query.$or = [
@@ -94,24 +143,87 @@ router.get('/', protect, async (req, res) => {
       ];
     }
 
-    const contracts = await Contract.find(query)
-      .populate('supplier', 'supplierName vendorNumber')
+    // Filter by supplier type (Ad-hoc vs Registered)
+    if (supplierType) {
+      if (supplierType === 'adhoc') {
+        const adHocSuppliers = await Supplier.find({ vendorNumber: /^VND-ADHOC-/ }).select('_id');
+        query.supplier = { $in: adHocSuppliers.map(s => s._id) };
+      } else if (supplierType === 'registered') {
+        const registeredSuppliers = await Supplier.find({
+          $or: [
+            { vendorNumber: { $not: /^VND-ADHOC-/ } },
+            { vendorNumber: { $exists: false } }
+          ]
+        }).select('_id');
+        query.supplier = { $in: registeredSuppliers.map(s => s._id) };
+      }
+    }
+
+    // Fetch contracts and filter by associated supplier status or contact status
+    let contracts = await Contract.find(query)
+      .populate('supplier', 'supplierName vendorNumber status')
       .populate('uploadedBy', 'firstName lastName')
       .populate('signedContract')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
       .lean();
 
-    const count = await Contract.countDocuments(query);
+    // FILTER: Only keep if contract is active OR supplier is in 'pending_contract_upload'
+    contracts = contracts.filter(c => {
+      if (c.status === 'active') return true;
+      if (c.supplier && c.supplier.status === 'pending_contract_upload') return true;
+      return false;
+    });
+
+    // Also find suppliers who are in 'pending_contract_upload' stage but might not have a contract record yet
+    let supplierQuery = { status: 'pending_contract_upload' };
+    if (search) {
+      supplierQuery.supplierName = { $regex: search, $options: 'i' };
+    }
+
+    if (supplierType) {
+      if (supplierType === 'adhoc') {
+        supplierQuery.vendorNumber = /^VND-ADHOC-/;
+      } else if (supplierType === 'registered') {
+        supplierQuery.$or = [
+          { vendorNumber: { $not: /^VND-ADHOC-/ } },
+          { vendorNumber: { $exists: false } }
+        ];
+      }
+    }
+    const pendingSuppliers = await Supplier.find(supplierQuery).populate('contract').lean();
+
+    // Merge pending suppliers who don't have contracts in the list yet
+    pendingSuppliers.forEach(s => {
+      const hasContractInList = contracts.some(c => c.supplier && c.supplier._id.toString() === s._id.toString());
+      if (!hasContractInList) {
+        contracts.push({
+          _id: s.contract?._id || s._id,
+          supplier: {
+            _id: s._id,
+            supplierName: s.supplierName,
+            vendorNumber: s.vendorNumber,
+            status: s.status
+          },
+          status: 'pending_upload',
+          createdAt: s.updatedAt,
+          updatedAt: s.updatedAt,
+          isPlaceholder: !s.contract
+        });
+      }
+    });
+
+    // Re-sort after merge
+    contracts.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+    const total = contracts.length;
+    const paginatedContracts = contracts.slice((page - 1) * limit, page * limit);
 
     res.json({
       success: true,
-      data: contracts,
+      data: paginatedContracts,
       pagination: {
-        total: count,
+        total,
         page: parseInt(page),
-        pages: Math.ceil(count / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -144,9 +256,23 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
+    // Get supplier documents
+    let supplierDocuments = [];
+    if (contract.supplier) {
+      supplierDocuments = await Document.find({ supplier: contract.supplier._id })
+        .populate('uploadedBy', 'firstName lastName')
+        .sort({ uploadedAt: -1 });
+    }
+
+    // Convert to plain object to attach documents
+    const contractObj = contract.toObject();
+    if (contractObj.supplier) {
+      contractObj.supplier.documents = supplierDocuments;
+    }
+
     res.json({
       success: true,
-      data: contract
+      data: contractObj
     });
   } catch (error) {
     console.error('Get contract error:', error);
@@ -162,6 +288,17 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private (Legal, Procurement)
 router.put('/:id', protect, authorize('legal', 'procurement', 'super_admin'), async (req, res) => {
   try {
+    // If status is being set to active, ensure signedContract exists
+    if (req.body.status === 'active') {
+      const currentContract = await Contract.findById(req.params.id);
+      if (!currentContract.signedContract && !req.body.signedContract) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot activate contract without a signed document. Please upload the signed contract first.'
+        });
+      }
+    }
+
     const contract = await Contract.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -221,7 +358,7 @@ router.post('/:id/activate', protect, authorize('legal', 'super_admin'), async (
       await createNotification({
         recipient: supplier.submittedBy._id,
         type: 'contract_uploaded',
-        title: 'Contract Activated',
+        title: `[${supplier.applicationNumber}] Contract Activated`,
         message: `Your contract ${contract.contractNumber} has been activated`,
         relatedEntity: {
           entityType: 'contract',
@@ -281,6 +418,14 @@ router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), up
 
     // Link document to contract
     contract.signedContract = document._id;
+    contract.status = 'active';
+
+    // Update additional fields from request body
+    if (req.body.validityMonths) contract.validityMonths = Number(req.body.validityMonths);
+    if (req.body.noticePeriodMonths) contract.noticePeriodMonths = Number(req.body.noticePeriodMonths);
+    if (req.body.department) contract.department = req.body.department;
+    if (req.body.comment) contract.notes = req.body.comment;
+
     await contract.save();
 
     res.json({
@@ -369,7 +514,7 @@ router.post('/:id/amendments', protect, authorize('legal', 'super_admin'), uploa
 router.get('/reports/expiring', protect, authorize('management', 'procurement', 'legal', 'super_admin'), async (req, res) => {
   try {
     const { days = 30 } = req.query;
-    
+
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + parseInt(days));
 
@@ -392,6 +537,64 @@ router.get('/reports/expiring', protect, authorize('management', 'procurement', 
     res.status(500).json({
       success: false,
       message: 'Error fetching expiring contracts'
+    });
+  }
+});
+
+// @route   POST /api/contracts/:id/terminate
+// @desc    Terminate contract
+// @access  Private (Legal)
+router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async (req, res) => {
+  try {
+    const contract = await Contract.findById(req.params.id)
+      .populate('supplier');
+
+    if (!contract) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contract not found'
+      });
+    }
+
+    if (contract.status === 'terminated') {
+      return res.status(400).json({
+        success: false,
+        message: 'Contract is already terminated'
+      });
+    }
+
+    contract.status = 'terminated';
+    contract.terminatedAt = new Date();
+    contract.terminatedBy = req.user.id;
+    await contract.save();
+
+    // Notify supplier
+    const supplier = await Supplier.findById(contract.supplier._id).populate('submittedBy');
+    if (supplier && supplier.submittedBy) {
+      await createNotification({
+        recipient: supplier.submittedBy._id,
+        type: 'contract_terminated',
+        title: `[${supplier.applicationNumber}] Contract Terminated`,
+        message: `Your contract ${contract.contractNumber} has been terminated.`,
+        relatedEntity: {
+          entityType: 'contract',
+          entityId: contract._id
+        },
+        actionUrl: `/contracts/${contract._id}`,
+        priority: 'high'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Contract terminated successfully',
+      data: contract
+    });
+  } catch (error) {
+    console.error('Terminate contract error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error terminating contract'
     });
   }
 });

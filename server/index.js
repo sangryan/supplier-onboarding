@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:3000',
+  'http://localhost:3001',
   'https://supplier-onboarding-portal.onrender.com'
 ].filter(Boolean);
 
@@ -28,7 +30,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
       callback(null, true);
     } else {
@@ -46,14 +48,16 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files for uploads
-app.use('/uploads', express.static('uploads'));
+// Static files for uploads - use absolute path to ensure correct directory
+// Uploads are stored at project root, so go up one level from server directory
+const uploadsPath = path.join(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // Health check endpoint (BEFORE rate limiting to avoid 429 errors from frequent health checks)
 app.get('/api/health', (req, res) => {
   const { getEmailStatus } = require('./utils/email');
   const emailStatus = getEmailStatus();
-  
+
   res.status(200).json({
     success: true,
     message: 'Server is running',
@@ -91,6 +95,7 @@ app.use('/api/contracts', require('./routes/contracts'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/adhoc-vendors', require('./routes/adhocVendors'));
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
@@ -117,7 +122,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Accepting connections on 0.0.0.0:${PORT}`);
-  
+
   // Connect to database after server starts
   if (process.env.MONGODB_URI) {
     mongoose.connect(process.env.MONGODB_URI)

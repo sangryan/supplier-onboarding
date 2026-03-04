@@ -30,6 +30,8 @@ import ApplicationStatus from './pages/Supplier/ApplicationStatus';
 import SupplierList from './pages/Admin/SupplierList';
 import SupplierDetails from './pages/Admin/SupplierDetails';
 import TaskListWrapper from './pages/Admin/TaskListWrapper';
+import AllTasks from './pages/Admin/AllTasks';
+import AdHocVendorForm from './pages/Admin/AdHocVendorForm';
 import ContractList from './pages/Contracts/ContractList';
 import ContractDetails from './pages/Contracts/ContractDetails';
 import UserManagement from './pages/Admin/UserManagement';
@@ -44,11 +46,11 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
       }}>
         Loading...
       </div>
@@ -58,7 +60,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
@@ -69,25 +71,25 @@ function App() {
         draggable
         pauseOnHover
       />
-      
+
       <Routes>
         {/* Landing Page */}
-        <Route 
-          path="/" 
-          element={!user ? <LandingPage /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
+        <Route
+          path="/"
+          element={!user ? <LandingPage /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>}
         />
 
         {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={!user ? <Login /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
+        <Route
+          path="/login"
+          element={!user ? <Login /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>}
         />
-        <Route 
-          path="/register" 
-          element={!user ? <Register /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>} 
+        <Route
+          path="/register"
+          element={!user ? <Register /> : <SupplierProfileGuard><Navigate to={getDefaultRoute(user)} /></SupplierProfileGuard>}
         />
-        <Route 
-          path="/2fa" 
+        <Route
+          path="/2fa"
           element={
             !user ? (
               <TwoFactorAuth />
@@ -96,15 +98,15 @@ function App() {
               // But check if email is verified - if not, allow 2FA
               <Navigate to={getDefaultRoute(user)} replace />
             )
-          } 
+          }
         />
-        <Route 
-          path="/forgot-password" 
-          element={!user ? <ForgotPassword /> : <Navigate to={getDefaultRoute(user)} />} 
+        <Route
+          path="/forgot-password"
+          element={!user ? <ForgotPassword /> : <Navigate to={getDefaultRoute(user)} />}
         />
-        <Route 
-          path="/reset-password/:token" 
-          element={!user ? <ResetPassword /> : <Navigate to={getDefaultRoute(user)} />} 
+        <Route
+          path="/reset-password/:token"
+          element={!user ? <ResetPassword /> : <Navigate to={getDefaultRoute(user)} />}
         />
 
         {/* Protected Routes */}
@@ -113,28 +115,30 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit-contact" element={<EditContactInfo />} />
           <Route path="/profile/edit-company" element={<EditCompanyDetails />} />
-          
+
           {/* Supplier Routes */}
           <Route path="/application/new" element={<SupplierApplication />} />
           <Route path="/application/:id/edit" element={<SupplierApplication />} />
           <Route path="/application/:id" element={<ApplicationStatus />} />
-          
+
           {/* Admin/Procurement/Legal Routes */}
           <Route path="/suppliers" element={<SupplierList />} />
           <Route path="/suppliers/:id" element={<SupplierDetails />} />
           <Route path="/tasks" element={<TaskListWrapper />} />
-          
+          <Route path="/tasks/all" element={<AllTasks />} />
+          <Route path="/vendors/new" element={<AdHocVendorForm />} />
+
           {/* Contract Routes */}
           <Route path="/contracts" element={<ContractList />} />
           <Route path="/contracts/:id" element={<ContractDetails />} />
-          
+
           {/* User Management */}
           <Route path="/users" element={<UserManagement />} />
-          
+
           {/* Reports */}
           <Route path="/reports" element={<Reports />} />
         </Route>
-        
+
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

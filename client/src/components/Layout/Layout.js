@@ -17,6 +17,7 @@ import {
   Menu,
   MenuItem,
   Avatar,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -36,6 +37,7 @@ import {
   Home as HomeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../utils/api';
 
 const drawerWidth = 280;
 
@@ -45,12 +47,66 @@ const Layout = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Suppliers don't need sidebar
   const isSupplier = user?.role === 'supplier';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await api.get('/notifications?limit=5');
+      setNotifications(response.data.data);
+      setUnreadCount(response.data.unreadCount);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 60000); // Poll every minute
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const handleNotifMenu = (event) => {
+    setNotifAnchorEl(event.currentTarget);
+  };
+
+  const handleNotifClose = () => {
+    setNotifAnchorEl(null);
+  };
+
+  const handleNotifClick = async (notif) => {
+    try {
+      if (!notif.isRead) {
+        await api.put(`/notifications/${notif._id}/read`);
+        fetchNotifications();
+      }
+      handleNotifClose();
+      if (notif.actionUrl) {
+        navigate(notif.actionUrl);
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.put('/notifications/mark-all-read');
+      fetchNotifications();
+      handleNotifClose();
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
   const handleMenu = (event) => {
@@ -79,11 +135,16 @@ const Layout = () => {
         { text: 'My Application', icon: <AssignmentIcon />, path: '/application/status' },
         { text: 'New Application', icon: <BusinessIcon />, path: '/application/new' },
       ];
-    } else if (user.role === 'procurement' || user.role === 'legal') {
+    } else if (user.role === 'procurement') {
       return [
         { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
         { text: 'All tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
         { text: 'Supplier List', icon: <BusinessIcon />, path: '/suppliers' },
+      ];
+    } else if (user.role === 'legal') {
+      return [
+        { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
+        { text: 'Contract Management', icon: <DescriptionIcon />, path: '/contracts' },
       ];
     } else {
       return [
@@ -120,8 +181,8 @@ const Layout = () => {
               flexShrink: 0
             }}
           />
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             component="div"
             sx={{
               fontWeight: 600,
@@ -139,11 +200,11 @@ const Layout = () => {
       {/* Platform Section */}
       <Box sx={{ flexGrow: 1, py: 1, overflow: 'auto', backgroundColor: '#f3f4f6' }}>
         <Box sx={{ px: 2, py: 1 }}>
-          <Typography 
-            sx={{ 
-              fontSize: '12px', 
-              fontWeight: 600, 
-              color: '#6b7280', 
+          <Typography
+            sx={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#6b7280',
               letterSpacing: '0.5px',
               mb: 1
             }}
@@ -173,7 +234,7 @@ const Layout = () => {
                   <ListItemIcon sx={{ minWidth: 40, color: active ? '#111827' : '#6b7280' }}>
                     {item.icon}
                   </ListItemIcon>
-                  <ListItemText 
+                  <ListItemText
                     primary={item.text}
                     primaryTypographyProps={{
                       fontSize: '14px',
@@ -189,11 +250,11 @@ const Layout = () => {
         {/* Other Section */}
         <Box sx={{ mt: 2, px: 1 }}>
           <Box sx={{ px: 2, py: 1 }}>
-            <Typography 
-              sx={{ 
-                fontSize: '12px', 
-                fontWeight: 600, 
-                color: '#6b7280', 
+            <Typography
+              sx={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#6b7280',
                 letterSpacing: '0.5px',
                 mb: 1
               }}
@@ -207,9 +268,9 @@ const Layout = () => {
                 sx={{
                   borderRadius: '8px',
                   color: '#374151',
-                              '&:hover': {
-                                backgroundColor: '#d1d5db',
-                              },
+                  '&:hover': {
+                    backgroundColor: '#d1d5db',
+                  },
                   py: 1.5,
                   px: 2,
                   minHeight: '44px'
@@ -218,7 +279,7 @@ const Layout = () => {
                 <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
                   <HeadsetIcon />
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary="Help and Support"
                   primaryTypographyProps={{
                     fontSize: '14px',
@@ -232,9 +293,9 @@ const Layout = () => {
                 sx={{
                   borderRadius: '8px',
                   color: '#374151',
-                              '&:hover': {
-                                backgroundColor: '#d1d5db',
-                              },
+                  '&:hover': {
+                    backgroundColor: '#d1d5db',
+                  },
                   py: 1.5,
                   px: 2,
                   minHeight: '44px'
@@ -243,7 +304,7 @@ const Layout = () => {
                 <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
                   <HistoryIcon />
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary="Feedback"
                   primaryTypographyProps={{
                     fontSize: '14px',
@@ -259,9 +320,9 @@ const Layout = () => {
       {/* Footer */}
       <Box sx={{ borderTop: '1px solid #e0e0e0', p: 2, backgroundColor: '#f3f4f6' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Avatar sx={{ 
-            width: 32, 
-            height: 32, 
+          <Avatar sx={{
+            width: 32,
+            height: 32,
             bgcolor: '#fff',
             color: '#6b7280',
             fontSize: '12px',
@@ -315,7 +376,7 @@ const Layout = () => {
     <Box sx={{ display: 'flex' }}>
       <AppBar
         position="fixed"
-        sx={{ 
+        sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
           backgroundColor: '#fff',
           color: '#000',
@@ -335,7 +396,7 @@ const Layout = () => {
                 aria-label="open drawer"
                 edge="start"
                 onClick={handleDrawerToggle}
-                sx={{ 
+                sx={{
                   mr: { xs: 0, sm: 2 },
                   display: { xs: 'block', sm: 'none' },
                   color: '#000',
@@ -345,7 +406,7 @@ const Layout = () => {
                 <MenuIcon />
               </IconButton>
             )}
-            
+
             {isSupplier ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box
@@ -359,7 +420,7 @@ const Layout = () => {
                   }}
                 />
                 <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-                  <Typography 
+                  <Typography
                     sx={{
                       color: '#000',
                       fontWeight: 600,
@@ -370,7 +431,7 @@ const Layout = () => {
                   >
                     Supplier
                   </Typography>
-                  <Typography 
+                  <Typography
                     sx={{
                       color: '#000',
                       fontWeight: 600,
@@ -382,7 +443,7 @@ const Layout = () => {
                     Onboarding
                   </Typography>
                 </Box>
-                <Typography 
+                <Typography
                   sx={{
                     display: { xs: 'none', sm: 'block' },
                     color: '#000',
@@ -406,7 +467,7 @@ const Layout = () => {
                   }}
                 />
                 <Box>
-                  <Typography 
+                  <Typography
                     sx={{
                       color: '#000',
                       fontWeight: 600,
@@ -417,7 +478,7 @@ const Layout = () => {
                   >
                     Supplier
                   </Typography>
-                  <Typography 
+                  <Typography
                     sx={{
                       color: '#000',
                       fontWeight: 600,
@@ -434,11 +495,84 @@ const Layout = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <IconButton sx={{ color: '#6b7280', p: 1 }}>
-              <Badge badgeContent={0} color="error">
+            <IconButton
+              sx={{ color: '#6b7280', p: 1 }}
+              onClick={handleNotifMenu}
+            >
+              <Badge badgeContent={unreadCount} color="error">
                 <NotificationsOutlinedIcon sx={{ color: '#6b7280' }} />
               </Badge>
             </IconButton>
+
+            <Menu
+              anchorEl={notifAnchorEl}
+              open={Boolean(notifAnchorEl)}
+              onClose={handleNotifClose}
+              PaperProps={{
+                sx: {
+                  width: 320,
+                  maxHeight: 480,
+                  mt: 1.5,
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                  borderRadius: '12px',
+                  border: '1px solid #f3f4f6'
+                }
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f3f4f6' }}>
+                <Typography sx={{ fontWeight: 600, fontSize: '14px' }}>Notifications</Typography>
+                {unreadCount > 0 && (
+                  <Typography
+                    onClick={handleMarkAllRead}
+                    sx={{
+                      fontSize: '12px',
+                      color: '#007bff',
+                      cursor: 'pointer',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                  >
+                    Mark all read
+                  </Typography>
+                )}
+              </Box>
+              {notifications.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography sx={{ color: '#9ca3af', fontSize: '13px' }}>No notifications</Typography>
+                </Box>
+              ) : (
+                <List sx={{ pt: 0, pb: 0 }}>
+                  {notifications.map((notif) => (
+                    <ListItem
+                      key={notif._id}
+                      disablePadding
+                      divider
+                      sx={{
+                        backgroundColor: notif.isRead ? 'transparent' : '#f9fafb'
+                      }}
+                    >
+                      <ListItemButton onClick={() => handleNotifClick(notif)} sx={{ px: 2, py: 1.5, flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <Typography sx={{ fontWeight: notif.isRead ? 500 : 700, fontSize: '13px', color: '#111827', mb: 0.5 }}>
+                          {notif.title}
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4, mb: 1 }}>
+                          {notif.message}
+                        </Typography>
+                        <Typography sx={{ fontSize: '10px', color: '#9ca3af' }}>
+                          {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+              <Box sx={{ p: 1.5, textAlign: 'center' }}>
+                <Button fullWidth size="small" variant="text" sx={{ color: '#6b7280', textTransform: 'none', fontSize: '12px' }}>
+                  View all notifications
+                </Button>
+              </Box>
+            </Menu>
 
             <IconButton
               size="large"
@@ -446,7 +580,7 @@ const Layout = () => {
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleMenu}
-              sx={{ 
+              sx={{
                 color: '#000',
                 p: 0,
                 '&:hover': {
@@ -454,9 +588,9 @@ const Layout = () => {
                 }
               }}
             >
-              <Avatar sx={{ 
-                width: 32, 
-                height: 32, 
+              <Avatar sx={{
+                width: 32,
+                height: 32,
                 bgcolor: '#fff',
                 color: '#6b7280',
                 fontSize: '11px',
@@ -522,8 +656,8 @@ const Layout = () => {
             }}
             sx={{
               display: { xs: 'block', sm: 'none' },
-              '& .MuiDrawer-paper': { 
-                boxSizing: 'border-box', 
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
                 width: drawerWidth,
                 borderRight: '1px solid #e0e0e0',
                 backgroundColor: '#f3f4f6',
@@ -538,8 +672,8 @@ const Layout = () => {
             variant="permanent"
             sx={{
               display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': { 
-                boxSizing: 'border-box', 
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
                 width: `${drawerWidth}px`,
                 borderRight: '1px solid #e0e0e0',
                 backgroundColor: '#f3f4f6',
