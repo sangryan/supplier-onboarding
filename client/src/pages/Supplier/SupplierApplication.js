@@ -95,7 +95,7 @@ const creditPeriods = ['7 Days', '14 Days', '30 Days', '60 Days', '90 Days'];
 const entityTypes = [
   'Public/Private Company',
   'Limited Company',
-  'Public Limited Company', 
+  'Public Limited Company',
   'Partnership',
   'Sole Proprietorship',
   'Trust',
@@ -134,21 +134,21 @@ const SupplierApplication = () => {
     companyWebsite: '',
     legalNature: '',
     physicalAddress: '',
-    
+
     // Contact Person
     contactFullName: '',
     contactRelationship: '',
     contactIdPassport: '',
     contactPhone: '',
     contactEmail: '',
-    
+
     // Payment Details
     bankName: '',
     accountNumber: '',
     branch: '',
     currency: '',
     creditPeriod: '',
-    
+
     // Entity Details
     entityType: '',
     serviceTypes: '',
@@ -164,7 +164,7 @@ const SupplierApplication = () => {
     directorsIds: [],
     practicingCertificates: [],
     keyMembersResumes: [],
-    
+
     // Declarations
     sourceOfWealth: '',
     declarantFullName: '',
@@ -209,10 +209,10 @@ const SupplierApplication = () => {
 
   const handleViewFile = (file, fileName = '') => {
     if (!file) return;
-    
+
     let fileUrl = null;
     let displayName = fileName || 'File';
-    
+
     // If it's a File object (newly uploaded), create object URL
     if (file instanceof File) {
       fileUrl = URL.createObjectURL(file);
@@ -242,7 +242,7 @@ const SupplierApplication = () => {
       }
       displayName = fileName || file.split('/').pop() || 'File';
     }
-    
+
     if (fileUrl) {
       setFileViewerUrl(fileUrl);
       setFileViewerName(displayName);
@@ -288,9 +288,9 @@ const SupplierApplication = () => {
 
     try {
       const formData = new FormData();
-      formData.append('document', file);
       formData.append('supplierId', supplierId);
       formData.append('documentType', getDocumentType(fieldName));
+      formData.append('document', file);
 
       const response = await api.post('/documents/upload', formData, {
         headers: {
@@ -313,10 +313,10 @@ const SupplierApplication = () => {
   // Upload all files in the form
   const uploadAllFiles = async (supplierId) => {
     const updatedFormData = { ...formData };
-    
+
     // Upload single file fields
     const singleFileFields = [
-      'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
+      'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
       'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
       'declarationSignatureFile'
     ];
@@ -411,7 +411,7 @@ const SupplierApplication = () => {
               keyMembersResumes: app.keyMembersResumes
             });
             setApplicationId(app._id);
-            
+
             // Map backend data structure to frontend form structure
             // Start with all fields from app, then override with special mappings
             const mappedData = {
@@ -423,14 +423,14 @@ const SupplierApplication = () => {
               companyWebsite: app.companyWebsite || '',
               legalNature: app.legalNature || '',
               physicalAddress: app.physicalAddress || app.companyPhysicalAddress?.street || '',
-              
+
               // Contact Person (map from authorizedPerson if direct fields don't exist)
               contactFullName: app.contactFullName || app.authorizedPerson?.name || '',
               contactRelationship: app.contactRelationship || app.authorizedPerson?.relationship || '',
               contactIdPassport: app.contactIdPassport || app.authorizedPerson?.idPassportNumber || '',
               contactPhone: app.contactPhone || app.authorizedPerson?.phone || '',
               contactEmail: app.contactEmail || app.authorizedPerson?.email || '',
-              
+
               // Payment Details - read directly from app
               bankName: app.bankName || '',
               accountNumber: app.accountNumber || '',
@@ -447,12 +447,12 @@ const SupplierApplication = () => {
                 };
                 return periodMap[app.creditPeriod] || `${app.creditPeriod} Days`;
               })() : '',
-              
+
               // Entity Details
               entityType: app.entityType || '',
               serviceTypes: app.serviceTypes || app.serviceType || '',
               servicesDescription: app.servicesDescription || '',
-              
+
               // Declarations (map from sourceOfFunds if direct fields don't exist)
               sourceOfWealth: app.sourceOfWealth || app.sourceOfFunds?.source || '',
               declarantFullName: app.declarantFullName || app.sourceOfFunds?.declarantName || '',
@@ -462,7 +462,7 @@ const SupplierApplication = () => {
               signature: app.signature || '',
               consentToProcessing: app.consentToProcessing !== undefined ? app.consentToProcessing : (app.dataProcessingConsent?.granted || false),
               confirmInformationAccurate: app.confirmInformationAccurate || false,
-              
+
               // File uploads - stored as filenames (strings) in database
               // Keep as strings so UI can display them, but they won't be File objects
               // Preserve filenames if they exist (non-empty strings), otherwise use null
@@ -478,7 +478,7 @@ const SupplierApplication = () => {
               keyMembersResumes: Array.isArray(app.keyMembersResumes) && app.keyMembersResumes.length > 0 ? app.keyMembersResumes.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               declarationSignatureFile: (app.declarationSignatureFile && typeof app.declarationSignatureFile === 'string' && app.declarationSignatureFile.trim() !== '') ? app.declarationSignatureFile : null,
             };
-            
+
             // Set form data - update all mapped fields
             setFormData(prev => {
               const updated = {
@@ -507,7 +507,7 @@ const SupplierApplication = () => {
               });
               return updated;
             });
-            
+
             // Check which fields match profile data and mark as prefilled
             // Fetch supplier profile to compare
             const checkPrefilledFields = async () => {
@@ -516,15 +516,15 @@ const SupplierApplication = () => {
                 const suppliers = profileResponse.data.data || [];
                 if (suppliers.length > 0) {
                   const supplierData = suppliers[0];
-                  const registeredFullName = user?.firstName && user?.lastName 
+                  const registeredFullName = user?.firstName && user?.lastName
                     ? `${user.firstName} ${user.lastName}`.trim()
                     : (user?.firstName || user?.lastName || '');
-                  
+
                   const address = supplierData.companyPhysicalAddress;
                   const fullAddress = address
                     ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
                     : supplierData.physicalAddress || '';
-                  
+
                   const mapLegalNatureToDisplay = (dbValue) => {
                     const mapping = {
                       'company': 'Private Limited Company',
@@ -540,11 +540,11 @@ const SupplierApplication = () => {
                     };
                     return mapping[dbValue] || '';
                   };
-                  
-                  const legalNatureDisplay = supplierData.legalNature 
+
+                  const legalNatureDisplay = supplierData.legalNature
                     ? mapLegalNatureToDisplay(supplierData.legalNature)
                     : '';
-                  
+
                   // Compare application data with profile data
                   const prefilled = [];
                   if (mappedData.contactFullName === registeredFullName) prefilled.push('contactFullName');
@@ -559,7 +559,7 @@ const SupplierApplication = () => {
                   if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.push('companyWebsite');
                   if (mappedData.legalNature === legalNatureDisplay) prefilled.push('legalNature');
                   if (mappedData.physicalAddress === fullAddress) prefilled.push('physicalAddress');
-                  
+
                   console.log('🟡 [PREFILL] Existing application - marking matching fields as prefilled:', prefilled);
                   setPrefilledFields(prefilled);
                 }
@@ -567,9 +567,9 @@ const SupplierApplication = () => {
                 console.error('Error checking prefilled fields:', error);
               }
             };
-            
+
             checkPrefilledFields();
-            
+
             // Set current month for date picker if date exists
             if (mappedData.declarationDate) {
               try {
@@ -581,7 +581,7 @@ const SupplierApplication = () => {
                 console.error('Error parsing date:', e);
               }
             }
-            
+
             if (app.currentStep !== undefined && app.currentStep !== null) {
               setActiveStep(app.currentStep);
             }
@@ -595,10 +595,10 @@ const SupplierApplication = () => {
     } else {
       // Prefill contact and company information with registered user's details for new applications
       if (user) {
-        const registeredFullName = user.firstName && user.lastName 
+        const registeredFullName = user.firstName && user.lastName
           ? `${user.firstName} ${user.lastName}`.trim()
           : (user.firstName || user.lastName || '');
-        
+
         // Try to fetch existing supplier data to prefill company details
         const fetchSupplierForPrefill = async () => {
           try {
@@ -610,7 +610,7 @@ const SupplierApplication = () => {
               const fullAddress = address
                 ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
                 : supplierData.physicalAddress || '';
-              
+
               // Map legalNature from database enum to display value
               const mapLegalNatureToDisplay = (dbValue) => {
                 const mapping = {
@@ -627,11 +627,11 @@ const SupplierApplication = () => {
                 };
                 return mapping[dbValue] || '';
               };
-              
-              const legalNatureDisplay = supplierData.legalNature 
+
+              const legalNatureDisplay = supplierData.legalNature
                 ? mapLegalNatureToDisplay(supplierData.legalNature)
                 : '';
-              
+
               // Mark fields as prefilled - mark ALL fields that come from profile
               const prefilled = [];
               // Always mark contactFullName and contactEmail as prefilled (from user registration)
@@ -647,9 +647,9 @@ const SupplierApplication = () => {
               if (supplierData.companyWebsite) prefilled.push('companyWebsite');
               if (legalNatureDisplay) prefilled.push('legalNature');
               if (fullAddress) prefilled.push('physicalAddress');
-              
+
               console.log('🟡 [PREFILL] Marking fields as prefilled:', prefilled);
-              
+
               setFormData(prev => ({
                 ...prev,
                 // Contact information
@@ -667,22 +667,22 @@ const SupplierApplication = () => {
                 legalNature: legalNatureDisplay,
                 physicalAddress: fullAddress,
               }));
-              
+
               // Store prefilled fields for read-only check - use array for React state
               setPrefilledFields(prefilled);
               console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
             } else {
               // No supplier data, just prefill contact info
               const prefilled = ['contactFullName', 'contactEmail'];
-              
+
               console.log('🟡 [PREFILL] No supplier data, marking contact fields as prefilled:', prefilled);
-              
+
               setFormData(prev => ({
                 ...prev,
                 contactFullName: registeredFullName,
                 contactEmail: user.email || '',
               }));
-              
+
               // Store prefilled fields for read-only check
               setPrefilledFields(prefilled);
               console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
@@ -690,21 +690,21 @@ const SupplierApplication = () => {
           } catch (error) {
             // On error, just prefill contact info
             const prefilled = ['contactFullName', 'contactEmail'];
-            
+
             console.log('🟡 [PREFILL] Error case, marking contact fields as prefilled:', prefilled);
-            
+
             setFormData(prev => ({
               ...prev,
               contactFullName: registeredFullName,
               contactEmail: user.email || '',
             }));
-            
+
             // Store prefilled fields for read-only check
             setPrefilledFields(prefilled);
             console.log('🟡 [PREFILL] Set prefilledFields state:', prefilled);
           }
         };
-        
+
         fetchSupplierForPrefill();
       }
     }
@@ -746,20 +746,20 @@ const SupplierApplication = () => {
       const updatedFormData = await uploadAllFiles(currentSupplierId);
       setFormData(updatedFormData);
 
-      const payload = { 
-        ...updatedFormData, 
+      const payload = {
+        ...updatedFormData,
         status: 'draft',
         currentStep: activeStep,
         lastModified: new Date().toISOString()
       };
-      
+
       // Ensure file fields are strings (filenames) or null, not File objects
       const fileFields = [
-        'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
+        'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
         'declarationSignatureFile'
       ];
-      
+
       fileFields.forEach(field => {
         if (payload[field] instanceof File) {
           payload[field] = payload[field].name;
@@ -771,7 +771,7 @@ const SupplierApplication = () => {
           }
         }
       });
-      
+
       // Handle array file fields
       const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
       arrayFileFields.forEach(field => {
@@ -790,7 +790,7 @@ const SupplierApplication = () => {
           }
         }
       });
-      
+
       // Remove any null/undefined values that might cause issues, but keep empty strings
       Object.keys(payload).forEach(key => {
         if (payload[key] === null || payload[key] === undefined) {
@@ -839,20 +839,20 @@ const SupplierApplication = () => {
       setFormData(updatedFormData);
 
       // Create payload with ALL form data from all steps (now with uploaded filenames)
-      const payload = { 
-        ...updatedFormData, 
+      const payload = {
+        ...updatedFormData,
         status: activeStep === steps.length - 1 ? 'submitted' : 'draft',
         currentStep: activeStep, // Save the current step the user is on
         lastModified: new Date().toISOString()
       };
-      
+
       // Ensure file fields are strings (filenames) or null, not File objects
       const fileFields = [
-        'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
+        'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
         'declarationSignatureFile'
       ];
-      
+
       fileFields.forEach(field => {
         if (payload[field] instanceof File) {
           // This shouldn't happen after upload, but handle it just in case
@@ -866,7 +866,7 @@ const SupplierApplication = () => {
           }
         }
       });
-      
+
       // Handle array file fields
       const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
       arrayFileFields.forEach(field => {
@@ -887,7 +887,7 @@ const SupplierApplication = () => {
           }
         }
       });
-      
+
       // Ensure all fields are included, even if empty
       // Remove undefined values but keep empty strings, null for files, and false for booleans
       Object.keys(payload).forEach(key => {
@@ -900,7 +900,7 @@ const SupplierApplication = () => {
           }
         }
       });
-      
+
       console.log('Saving payload with all fields:', Object.keys(payload));
       console.log('File fields being saved:', {
         certificateOfIncorporation: payload.certificateOfIncorporation,
@@ -923,7 +923,7 @@ const SupplierApplication = () => {
         hasSignature: !!payload.declarationSignatureFile,
         directorsCount: Array.isArray(payload.directorsIds) ? payload.directorsIds.length : 0
       });
-      
+
       // Check if this is the last step (submission)
       if (activeStep === steps.length - 1) {
         // Submit application - save data and submit
@@ -935,7 +935,7 @@ const SupplierApplication = () => {
       } else {
         // Not the last step - save and continue
         await api.put(`/suppliers/${currentSupplierId}`, payload);
-        
+
         // Move to next step
         const nextStep = activeStep + 1;
         setActiveStep(nextStep);
@@ -955,19 +955,19 @@ const SupplierApplication = () => {
       if (applicationId) {
         try {
           // Create payload with current form data
-          const payload = { 
-            ...formData, 
+          const payload = {
+            ...formData,
             currentStep: activeStep,
             lastModified: new Date().toISOString()
           };
-          
+
           // Handle file objects - extract filenames for storage
           const fileFields = [
-            'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof', 
+            'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
             'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
             'declarationSignatureFile'
           ];
-          
+
           fileFields.forEach(field => {
             if (payload[field] instanceof File) {
               // Convert File object to filename string
@@ -983,7 +983,7 @@ const SupplierApplication = () => {
             }
             // If payload[field] is already a string (from previous load), keep it as is
           });
-          
+
           // Handle array file fields
           const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
           arrayFileFields.forEach(field => {
@@ -995,11 +995,11 @@ const SupplierApplication = () => {
               payload[field] = Array.isArray(formData[field]) ? formData[field] : [];
             }
           });
-          
+
           // Update currentStep to the previous step
           const previousStep = activeStep - 1;
           payload.currentStep = previousStep;
-          
+
           // Save silently (no toast) to avoid interrupting navigation
           await api.put(`/suppliers/${applicationId}`, payload);
         } catch (error) {
@@ -1007,7 +1007,7 @@ const SupplierApplication = () => {
           // Continue with navigation even if save fails
         }
       }
-      
+
       // Navigate to previous step - formData will remain intact
       setActiveStep(prev => prev - 1);
     }
@@ -1029,10 +1029,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -1040,9 +1040,9 @@ const SupplierApplication = () => {
               >
                 Basic Information
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -1053,8 +1053,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Supplier name
@@ -1087,8 +1087,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Registered Country
@@ -1128,7 +1128,7 @@ const SupplierApplication = () => {
                           }
                         }}
                       />
-                      
+
                       {countrySearchOpen && (
                         <Paper
                           sx={{
@@ -1172,7 +1172,7 @@ const SupplierApplication = () => {
                               }}
                             />
                           </Box>
-                          
+
                           {/* Country List - Show exactly 4 items */}
                           <Box
                             sx={{
@@ -1246,8 +1246,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Company Registration Number
@@ -1280,8 +1280,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Company Email Address
@@ -1315,8 +1315,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Company Website
@@ -1349,8 +1349,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Legal Nature of Entity
@@ -1362,7 +1362,7 @@ const SupplierApplication = () => {
                       disabled={prefilledFields.includes('legalNature')}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         ...(prefilledFields.includes('legalNature') && {
                           cursor: 'not-allowed',
@@ -1388,8 +1388,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Physical Address
@@ -1437,10 +1437,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -1448,9 +1448,9 @@ const SupplierApplication = () => {
               >
                 Contact Person Details
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -1461,8 +1461,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Full name
@@ -1495,8 +1495,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Relationship to Entity
@@ -1530,8 +1530,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     ID/Passport Number
@@ -1564,8 +1564,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Phone number
@@ -1599,8 +1599,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Email address
@@ -1646,10 +1646,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -1657,9 +1657,9 @@ const SupplierApplication = () => {
               >
                 Payment Details
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -1670,8 +1670,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Bank name
@@ -1690,8 +1690,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Account Number
@@ -1710,8 +1710,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Branch
@@ -1730,8 +1730,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Currency
@@ -1742,7 +1742,7 @@ const SupplierApplication = () => {
                       onChange={(e) => handleChange('currency', e.target.value)}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
@@ -1762,8 +1762,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Applicable Credit Period
@@ -1774,7 +1774,7 @@ const SupplierApplication = () => {
                       onChange={(e) => handleChange('creditPeriod', e.target.value)}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
@@ -1796,7 +1796,7 @@ const SupplierApplication = () => {
             </Paper>
           </Box>
         );
-      
+
       case 1:
         return (
           <Box>
@@ -1811,10 +1811,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -1822,9 +1822,9 @@ const SupplierApplication = () => {
               >
                 Entity Details
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -1835,8 +1835,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Entity type
@@ -1847,7 +1847,7 @@ const SupplierApplication = () => {
                       onChange={(e) => handleChange('entityType', e.target.value)}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
@@ -1867,12 +1867,12 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      mb: 2, 
-                      fontWeight: 600, 
-                      fontSize: '16px', 
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mb: 2,
+                      fontWeight: 600,
+                      fontSize: '16px',
                       color: '#111827',
                       mt: 3
                     }}
@@ -1884,8 +1884,8 @@ const SupplierApplication = () => {
                 {/* Required Documents - Two Columns */}
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Certificate of Incorporation or Registration
@@ -1907,12 +1907,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.certificateOfIncorporation 
-                        ? (formData.certificateOfIncorporation instanceof File 
-                          ? formData.certificateOfIncorporation.name 
-                          : typeof formData.certificateOfIncorporation === 'string' 
-                          ? formData.certificateOfIncorporation 
-                          : 'File selected')
+                      {formData.certificateOfIncorporation
+                        ? (formData.certificateOfIncorporation instanceof File
+                          ? formData.certificateOfIncorporation.name
+                          : typeof formData.certificateOfIncorporation === 'string'
+                            ? formData.certificateOfIncorporation
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -1936,8 +1936,8 @@ const SupplierApplication = () => {
                   </Box>
 
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       KRA PIN Certificate
@@ -1959,12 +1959,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.kraPinCertificate 
-                        ? (formData.kraPinCertificate instanceof File 
-                          ? formData.kraPinCertificate.name 
-                          : typeof formData.kraPinCertificate === 'string' 
-                          ? formData.kraPinCertificate 
-                          : 'File selected')
+                      {formData.kraPinCertificate
+                        ? (formData.kraPinCertificate instanceof File
+                          ? formData.kraPinCertificate.name
+                          : typeof formData.kraPinCertificate === 'string'
+                            ? formData.kraPinCertificate
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -1987,8 +1987,8 @@ const SupplierApplication = () => {
                   </Box>
 
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Proof of registration on e-TIMS
@@ -2010,12 +2010,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.etimsProof 
-                        ? (formData.etimsProof instanceof File 
-                          ? formData.etimsProof.name 
-                          : typeof formData.etimsProof === 'string' 
-                          ? formData.etimsProof 
-                          : 'File selected')
+                      {formData.etimsProof
+                        ? (formData.etimsProof instanceof File
+                          ? formData.etimsProof.name
+                          : typeof formData.etimsProof === 'string'
+                            ? formData.etimsProof
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -2038,8 +2038,8 @@ const SupplierApplication = () => {
                   </Box>
 
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Current annual audited financial statements
@@ -2061,12 +2061,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.financialStatements 
-                        ? (formData.financialStatements instanceof File 
-                          ? formData.financialStatements.name 
-                          : typeof formData.financialStatements === 'string' 
-                          ? formData.financialStatements 
-                          : 'File selected')
+                      {formData.financialStatements
+                        ? (formData.financialStatements instanceof File
+                          ? formData.financialStatements.name
+                          : typeof formData.financialStatements === 'string'
+                            ? formData.financialStatements
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -2091,8 +2091,8 @@ const SupplierApplication = () => {
 
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Valid CR12 (not more than 30 days old)
@@ -2114,12 +2114,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.cr12 
-                        ? (formData.cr12 instanceof File 
-                          ? formData.cr12.name 
-                          : typeof formData.cr12 === 'string' 
-                          ? formData.cr12 
-                          : 'File selected')
+                      {formData.cr12
+                        ? (formData.cr12 instanceof File
+                          ? formData.cr12.name
+                          : typeof formData.cr12 === 'string'
+                            ? formData.cr12
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -2142,8 +2142,8 @@ const SupplierApplication = () => {
                   </Box>
 
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Firm Company Profile
@@ -2165,12 +2165,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.companyProfile 
-                        ? (formData.companyProfile instanceof File 
-                          ? formData.companyProfile.name 
-                          : typeof formData.companyProfile === 'string' 
-                          ? formData.companyProfile 
-                          : 'File selected')
+                      {formData.companyProfile
+                        ? (formData.companyProfile instanceof File
+                          ? formData.companyProfile.name
+                          : typeof formData.companyProfile === 'string'
+                            ? formData.companyProfile
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -2193,8 +2193,8 @@ const SupplierApplication = () => {
                   </Box>
 
                   <Box sx={{ mb: 2.5 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                     >
                       Bank reference letter
@@ -2216,12 +2216,12 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      {formData.bankReferenceLetter 
-                        ? (formData.bankReferenceLetter instanceof File 
-                          ? formData.bankReferenceLetter.name 
-                          : typeof formData.bankReferenceLetter === 'string' 
-                          ? formData.bankReferenceLetter 
-                          : 'File selected')
+                      {formData.bankReferenceLetter
+                        ? (formData.bankReferenceLetter instanceof File
+                          ? formData.bankReferenceLetter.name
+                          : typeof formData.bankReferenceLetter === 'string'
+                            ? formData.bankReferenceLetter
+                            : 'File selected')
                         : 'Choose file'}
                       <input
                         type="file"
@@ -2246,14 +2246,14 @@ const SupplierApplication = () => {
 
                 {/* Director's IDs/Passports Upload Area */}
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Director's IDs/Passports
                   </Typography>
-                  <Typography 
-                    variant="caption" 
+                  <Typography
+                    variant="caption"
                     sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
                   >
                     Please select up to 10 files
@@ -2329,10 +2329,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -2340,9 +2340,9 @@ const SupplierApplication = () => {
               >
                 Service Details
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -2353,8 +2353,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Types of Services Being Offered
@@ -2365,7 +2365,7 @@ const SupplierApplication = () => {
                       onChange={(e) => handleChange('serviceTypes', e.target.value)}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
@@ -2386,14 +2386,14 @@ const SupplierApplication = () => {
 
                 {/* Practicing Certificates Upload Area */}
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Practicing Certificates
                   </Typography>
-                  <Typography 
-                    variant="caption" 
+                  <Typography
+                    variant="caption"
                     sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
                   >
                     Please select up to 10 files
@@ -2458,14 +2458,14 @@ const SupplierApplication = () => {
 
                 {/* Key Member's Resumes Upload Area */}
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Key Member's Resumes
                   </Typography>
-                  <Typography 
-                    variant="caption" 
+                  <Typography
+                    variant="caption"
                     sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
                   >
                     Please select up to 10 files
@@ -2529,8 +2529,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Services Description
@@ -2554,7 +2554,7 @@ const SupplierApplication = () => {
             </Paper>
           </Box>
         );
-      
+
       case 2:
         return (
           <Box>
@@ -2569,10 +2569,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 2,
                   fontSize: '18px',
                   color: '#111827'
@@ -2580,10 +2580,10 @@ const SupplierApplication = () => {
               >
                 Source of Funds Declaration & Processing of Personal Information
               </Typography>
-              
-              <Typography 
-                variant="body2" 
-                sx={{ 
+
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#374151',
                   fontSize: '14px',
                   mb: 3,
@@ -2595,8 +2595,8 @@ const SupplierApplication = () => {
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Source of wealth/Funds
@@ -2607,7 +2607,7 @@ const SupplierApplication = () => {
                       onChange={(e) => handleChange('sourceOfWealth', e.target.value)}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
-                      sx={{ 
+                      sx={{
                         backgroundColor: '#fff',
                         '& .MuiSelect-icon': {
                           color: '#6b7280'
@@ -2628,8 +2628,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Full Name of Declarant
@@ -2648,8 +2648,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Capacity
@@ -2669,8 +2669,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     ID/Passport Number
@@ -2689,8 +2689,8 @@ const SupplierApplication = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Date
@@ -2721,7 +2721,7 @@ const SupplierApplication = () => {
                           }
                         }}
                       />
-                      
+
                       {datePickerOpen && (
                         <Paper
                           sx={{
@@ -2825,8 +2825,8 @@ const SupplierApplication = () => {
 
                 {/* Signature Upload Area */}
                 <Grid item xs={12}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Signature
@@ -2876,11 +2876,11 @@ const SupplierApplication = () => {
                     </Typography>
                     {formData.declarationSignatureFile && (
                       <Typography sx={{ fontSize: '12px', color: theme.palette.green.main, mt: 1, fontWeight: 500 }}>
-                        {formData.declarationSignatureFile instanceof File 
-                          ? formData.declarationSignatureFile.name 
-                          : typeof formData.declarationSignatureFile === 'string' 
-                          ? formData.declarationSignatureFile 
-                          : 'File selected'}
+                        {formData.declarationSignatureFile instanceof File
+                          ? formData.declarationSignatureFile.name
+                          : typeof formData.declarationSignatureFile === 'string'
+                            ? formData.declarationSignatureFile
+                            : 'File selected'}
                       </Typography>
                     )}
                   </Box>
@@ -2938,7 +2938,7 @@ const SupplierApplication = () => {
             </Paper>
           </Box>
         );
-      
+
       case 3:
         return (
           <Box>
@@ -2952,10 +2952,10 @@ const SupplierApplication = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 0.5,
                   fontSize: '18px',
                   color: '#111827'
@@ -2963,9 +2963,9 @@ const SupplierApplication = () => {
               >
                 Review Application
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: '14px',
                   mb: 3
@@ -3260,7 +3260,7 @@ const SupplierApplication = () => {
                       const renderDocumentCard = (fileName, documentName) => {
                         if (!fileName) return null;
                         const fileExtension = (fileName instanceof File ? fileName.name : typeof fileName === 'string' ? fileName : '').split('.').pop()?.toUpperCase() || 'PDF';
-                        
+
                         return (
                           <Box
                             key={documentName}
@@ -3320,11 +3320,11 @@ const SupplierApplication = () => {
                       const renderMultipleDocumentCards = (files, documentName) => {
                         if (!files || files.length === 0) return null;
                         return files.map((file, index) => {
-                          const displayName = files.length > 1 
+                          const displayName = files.length > 1
                             ? `${documentName} ${index + 1}`
                             : documentName;
                           const fileExtension = (file instanceof File ? file.name : typeof file === 'string' ? file : '').split('.').pop()?.toUpperCase() || 'PDF';
-                          
+
                           return (
                             <Box
                               key={index}
@@ -3345,11 +3345,11 @@ const SupplierApplication = () => {
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
                                 <Box
-                                component="img"
-                                src="/images/File.svg"
-                                alt="File icon"
-                                sx={{ width: 24, height: 24, color: '#6b7280' }}
-                              />
+                                  component="img"
+                                  src="/images/File.svg"
+                                  alt="File icon"
+                                  sx={{ width: 24, height: 24, color: '#6b7280' }}
+                                />
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
                                   <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                     {displayName}
@@ -3370,11 +3370,11 @@ const SupplierApplication = () => {
                                 }}
                               >
                                 <Box
-                                component="img"
-                                src="/images/eye.svg"
-                                alt="View icon"
-                                sx={{ width: 20, height: 20 }}
-                              />
+                                  component="img"
+                                  src="/images/eye.svg"
+                                  alt="View icon"
+                                  sx={{ width: 20, height: 20 }}
+                                />
                               </IconButton>
                             </Box>
                           );
@@ -3438,7 +3438,7 @@ const SupplierApplication = () => {
                       const renderDocumentCard = (fileName, documentName) => {
                         if (!fileName) return null;
                         const fileExtension = (fileName instanceof File ? fileName.name : typeof fileName === 'string' ? fileName : '').split('.').pop()?.toUpperCase() || 'PDF';
-                        
+
                         return (
                           <Box
                             key={documentName}
@@ -3498,11 +3498,11 @@ const SupplierApplication = () => {
                       const renderMultipleDocumentCards = (files, documentName) => {
                         if (!files || files.length === 0) return null;
                         return files.map((file, index) => {
-                          const displayName = files.length > 1 
+                          const displayName = files.length > 1
                             ? `${documentName} ${index + 1}`
                             : documentName;
                           const fileExtension = (file instanceof File ? file.name : typeof file === 'string' ? file : '').split('.').pop()?.toUpperCase() || 'PDF';
-                          
+
                           return (
                             <Box
                               key={index}
@@ -3523,11 +3523,11 @@ const SupplierApplication = () => {
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
                                 <Box
-                                component="img"
-                                src="/images/File.svg"
-                                alt="File icon"
-                                sx={{ width: 24, height: 24, color: '#6b7280' }}
-                              />
+                                  component="img"
+                                  src="/images/File.svg"
+                                  alt="File icon"
+                                  sx={{ width: 24, height: 24, color: '#6b7280' }}
+                                />
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
                                   <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
                                     {displayName}
@@ -3548,11 +3548,11 @@ const SupplierApplication = () => {
                                 }}
                               >
                                 <Box
-                                component="img"
-                                src="/images/eye.svg"
-                                alt="View icon"
-                                sx={{ width: 20, height: 20 }}
-                              />
+                                  component="img"
+                                  src="/images/eye.svg"
+                                  alt="View icon"
+                                  sx={{ width: 20, height: 20 }}
+                                />
                               </IconButton>
                             </Box>
                           );
@@ -3682,22 +3682,22 @@ const SupplierApplication = () => {
                             />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
-                                {formData.declarationSignatureFile instanceof File 
-                                  ? formData.declarationSignatureFile.name 
-                                  : typeof formData.declarationSignatureFile === 'string' 
-                                  ? formData.declarationSignatureFile 
-                                  : 'Signature File'}
+                                {formData.declarationSignatureFile instanceof File
+                                  ? formData.declarationSignatureFile.name
+                                  : typeof formData.declarationSignatureFile === 'string'
+                                    ? formData.declarationSignatureFile
+                                    : 'Signature File'}
                               </Typography>
                               <Typography sx={{ fontSize: '12px', color: '#9ca3af' }}>
                                 {(() => {
-                                  const fileName = formData.declarationSignatureFile instanceof File 
-                                    ? formData.declarationSignatureFile.name 
-                                    : typeof formData.declarationSignatureFile === 'string' 
-                                    ? formData.declarationSignatureFile 
-                                    : '';
+                                  const fileName = formData.declarationSignatureFile instanceof File
+                                    ? formData.declarationSignatureFile.name
+                                    : typeof formData.declarationSignatureFile === 'string'
+                                      ? formData.declarationSignatureFile
+                                      : '';
                                   const fileExtension = fileName.split('.').pop()?.toUpperCase() || 'PDF';
-                                  const fileSize = formData.declarationSignatureFile instanceof File && formData.declarationSignatureFile.size 
-                                    ? `${(formData.declarationSignatureFile.size / (1024 * 1024)).toFixed(1)} MB` 
+                                  const fileSize = formData.declarationSignatureFile instanceof File && formData.declarationSignatureFile.size
+                                    ? `${(formData.declarationSignatureFile.size / (1024 * 1024)).toFixed(1)} MB`
                                     : '2.3 MB';
                                   return `${fileExtension} • ${fileSize}`;
                                 })()}
@@ -3791,7 +3791,7 @@ const SupplierApplication = () => {
             </Paper>
           </Box>
         );
-      
+
       default:
         return null;
     }
@@ -3857,19 +3857,19 @@ const SupplierApplication = () => {
           </Box>
 
           {/* Desktop View - Full Details */}
-          <Grid 
-            container 
-            spacing={0} 
-            justifyContent="center" 
+          <Grid
+            container
+            spacing={0}
+            justifyContent="center"
             alignItems="flex-start"
             sx={{ display: { xs: 'none', md: 'flex' } }}
           >
             {steps.map((step, index) => (
-              <Grid 
-                item 
-                xs={12} 
-                sm={6} 
-                md={3} 
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={3}
                 key={step.number}
                 sx={{
                   position: 'relative',
@@ -4024,8 +4024,8 @@ const SupplierApplication = () => {
                 },
               }}
             >
-              {loading 
-                ? (activeStep === steps.length - 1 ? 'Submitting...' : 'Saving...') 
+              {loading
+                ? (activeStep === steps.length - 1 ? 'Submitting...' : 'Saving...')
                 : (activeStep === steps.length - 1 ? 'Submit Application' : 'Save and Continue')}
             </Button>
           </Box>
