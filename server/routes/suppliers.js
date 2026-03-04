@@ -610,6 +610,20 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
       }
     });
 
+    // Map flat contact fields to authorizedPerson structure
+    if (req.body.contactFullName || req.body.contactRelationship || req.body.contactIdPassport || req.body.contactPhone || req.body.contactEmail) {
+      if (!updateData.authorizedPerson) {
+        // Load current authorizedPerson to preserve existing fields if not all are sent
+        updateData.authorizedPerson = { ...(supplier.authorizedPerson || {}) };
+      }
+
+      if (req.body.contactFullName) updateData.authorizedPerson.name = req.body.contactFullName;
+      if (req.body.contactRelationship) updateData.authorizedPerson.relationship = req.body.contactRelationship;
+      if (req.body.contactIdPassport) updateData.authorizedPerson.idPassportNumber = req.body.contactIdPassport;
+      if (req.body.contactPhone) updateData.authorizedPerson.phone = req.body.contactPhone;
+      if (req.body.contactEmail) updateData.authorizedPerson.email = req.body.contactEmail;
+    }
+
     // Always update lastModified
     updateData.lastModified = new Date();
 
@@ -1042,6 +1056,24 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         { _id: supplierId },
         { $set: comprehensiveUpdate }
       );
+
+      // Map flat contact fields to authorizedPerson structure if present in req.body
+      if (req.body.contactFullName || req.body.contactRelationship || req.body.contactIdPassport || req.body.contactPhone || req.body.contactEmail) {
+        const authPerson = supplier.authorizedPerson || {};
+        const updatedAuthPerson = {
+          ...authPerson,
+          name: req.body.contactFullName || authPerson.name,
+          relationship: req.body.contactRelationship || authPerson.relationship,
+          idPassportNumber: req.body.contactIdPassport || authPerson.idPassportNumber,
+          phone: req.body.contactPhone || authPerson.phone,
+          email: req.body.contactEmail || authPerson.email
+        };
+
+        await collection.updateOne(
+          { _id: supplierId },
+          { $set: { authorizedPerson: updatedAuthPerson } }
+        );
+      }
 
       console.log('[SUBMIT] MongoDB update result:', {
         matchedCount: updateResult.matchedCount,
