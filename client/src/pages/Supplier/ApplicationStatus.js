@@ -918,6 +918,73 @@ const ApplicationStatus = () => {
             </AccordionDetails>
           </Accordion>
 
+          {/* Signed Contract Accordion */}
+          {supplier.status === 'completed' && supplier.contract && supplier.contract.signedContract && (
+            <Accordion
+              expanded={expandedAccordion === 'contract'}
+              onChange={(event, isExpanded) => {
+                setExpandedAccordion(isExpanded ? 'contract' : '');
+              }}
+              sx={{
+                boxShadow: 'none',
+                border: 'none',
+                borderBottom: '1px solid #e5e7eb',
+                borderRadius: 0,
+                '&:before': { display: 'none' },
+                '&.Mui-expanded': {
+                  margin: 0
+                }
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMore sx={{ color: '#6b7280' }} />}
+                sx={{
+                  '& .MuiAccordionSummary-content': {
+                    my: 2
+                  }
+                }}
+              >
+                <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                  Signed Contract
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box>
+                  <Grid container spacing={2.5} sx={{ mb: 2 }}>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                        Contract Number
+                      </Typography>
+                      <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                        {supplier.contract.contractNumber || '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                        Start Date
+                      </Typography>
+                      <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                        {formatDate(supplier.contract.startDate)}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                        Expiry Date
+                      </Typography>
+                      <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                        {formatDate(supplier.contract.endDate)}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  {renderDocumentCard(
+                    supplier.contract.signedContract.filePath || supplier.contract.signedContract.fileName,
+                    'Signed Contract - ' + (supplier.contract.contractNumber || '')
+                  )}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          )}
+
           {/* Approval History Accordion */}
           <Accordion
             expanded={expandedAccordion === 'approvalHistory'}

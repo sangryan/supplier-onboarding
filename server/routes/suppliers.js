@@ -466,7 +466,10 @@ router.get('/:id', protect, supplierAccess, async (req, res) => {
     const supplier = await Supplier.findById(req.params.id)
       .populate('submittedBy', 'firstName lastName email')
       .populate('approvalHistory.approver', 'firstName lastName role')
-      .populate('contract');
+      .populate({
+        path: 'contract',
+        populate: { path: 'signedContract' }
+      });
 
     if (!supplier) {
       return res.status(404).json({

@@ -443,6 +443,35 @@ router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), up
 
     await contract.save();
 
+    // Update supplier status to 'completed'
+    const supplier = await Supplier.findById(contract.supplier);
+    if (supplier) {
+      supplier.status = 'completed';
+      supplier.currentApprovalStage = 'completed';
+      supplier.approvalHistory.push({
+        approver: req.user.id,
+        action: 'contract_uploaded',
+        comments: req.body.comment || 'Signed contract uploaded and activated.',
+        timestamp: new Date()
+      });
+      await supplier.save();
+
+      // Notify supplier
+      if (supplier.submittedBy) {
+        await createNotification({
+          recipient: supplier.submittedBy,
+          type: 'application_approved',
+          title: `[${supplier.applicationNumber}] Onboarding Completed`,
+          message: `Congratulations! Your onboarding for ${supplier.supplierName} is now complete. Your signed contract has been uploaded and your profile is fully active.`,
+          relatedEntity: {
+            entityType: 'supplier',
+            entityId: supplier._id
+          },
+          actionUrl: `/application/status`
+        });
+      }
+    }
+
     res.json({
       success: true,
       data: contract
