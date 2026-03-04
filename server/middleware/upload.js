@@ -7,8 +7,6 @@ const uploadDir = path.resolve(process.env.UPLOAD_PATH || path.join(__dirname, '
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-坐
-坐
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
