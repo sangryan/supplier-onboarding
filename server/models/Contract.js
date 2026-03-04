@@ -61,8 +61,7 @@ const contractSchema = new mongoose.Schema({
   // Payment Terms
   paymentTerms: {
     creditPeriod: {
-      type: Number,
-      required: true
+      type: Number
     },
     paymentSchedule: {
       type: String,

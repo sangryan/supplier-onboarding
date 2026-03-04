@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer');
 let transporter = null;
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
       secure: false,
@@ -27,12 +27,12 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
 exports.createNotification = async (notificationData) => {
   try {
     const notification = await Notification.create(notificationData);
-    
+
     // Send email notification if configured
     if (transporter) {
       await sendEmailNotification(notification);
     }
-    
+
     return notification;
   } catch (error) {
     console.error('Create notification error:', error);
@@ -49,10 +49,10 @@ const sendEmailNotification = async (notification) => {
   if (!transporter) {
     return;
   }
-  
+
   try {
     const recipient = await notification.populate('recipient');
-    
+
     if (!recipient || !recipient.recipient.email) {
       return;
     }
@@ -96,12 +96,12 @@ const sendEmailNotification = async (notification) => {
 exports.createBulkNotifications = async (notificationsData) => {
   try {
     const notifications = await Notification.insertMany(notificationsData);
-    
+
     // Send emails in parallel
     if (transporter) {
       await Promise.all(notifications.map(n => sendEmailNotification(n)));
     }
-    
+
     return notifications;
   } catch (error) {
     console.error('Create bulk notifications error:', error);
@@ -117,12 +117,12 @@ exports.cleanupOldNotifications = async (daysOld = 90) => {
   try {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-    
+
     const result = await Notification.deleteMany({
       createdAt: { $lt: cutoffDate },
       isRead: true
     });
-    
+
     console.log(`Deleted ${result.deletedCount} old notifications`);
     return result;
   } catch (error) {
