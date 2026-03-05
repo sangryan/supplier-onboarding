@@ -13,7 +13,7 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
     console.log('   Host:', process.env.EMAIL_HOST || 'smtp.gmail.com');
     console.log('   Port:', process.env.EMAIL_PORT || 587);
     console.log('   User:', process.env.EMAIL_USER);
-    
+
     transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT) || 587,
@@ -31,7 +31,7 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
       debug: process.env.NODE_ENV === 'development', // Enable debug output in development
       logger: process.env.NODE_ENV === 'development' // Enable logging in development
     });
-    
+
     // Verify transporter configuration asynchronously
     transporterVerifying = true;
     transporter.verify((error, success) => {
@@ -88,7 +88,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
     console.error('   Please set EMAIL_USER and EMAIL_PASSWORD environment variables');
     throw new Error(errorMsg);
   }
-  
+
   // Warn if transporter hasn't been verified yet
   if (!transporterVerified) {
     console.warn('⚠️  Email transporter not yet verified. Attempting to send anyway...');
@@ -154,7 +154,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
     console.log(`   From: ${fromEmail}`);
     console.log(`   To: ${email}`);
     console.log(`   Subject: Password Reset Request`);
-    
+
     const info = await transporter.sendMail(mailOptions);
     console.log(`✅ Password reset email sent successfully to ${email}`);
     console.log(`   Message ID: ${info.messageId}`);
@@ -168,7 +168,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
     console.error('   Error response:', error.response);
     console.error('   Error responseCode:', error.responseCode);
     console.error('   Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    
+
     // Check for SendGrid-specific errors
     if (error.response) {
       console.error('   SendGrid response:', error.response);
@@ -182,7 +182,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
         console.error('   ⚠️  401 Unauthorized: Check API key is correct');
       }
     }
-    
+
     throw error;
   }
 };
@@ -200,12 +200,8 @@ exports.generateResetToken = () => {
  * @returns {String} - OTP code (6 characters, mix of numbers and letters)
  */
 exports.generateOTP = () => {
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let otp = '';
-  for (let i = 0; i < 6; i++) {
-    otp += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return otp;
+  // Temporary: Set default OTP to 000000 for demo purposes
+  return '000000';
 };
 
 /**
@@ -225,7 +221,7 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
     console.error('   Please set EMAIL_USER and EMAIL_PASSWORD environment variables');
     throw new Error(errorMsg);
   }
-  
+
   // Warn if transporter hasn't been verified yet
   if (!transporterVerified) {
     console.warn('⚠️  Email transporter not yet verified. Attempting to send anyway...');
@@ -282,7 +278,7 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
     console.log(`   From: ${fromEmail}`);
     console.log(`   To: ${email}`);
     console.log(`   OTP Code: ${otpCode}`);
-    
+
     const info = await transporter.sendMail(mailOptions);
     console.log(`✅ OTP email sent successfully to ${email}`);
     console.log(`   Message ID: ${info.messageId}`);
@@ -305,7 +301,7 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
  */
 exports.getEmailStatus = () => {
   const isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
-  
+
   let status = 'unknown';
   if (!isConfigured) {
     status = 'not_configured';
