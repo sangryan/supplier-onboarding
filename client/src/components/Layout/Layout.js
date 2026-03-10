@@ -556,7 +556,7 @@ const Layout = () => {
                         <Typography sx={{ fontWeight: notif.isRead ? 500 : 700, fontSize: '13px', color: '#111827', mb: 0.5 }}>
                           {notif.title}
                         </Typography>
-                        <Typography sx={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4, mb: 1 }}>
+                        <Typography sx={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4, mb: 1, whiteSpace: 'pre-line' }}>
                           {notif.message}
                         </Typography>
                         <Typography sx={{ fontSize: '10px', color: '#9ca3af' }}>

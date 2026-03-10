@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
 const legalNatures = [
@@ -91,7 +92,7 @@ const EditCompanyDetails = () => {
   const { user } = useAuth();
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     supplierName: '',
@@ -121,17 +122,17 @@ const EditCompanyDetails = () => {
         if (suppliers.length > 0) {
           const supplierData = suppliers[0];
           setSupplier(supplierData);
-          
+
           const address = supplierData.companyPhysicalAddress;
           const fullAddress = address
             ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
             : supplierData.physicalAddress || '';
-          
+
           // Map legalNature from database enum to display value
-          const legalNatureDisplay = supplierData.legalNature 
+          const legalNatureDisplay = supplierData.legalNature
             ? mapLegalNatureToDisplay(supplierData.legalNature)
             : '';
-          
+
           setFormData({
             supplierName: supplierData.supplierName || '',
             registeredCountry: supplierData.registeredCountry || address?.country || '',
@@ -162,7 +163,7 @@ const EditCompanyDetails = () => {
     try {
       // Map legalNature display value back to database enum
       const legalNatureDb = formData.legalNature ? mapDisplayToLegalNature(formData.legalNature) : 'company';
-      
+
       // Parse physical address - if it's a string, try to structure it
       // Otherwise, keep it as is if it's already structured
       let physicalAddressData = formData.physicalAddress;
@@ -193,15 +194,23 @@ const EditCompanyDetails = () => {
       if (supplier?._id) {
         // Update existing supplier profile
         await api.put(`/suppliers/${supplier._id}`, updateData);
-        toast.success('Company details update submitted for approval');
-        navigate('/profile');
+        toast.success('Company details saved successfully');
+
+        // Check if profile is now complete — redirect to dashboard if so
+        const isComplete = await checkSupplierProfileComplete(user);
+        if (isComplete) {
+          toast.success('Profile complete! Redirecting to dashboard...');
+          navigate('/dashboard');
+        } else {
+          navigate('/profile');
+        }
       } else {
         // Create supplier profile (not an application) - use PUT with upsert-like behavior
         // First create a minimal supplier record, then update it
-        const registeredFullName = user?.firstName && user?.lastName 
+        const registeredFullName = user?.firstName && user?.lastName
           ? `${user.firstName} ${user.lastName}`.trim()
           : (user?.firstName || user?.lastName || 'Profile');
-        
+
         const initialData = {
           supplierName: formData.supplierName || registeredFullName,
           legalNature: legalNatureDb || 'company', // Required field
@@ -215,7 +224,7 @@ const EditCompanyDetails = () => {
           },
           status: 'draft', // Required, but this is just for profile storage
         };
-        
+
         // Create the supplier record first with isProfileOnly flag
         const createResponse = await api.post('/suppliers/draft', {
           ...initialData,
@@ -228,7 +237,15 @@ const EditCompanyDetails = () => {
             isProfileOnly: true, // Ensure it stays marked as profile-only
           });
           toast.success('Company details saved successfully');
-          navigate('/profile');
+
+          // Check if profile is now complete — redirect to dashboard if so
+          const isComplete = await checkSupplierProfileComplete(user);
+          if (isComplete) {
+            toast.success('Profile complete! Redirecting to dashboard...');
+            navigate('/dashboard');
+          } else {
+            navigate('/profile');
+          }
         } else {
           throw new Error('Failed to create supplier profile');
         }
@@ -279,10 +296,10 @@ const EditCompanyDetails = () => {
             backgroundColor: '#fff',
           }}
         >
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontWeight: 600, 
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
               mb: 0.5,
               fontSize: { xs: '16px', md: '18px' },
               color: '#111827'
@@ -290,9 +307,9 @@ const EditCompanyDetails = () => {
           >
             Edit Company Details
           </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ 
+          <Typography
+            variant="body2"
+            sx={{
               color: '#6b7280',
               fontSize: { xs: '13px', md: '14px' },
               mb: 3
@@ -304,8 +321,8 @@ const EditCompanyDetails = () => {
           {/* Company Fields */}
           <Grid container spacing={{ xs: 2, md: 2.5 }}>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Supplier name
@@ -323,8 +340,8 @@ const EditCompanyDetails = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Registered Country
@@ -356,7 +373,7 @@ const EditCompanyDetails = () => {
                       }
                     }}
                   />
-                  
+
                   {countrySearchOpen && (
                     <Paper
                       sx={{
@@ -402,7 +419,7 @@ const EditCompanyDetails = () => {
                           }}
                         />
                       </Box>
-                      
+
                       <Box
                         sx={{
                           maxHeight: '200px',
@@ -468,8 +485,8 @@ const EditCompanyDetails = () => {
               </ClickAwayListener>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Company Registration Number
@@ -487,8 +504,8 @@ const EditCompanyDetails = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Company Email Address
@@ -507,8 +524,8 @@ const EditCompanyDetails = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Company Website
@@ -526,8 +543,8 @@ const EditCompanyDetails = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Legal Nature of Entity
@@ -538,7 +555,7 @@ const EditCompanyDetails = () => {
                   onChange={(e) => handleChange('legalNature', e.target.value)}
                   displayEmpty
                   IconComponent={KeyboardArrowDown}
-                  sx={{ 
+                  sx={{
                     backgroundColor: '#fff',
                     '& .MuiSelect-icon': {
                       color: '#6b7280'
@@ -557,8 +574,8 @@ const EditCompanyDetails = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Physical Address
@@ -582,10 +599,10 @@ const EditCompanyDetails = () => {
 
           {/* Comment Section */}
           <Box sx={{ mt: { xs: 3, md: 4 } }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
                 mb: 2,
                 fontSize: { xs: '16px', md: '18px' }
               }}
@@ -609,10 +626,10 @@ const EditCompanyDetails = () => {
           </Box>
 
           {/* Action Buttons */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: 2, 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
             mt: { xs: 3, md: 4 },
             flexDirection: { xs: 'column', sm: 'row' }
           }}>
@@ -644,7 +661,7 @@ const EditCompanyDetails = () => {
                 },
               }}
             >
-              Submit for Approval
+              Save
             </Button>
           </Box>
         </Paper>

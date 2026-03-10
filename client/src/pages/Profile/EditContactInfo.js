@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
 const EditContactInfo = () => {
@@ -30,7 +31,7 @@ const EditContactInfo = () => {
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [additionalContacts, setAdditionalContacts] = useState([]);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     fullName: '',
@@ -40,7 +41,7 @@ const EditContactInfo = () => {
     email: '',
     comment: '',
   });
-  
+
   // Dialog states
   const [editContactDialog, setEditContactDialog] = useState(false);
   const [addContactDialog, setAddContactDialog] = useState(false);
@@ -53,10 +54,10 @@ const EditContactInfo = () => {
 
   const fetchSupplierData = async () => {
     // Full name should always match the registered user's name
-    const registeredFullName = user?.firstName && user?.lastName 
+    const registeredFullName = user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`.trim()
       : (user?.firstName || user?.lastName || '');
-    
+
     if (user?.role === 'supplier') {
       try {
         const response = await api.get('/suppliers');
@@ -64,7 +65,7 @@ const EditContactInfo = () => {
         if (suppliers.length > 0) {
           const supplierData = suppliers[0];
           setSupplier(supplierData);
-          
+
           // Populate form with existing data
           if (supplierData.authorizedPerson) {
             setFormData({
@@ -86,7 +87,7 @@ const EditContactInfo = () => {
               comment: '',
             });
           }
-          
+
           // Initialize additional contacts
           if (supplierData.additionalContacts) {
             setAdditionalContacts(supplierData.additionalContacts);
@@ -137,7 +138,7 @@ const EditContactInfo = () => {
       toast.error('Please fill in all required fields');
       return;
     }
-    
+
     try {
       let updatedContacts;
       if (editingContactIndex !== null) {
@@ -148,7 +149,7 @@ const EditContactInfo = () => {
         updatedContacts = [...additionalContacts, newContact];
         setAdditionalContacts(updatedContacts);
       }
-      
+
       // Save to backend if supplier exists
       if (supplier?._id) {
         try {
@@ -162,7 +163,7 @@ const EditContactInfo = () => {
           return;
         }
       }
-      
+
       setAddContactDialog(false);
       setEditContactDialog(false);
       setEditingContactIndex(null);
@@ -180,7 +181,7 @@ const EditContactInfo = () => {
       const previousContacts = [...additionalContacts];
       const updated = additionalContacts.filter((_, i) => i !== index);
       setAdditionalContacts(updated);
-      
+
       // Save to backend if supplier exists
       if (supplier?._id) {
         try {
@@ -196,7 +197,7 @@ const EditContactInfo = () => {
           return;
         }
       }
-      
+
       toast.success('Contact deleted successfully');
     } catch (error) {
       console.error('Error deleting contact:', error);
@@ -228,8 +229,15 @@ const EditContactInfo = () => {
       if (supplier?._id) {
         // Update existing supplier profile
         await api.put(`/suppliers/${supplier._id}`, updateData);
-        toast.success('Contact information update submitted for approval');
-        navigate('/profile');
+        toast.success('Contact information saved successfully');
+        // Check if profile is now complete — redirect to dashboard if so
+        const isComplete = await checkSupplierProfileComplete(user);
+        if (isComplete) {
+          toast.success('Profile complete! Redirecting to dashboard...');
+          navigate('/dashboard');
+        } else {
+          navigate('/profile');
+        }
       } else {
         // Create supplier profile (not an application) - use PUT with upsert-like behavior
         // First create a minimal supplier record, then update it
@@ -246,7 +254,7 @@ const EditContactInfo = () => {
           },
           status: 'draft', // Required, but this is just for profile storage
         };
-        
+
         // Create the supplier record first with isProfileOnly flag
         const createResponse = await api.post('/suppliers/draft', {
           ...initialData,
@@ -259,7 +267,14 @@ const EditContactInfo = () => {
             isProfileOnly: true, // Ensure it stays marked as profile-only
           });
           toast.success('Contact information saved successfully');
-          navigate('/profile');
+          // Check if profile is now complete — redirect to dashboard if so
+          const isComplete = await checkSupplierProfileComplete(user);
+          if (isComplete) {
+            toast.success('Profile complete! Redirecting to dashboard...');
+            navigate('/dashboard');
+          } else {
+            navigate('/profile');
+          }
         } else {
           throw new Error('Failed to create supplier profile');
         }
@@ -310,10 +325,10 @@ const EditContactInfo = () => {
             backgroundColor: '#fff',
           }}
         >
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontWeight: 600, 
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
               mb: 0.5,
               fontSize: { xs: '16px', md: '18px' },
               color: '#111827'
@@ -321,9 +336,9 @@ const EditContactInfo = () => {
           >
             Edit Contact Information
           </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ 
+          <Typography
+            variant="body2"
+            sx={{
               color: '#6b7280',
               fontSize: { xs: '13px', md: '14px' },
               mb: 3
@@ -335,8 +350,8 @@ const EditContactInfo = () => {
           {/* Primary Contact Fields */}
           <Grid container spacing={{ xs: 2, md: 2.5 }}>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Full name
@@ -354,8 +369,8 @@ const EditContactInfo = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Relationship to Entity
@@ -373,8 +388,8 @@ const EditContactInfo = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 ID/Passport Number
@@ -392,8 +407,8 @@ const EditContactInfo = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Phone number
@@ -411,8 +426,8 @@ const EditContactInfo = () => {
               />
             </Grid>
             <Grid item xs={12}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
                 Email address
@@ -434,10 +449,10 @@ const EditContactInfo = () => {
 
           {/* Additional Contacts */}
           <Box sx={{ mt: { xs: 3, md: 4 } }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
                 mb: 2,
                 fontSize: { xs: '16px', md: '18px' }
               }}
@@ -529,10 +544,10 @@ const EditContactInfo = () => {
 
           {/* Comment Section */}
           <Box sx={{ mt: { xs: 3, md: 4 } }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
                 mb: 2,
                 fontSize: { xs: '16px', md: '18px' }
               }}
@@ -556,10 +571,10 @@ const EditContactInfo = () => {
           </Box>
 
           {/* Action Buttons */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: 2, 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
             mt: { xs: 3, md: 4 },
             flexDirection: { xs: 'column', sm: 'row' }
           }}>
@@ -591,21 +606,21 @@ const EditContactInfo = () => {
                 },
               }}
             >
-              Submit for Approval
+              Save
             </Button>
           </Box>
         </Paper>
 
         {/* Add/Edit Contact Dialog */}
-        <Dialog 
-          open={addContactDialog || editContactDialog} 
+        <Dialog
+          open={addContactDialog || editContactDialog}
           onClose={() => {
             setAddContactDialog(false);
             setEditContactDialog(false);
             setEditingContactIndex(null);
             setNewContact({ name: '', email: '', phone: '', idPassport: '', relationship: '' });
-          }} 
-          maxWidth="xs" 
+          }}
+          maxWidth="xs"
           fullWidth
           fullScreen={false}
           PaperProps={{
@@ -625,7 +640,7 @@ const EditContactInfo = () => {
             }
           }}
         >
-          <DialogTitle sx={{ 
+          <DialogTitle sx={{
             pb: 1,
             display: 'flex',
             justifyContent: 'space-between',
@@ -634,9 +649,9 @@ const EditContactInfo = () => {
             gap: { xs: 1, md: 0 }
           }}>
             <Box sx={{ flex: 1 }}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
+              <Typography
+                variant="h6"
+                sx={{
                   fontWeight: 600,
                   fontSize: { xs: '16px', md: '18px' },
                   color: '#111827',
@@ -645,9 +660,9 @@ const EditContactInfo = () => {
               >
                 {editingContactIndex !== null ? 'Edit Additional Contact Information' : 'Add Additional Contact Information'}
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: { xs: '13px', md: '14px' }
                 }}
@@ -662,7 +677,7 @@ const EditContactInfo = () => {
                 setEditingContactIndex(null);
                 setNewContact({ name: '', email: '', phone: '', idPassport: '', relationship: '' });
               }}
-              sx={{ 
+              sx={{
                 color: '#6b7280',
                 position: { xs: 'absolute', md: 'relative' },
                 top: { xs: 16, md: 'auto' },
@@ -675,8 +690,8 @@ const EditContactInfo = () => {
           <DialogContent sx={{ pt: { xs: 2, md: 2 }, pb: { xs: 2, md: 2 } }}>
             <Grid container spacing={{ xs: 2, md: 2.5 }}>
               <Grid item xs={12} md={6}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
                   Full name
@@ -694,8 +709,8 @@ const EditContactInfo = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
                   Relationship to Entity
@@ -713,8 +728,8 @@ const EditContactInfo = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
                   ID/Passport Number
@@ -732,8 +747,8 @@ const EditContactInfo = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
                   Phone number
@@ -751,8 +766,8 @@ const EditContactInfo = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
                   Email Address
@@ -772,8 +787,8 @@ const EditContactInfo = () => {
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions sx={{ 
-            p: { xs: 2, md: 3 }, 
+          <DialogActions sx={{
+            p: { xs: 2, md: 3 },
             pt: { xs: 1, md: 2 },
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
@@ -781,7 +796,7 @@ const EditContactInfo = () => {
             justifyContent: { xs: 'stretch', sm: editingContactIndex !== null ? 'space-between' : 'flex-end' }
           }}>
             {editingContactIndex !== null && (
-              <Button 
+              <Button
                 onClick={async () => {
                   try {
                     handleDeleteContact(editingContactIndex);
@@ -793,7 +808,7 @@ const EditContactInfo = () => {
                   }
                 }}
                 variant="contained"
-                sx={{ 
+                sx={{
                   bgcolor: '#c62828',
                   textTransform: 'none',
                   fontSize: { xs: '14px', md: '14px' },
@@ -809,10 +824,10 @@ const EditContactInfo = () => {
                 Delete Additional Contact
               </Button>
             )}
-            <Button 
-              onClick={handleSaveContact} 
-              variant="contained" 
-              sx={{ 
+            <Button
+              onClick={handleSaveContact}
+              variant="contained"
+              sx={{
                 bgcolor: '#578A18',
                 textTransform: 'none',
                 fontSize: { xs: '14px', md: '14px' },

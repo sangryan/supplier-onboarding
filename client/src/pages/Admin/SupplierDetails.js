@@ -24,6 +24,7 @@ import {
   ExpandMore,
   ChevronRight,
   ChevronLeft,
+  History,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import api, { API_BASE_URL } from '../../utils/api';
@@ -1537,7 +1538,6 @@ const SupplierDetails = () => {
                 '&.Mui-expanded': {
                   margin: 0,
                 },
-                // No separator for the last accordion
               }}
             >
               <AccordionSummary
@@ -1652,6 +1652,180 @@ const SupplierDetails = () => {
                 </Grid>
               </AccordionDetails>
             </Accordion>
+
+            {/* Approval History */}
+            {supplier.approvalHistory && supplier.approvalHistory.length > 0 && (
+              <Accordion
+                expanded={expanded.includes('approvalHistory')}
+                onChange={handleAccordionChange('approvalHistory')}
+                sx={{
+                  boxShadow: 'none',
+                  border: 'none',
+                  borderRadius: '0 !important',
+                  mb: 0,
+                  '&:before': { display: 'none' },
+                  '&.Mui-expanded': {
+                    margin: 0,
+                  },
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={
+                    expanded.includes('approvalHistory') ? (
+                      <ExpandMore sx={{ color: '#6b7280' }} />
+                    ) : (
+                      <ChevronRight sx={{ color: '#6b7280' }} />
+                    )
+                  }
+                  sx={{
+                    px: { xs: 2, sm: 3 },
+                    py: 2,
+                    minHeight: '56px',
+                    '&.Mui-expanded': {
+                      minHeight: '56px',
+                      borderBottom: 'none',
+                      pb: 2,
+                    },
+                    '& .MuiAccordionSummary-content': {
+                      my: 0,
+                    },
+                    position: 'relative',
+                    '&.Mui-expanded::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: { xs: '16px', sm: '24px' },
+                      right: { xs: '16px', sm: '24px' },
+                      height: '1px',
+                      backgroundColor: '#e5e7eb',
+                      zIndex: 1,
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <History sx={{ color: '#6b7280', fontSize: '20px' }} />
+                    <Typography
+                      sx={{
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        color: '#111827',
+                      }}
+                    >
+                      Approval History
+                    </Typography>
+                    <Chip
+                      label={supplier.approvalHistory.filter(h => h.comments).length}
+                      size="small"
+                      sx={{
+                        bgcolor: '#f3f4f6',
+                        color: '#374151',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        height: '20px',
+                        minWidth: '20px',
+                        '& .MuiChip-label': {
+                          px: 0.75,
+                        },
+                      }}
+                    />
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {[...supplier.approvalHistory]
+                      .filter(entry => entry.comments)
+                      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                      .map((entry, index) => {
+                        const actionConfig = {
+                          approved: { label: 'Approved', color: '#10b981', bgColor: '#ecfdf5' },
+                          rejected: { label: 'Rejected', color: '#ef4444', bgColor: '#fef2f2' },
+                          requested_info: { label: 'Requested Info', color: '#6b7280', bgColor: '#f3f4f6' },
+                          assigned_vendor_number: { label: 'Vendor Number Assigned', color: '#3b82f6', bgColor: '#eff6ff' },
+                          contract_uploaded: { label: 'Contract Uploaded', color: '#8b5cf6', bgColor: '#f5f3ff' },
+                        };
+                        const config = actionConfig[entry.action] || { label: entry.action, color: '#6b7280', bgColor: '#f3f4f6' };
+                        const approverName = entry.approver
+                          ? `${entry.approver.firstName || ''} ${entry.approver.lastName || ''}`.trim()
+                          : 'System';
+                        const approverRole = entry.approver?.role
+                          ? entry.approver.role.charAt(0).toUpperCase() + entry.approver.role.slice(1)
+                          : '';
+                        const timestamp = entry.timestamp
+                          ? new Date(entry.timestamp).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                          : '';
+
+                        return (
+                          <Box
+                            key={index}
+                            sx={{
+                              p: 2,
+                              borderRadius: '8px',
+                              border: '1px solid #e5e7eb',
+                              backgroundColor: '#fafafa',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>
+                                  {approverName}
+                                </Typography>
+                                {approverRole && (
+                                  <Chip
+                                    label={approverRole}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: '#f3f4f6',
+                                      color: '#374151',
+                                      fontSize: '11px',
+                                      fontWeight: 500,
+                                      height: '20px',
+                                      '& .MuiChip-label': { px: 0.75 },
+                                    }}
+                                  />
+                                )}
+                                <Chip
+                                  label={config.label}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: config.bgColor,
+                                    color: config.color,
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    height: '20px',
+                                    '& .MuiChip-label': { px: 0.75 },
+                                  }}
+                                />
+                              </Box>
+                              <Typography sx={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                                {timestamp}
+                              </Typography>
+                            </Box>
+                            {entry.comments && (
+                              <Typography
+                                sx={{
+                                  fontSize: '14px',
+                                  color: '#374151',
+                                  lineHeight: 1.6,
+                                  mt: 0.5,
+                                  whiteSpace: 'pre-wrap',
+                                }}
+                              >
+                                {entry.comments}
+                              </Typography>
+                            )}
+                          </Box>
+                        );
+                      })}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            )}
           </Box>
         </Grid>
 

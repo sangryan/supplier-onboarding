@@ -277,13 +277,15 @@ router.post('/:supplierId/request-info', protect, authorize('procurement', 'lega
 
     await supplier.save();
 
-    // Notify supplier
+    // Notify supplier with the specific details of what's needed
+    const reviewerRole = req.user.role.charAt(0).toUpperCase() + req.user.role.slice(1);
+    const reviewerName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || reviewerRole;
     if (supplier.submittedBy) {
       await createNotification({
         recipient: supplier.submittedBy._id,
         type: 'more_info_required',
-        title: `[${supplier.applicationNumber}] Requested More Info`,
-        message: `Please provide the following requested information: ${comments}`,
+        title: `[${supplier.applicationNumber}] Action Required: More Information Needed`,
+        message: `${reviewerName} (${reviewerRole}) has requested additional information on your application.\n\nWhat's needed: ${comments}`,
         relatedEntity: {
           entityType: 'supplier',
           entityId: supplier._id
