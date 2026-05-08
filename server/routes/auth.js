@@ -305,6 +305,7 @@ router.put('/change-password', protect, [
 
     // Update password
     user.password = newPassword;
+    user.mustChangePassword = false;
     await user.save();
 
     res.json({

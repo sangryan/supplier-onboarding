@@ -97,6 +97,7 @@ const entityTypes = [
   'Limited Company',
   'Public Limited Company',
   'Partnership',
+  'Foreign Company',
   'Sole Proprietorship',
   'Trust',
   'NGO',
@@ -162,6 +163,28 @@ const SupplierApplication = () => {
     companyProfile: null,
     bankReferenceLetter: null,
     directorsIds: [],
+    // Partnership
+    partnershipDeed: null,
+    partnersPinCertificate: null,
+    partnersTaxCompliance: null,
+    partnerIds: [],
+    // Foreign Company
+    shareCertificate: null,
+    registryExtract: null,
+    taxComplianceCertificate: null,
+    directorsNationalIds: [],
+    directorsPassports: [],
+    // Individual / Sole Proprietor
+    nationalId: null,
+    passportDocument: null,
+    workPermit: null,
+    policeClearance: null,
+    resume: null,
+    // Trust
+    trustDeed: null,
+    founderPin: null,
+    foundersIds: [],
+    beneficiariesIds: [],
     practicingCertificates: [],
     keyMembersResumes: [],
 
@@ -275,9 +298,184 @@ const SupplierApplication = () => {
       'declarationSignatureFile': 'source_funds_declaration',
       'directorsIds': 'directors_id',
       'practicingCertificates': 'practicing_certificate',
-      'keyMembersResumes': 'member_resume'
+      'keyMembersResumes': 'member_resume',
+
+      // Partnership
+      'partnershipDeed': 'partnership_deed',
+      'partnersPinCertificate': 'partner_pin',
+      'partnersTaxCompliance': 'partner_tax_compliance',
+      'partnerIds': 'partner_id',
+
+      // Foreign Company
+      'shareCertificate': 'share_certificate',
+      'registryExtract': 'registry_extract',
+      'taxComplianceCertificate': 'tax_compliance',
+      'directorsNationalIds': 'national_id',
+      'directorsPassports': 'passport',
+
+      // Individual / Sole Proprietor
+      'nationalId': 'national_id',
+      'passportDocument': 'passport',
+      'workPermit': 'work_permit',
+      'policeClearance': 'police_clearance',
+      'resume': 'resume',
+
+      // Trust
+      'trustDeed': 'trust_deed',
+      'founderPin': 'founder_pin',
+      'foundersIds': 'founder_id',
+      'beneficiariesIds': 'beneficiary_id'
     };
     return fieldToDocType[fieldName] || 'other';
+  };
+
+  const renderSingleFileUpload = (fieldKey, label, helperText = 'Accepted: PDF, Word, Excel, Images (Max 10MB)') => {
+    const value = formData[fieldKey];
+    const displayValue = value
+      ? (value instanceof File
+        ? value.name
+        : typeof value === 'string'
+          ? value
+          : 'File selected')
+      : 'Choose file';
+
+    return (
+      <Box sx={{ mb: 2.5 }}>
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+        >
+          {label}
+        </Typography>
+        <Button
+          component="label"
+          variant="outlined"
+          fullWidth
+          sx={{
+            justifyContent: 'flex-start',
+            textTransform: 'none',
+            borderColor: '#d1d5db',
+            color: '#6b7280',
+            fontSize: '14px',
+            py: 0.75,
+            '&:hover': {
+              borderColor: '#9ca3af',
+              backgroundColor: '#f9fafb'
+            }
+          }}
+        >
+          {displayValue}
+          <input
+            type="file"
+            hidden
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                handleChange(fieldKey, e.target.files[0]);
+              }
+            }}
+            onClick={(e) => {
+              // Reset value to allow selecting the same file again
+              e.target.value = '';
+            }}
+          />
+        </Button>
+        <Typography
+          variant="caption"
+          sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}
+        >
+          {helperText}
+        </Typography>
+        {!formData[fieldKey] && (
+          <Typography
+            variant="caption"
+            sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}
+          >
+            No file chosen
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
+  const renderMultiFileUpload = (fieldKey, label, maxFiles = 10) => {
+    const currentValue = formData[fieldKey];
+    const count = Array.isArray(currentValue) ? currentValue.length : 0;
+    const hasAny = count > 0;
+
+    return (
+      <Grid item xs={12}>
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+        >
+          {label}
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
+        >
+          Please select up to {maxFiles} files
+        </Typography>
+        <Box
+          component="label"
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px dashed #d1d5db',
+            borderRadius: '8px',
+            p: 4,
+            cursor: 'pointer',
+            backgroundColor: '#fafafa',
+            '&:hover': {
+              borderColor: '#9ca3af',
+              backgroundColor: '#f9fafb'
+            }
+          }}
+        >
+          <input
+            type="file"
+            multiple
+            hidden
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                const files = Array.from(e.target.files).slice(0, maxFiles);
+                if (files.length < e.target.files.length) {
+                  toast.warning(`Only the first ${maxFiles} files will be uploaded. ${e.target.files.length - files.length} file(s) ignored.`);
+                }
+                handleChange(fieldKey, files);
+              }
+            }}
+            onClick={(e) => {
+              e.target.value = '';
+            }}
+          />
+          <Box
+            component="img"
+            src="/images/upload.svg"
+            alt="Upload icon"
+            sx={{ width: 40, height: 40, mb: 1.5 }}
+          />
+          <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
+            Upload files
+          </Typography>
+          <Typography sx={{ fontSize: '12px', color: '#6b7280' }}>
+            Click here or drag and drop to upload
+          </Typography>
+          {hasAny && (
+            <Typography sx={{ fontSize: '12px', color: theme.palette.green.main, mt: 1, fontWeight: 500 }}>
+              {count} file(s) selected
+              {currentValue[0] instanceof File === false && currentValue[0] && (
+                <span> ({typeof currentValue[0] === 'string' ? 'Previously saved' : ''})</span>
+              )}
+            </Typography>
+          )}
+        </Box>
+      </Grid>
+    );
   };
 
   // Upload a single file
@@ -318,7 +516,19 @@ const SupplierApplication = () => {
     const singleFileFields = [
       'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
       'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-      'declarationSignatureFile'
+      'declarationSignatureFile',
+
+      // Partnership
+      'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
+
+      // Foreign Company
+      'shareCertificate', 'registryExtract', 'taxComplianceCertificate',
+
+      // Individual / Sole Proprietor
+      'nationalId', 'passportDocument', 'workPermit', 'policeClearance', 'resume',
+
+      // Trust
+      'trustDeed', 'founderPin'
     ];
 
     for (const field of singleFileFields) {
@@ -331,7 +541,16 @@ const SupplierApplication = () => {
     }
 
     // Upload array file fields
-    const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
+    const arrayFileFields = [
+      'directorsIds',
+      'partnerIds',
+      'directorsNationalIds',
+      'directorsPassports',
+      'foundersIds',
+      'beneficiariesIds',
+      'practicingCertificates',
+      'keyMembersResumes'
+    ];
     for (const field of arrayFileFields) {
       if (Array.isArray(formData[field]) && formData[field].length > 0) {
         const uploadedFiles = [];
@@ -473,6 +692,32 @@ const SupplierApplication = () => {
               cr12: (app.cr12 && typeof app.cr12 === 'string' && app.cr12.trim() !== '') ? app.cr12 : null,
               companyProfile: (app.companyProfile && typeof app.companyProfile === 'string' && app.companyProfile.trim() !== '') ? app.companyProfile : null,
               bankReferenceLetter: (app.bankReferenceLetter && typeof app.bankReferenceLetter === 'string' && app.bankReferenceLetter.trim() !== '') ? app.bankReferenceLetter : null,
+              // Partnership
+              partnershipDeed: (app.partnershipDeed && typeof app.partnershipDeed === 'string' && app.partnershipDeed.trim() !== '') ? app.partnershipDeed : null,
+              partnersPinCertificate: (app.partnersPinCertificate && typeof app.partnersPinCertificate === 'string' && app.partnersPinCertificate.trim() !== '') ? app.partnersPinCertificate : null,
+              partnersTaxCompliance: (app.partnersTaxCompliance && typeof app.partnersTaxCompliance === 'string' && app.partnersTaxCompliance.trim() !== '') ? app.partnersTaxCompliance : null,
+              partnerIds: Array.isArray(app.partnerIds) && app.partnerIds.length > 0 ? app.partnerIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+
+              // Foreign Company
+              shareCertificate: (app.shareCertificate && typeof app.shareCertificate === 'string' && app.shareCertificate.trim() !== '') ? app.shareCertificate : null,
+              registryExtract: (app.registryExtract && typeof app.registryExtract === 'string' && app.registryExtract.trim() !== '') ? app.registryExtract : null,
+              taxComplianceCertificate: (app.taxComplianceCertificate && typeof app.taxComplianceCertificate === 'string' && app.taxComplianceCertificate.trim() !== '') ? app.taxComplianceCertificate : null,
+              directorsNationalIds: Array.isArray(app.directorsNationalIds) && app.directorsNationalIds.length > 0 ? app.directorsNationalIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+              directorsPassports: Array.isArray(app.directorsPassports) && app.directorsPassports.length > 0 ? app.directorsPassports.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+
+              // Individual / Sole Proprietor
+              nationalId: (app.nationalId && typeof app.nationalId === 'string' && app.nationalId.trim() !== '') ? app.nationalId : null,
+              passportDocument: (app.passportDocument && typeof app.passportDocument === 'string' && app.passportDocument.trim() !== '') ? app.passportDocument : null,
+              workPermit: (app.workPermit && typeof app.workPermit === 'string' && app.workPermit.trim() !== '') ? app.workPermit : null,
+              policeClearance: (app.policeClearance && typeof app.policeClearance === 'string' && app.policeClearance.trim() !== '') ? app.policeClearance : null,
+              resume: (app.resume && typeof app.resume === 'string' && app.resume.trim() !== '') ? app.resume : null,
+
+              // Trust
+              trustDeed: (app.trustDeed && typeof app.trustDeed === 'string' && app.trustDeed.trim() !== '') ? app.trustDeed : null,
+              founderPin: (app.founderPin && typeof app.founderPin === 'string' && app.founderPin.trim() !== '') ? app.founderPin : null,
+              foundersIds: Array.isArray(app.foundersIds) && app.foundersIds.length > 0 ? app.foundersIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+              beneficiariesIds: Array.isArray(app.beneficiariesIds) && app.beneficiariesIds.length > 0 ? app.beneficiariesIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+
               directorsIds: Array.isArray(app.directorsIds) && app.directorsIds.length > 0 ? app.directorsIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               practicingCertificates: Array.isArray(app.practicingCertificates) && app.practicingCertificates.length > 0 ? app.practicingCertificates.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               keyMembersResumes: Array.isArray(app.keyMembersResumes) && app.keyMembersResumes.length > 0 ? app.keyMembersResumes.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
@@ -757,7 +1002,19 @@ const SupplierApplication = () => {
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-        'declarationSignatureFile'
+        'declarationSignatureFile',
+
+        // Partnership
+        'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
+
+        // Foreign Company
+        'shareCertificate', 'registryExtract', 'taxComplianceCertificate',
+
+        // Individual / Sole Proprietor
+        'nationalId', 'passportDocument', 'workPermit', 'policeClearance', 'resume',
+
+        // Trust
+        'trustDeed', 'founderPin'
       ];
 
       fileFields.forEach(field => {
@@ -773,7 +1030,16 @@ const SupplierApplication = () => {
       });
 
       // Handle array file fields
-      const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
+      const arrayFileFields = [
+        'directorsIds',
+        'partnerIds',
+        'directorsNationalIds',
+        'directorsPassports',
+        'foundersIds',
+        'beneficiariesIds',
+        'practicingCertificates',
+        'keyMembersResumes'
+      ];
       arrayFileFields.forEach(field => {
         if (Array.isArray(payload[field]) && payload[field].length > 0) {
           payload[field] = payload[field].map(file => {
@@ -811,9 +1077,122 @@ const SupplierApplication = () => {
     }
   };
 
+  const validateRequiredDocuments = () => {
+    const entityType = formData.entityType;
+    const isSinglePresent = (v) =>
+      v instanceof File || (typeof v === 'string' && v.trim() !== '');
+    const isArrayPresent = (v) => Array.isArray(v) && v.length > 0;
+
+    if (!entityType) {
+      toast.error('Please select an entity type');
+      return false;
+    }
+
+    const isCompanyLike = [
+      'Public/Private Company',
+      'Limited Company',
+      'Public Limited Company',
+      'NGO',
+      'Government Entity',
+      'Other'
+    ].includes(entityType);
+    const isPartnership = entityType === 'Partnership';
+    const isForeign = entityType === 'Foreign Company';
+    const isIndividual = entityType === 'Sole Proprietorship';
+    const isTrust = entityType === 'Trust';
+
+    const missing = [];
+
+    // Helper for nicer UX
+    const requireSingle = (presentValue, label) => {
+      if (!presentValue) missing.push(label);
+    };
+    const requireArray = (presentValue, label) => {
+      if (!presentValue) missing.push(label);
+    };
+
+    if (isCompanyLike) {
+      requireSingle(isSinglePresent(formData.certificateOfIncorporation), 'Certificate of incorporation or registration');
+      requireSingle(isSinglePresent(formData.kraPinCertificate), 'PIN Certificate of entity');
+      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
+      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(formData.cr12), 'Valid CR12 (not more than 30 days old)');
+      requireSingle(isSinglePresent(formData.companyProfile), 'Firm Company Profile');
+      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
+      requireArray(isArrayPresent(formData.directorsIds), "Directors' IDs/Copies of Passports");
+    } else if (isPartnership) {
+      requireSingle(isSinglePresent(formData.partnershipDeed), 'Partnership Deed');
+      requireSingle(isSinglePresent(formData.partnersPinCertificate), 'PIN Certificate of partners');
+      requireSingle(isSinglePresent(formData.partnersTaxCompliance), 'Valid tax compliance certificate for each partner');
+      requireArray(isArrayPresent(formData.partnerIds), "Partners' IDs/Copies of Passports");
+      requireSingle(isSinglePresent(formData.companyProfile), 'Firm Company Profile');
+      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
+    } else if (isForeign) {
+      requireSingle(isSinglePresent(formData.certificateOfIncorporation), 'Certificate of incorporation or registration');
+
+      // share certificate OR registry extract
+      const hasShare = isSinglePresent(formData.shareCertificate);
+      const hasRegistry = isSinglePresent(formData.registryExtract);
+      if (!hasShare && !hasRegistry) {
+        missing.push('Valid share certificate or registry extract');
+      }
+
+      requireSingle(isSinglePresent(formData.taxComplianceCertificate), 'Valid tax compliance certificate');
+
+      // directorsNationalIds OR directorsPassports
+      const hasNationalIds = isArrayPresent(formData.directorsNationalIds);
+      const hasPassports = isArrayPresent(formData.directorsPassports);
+      if (!hasNationalIds && !hasPassports) {
+        missing.push("Directors' National Identification documents or passport");
+      }
+
+      requireSingle(isSinglePresent(formData.companyProfile), 'Firm profile');
+      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
+    } else if (isIndividual) {
+      // nationalId OR passportDocument
+      const hasNationalId = isSinglePresent(formData.nationalId);
+      const hasPassport = isSinglePresent(formData.passportDocument);
+      if (!hasNationalId && !hasPassport) {
+        missing.push('National Identification Card/ Passport');
+      }
+
+      requireSingle(isSinglePresent(formData.workPermit), 'Work permit (for foreigners)');
+      requireSingle(isSinglePresent(formData.policeClearance), 'Police clearance certificate');
+      requireSingle(isSinglePresent(formData.kraPinCertificate), 'PIN Certificate');
+      requireSingle(isSinglePresent(formData.resume), 'Resume (Curriculum vitae)');
+      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
+    } else if (isTrust) {
+      requireSingle(isSinglePresent(formData.trustDeed), 'Trust Deed');
+      requireSingle(isSinglePresent(formData.founderPin), 'PIN Certificate of Founders');
+      requireArray(isArrayPresent(formData.foundersIds), "Founders' IDs/Copies of Passports");
+      requireArray(isArrayPresent(formData.beneficiariesIds), 'Beneficaries IDs/Copies of Passport');
+      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
+    }
+
+    if (missing.length > 0) {
+      toast.error(`Missing required documents: ${missing.join(', ')}`);
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSaveAndContinue = async () => {
     setLoading(true);
     try {
+      if (activeStep === 1 || activeStep === steps.length - 1) {
+        const ok = validateRequiredDocuments();
+        if (!ok) {
+          setLoading(false);
+          return;
+        }
+      }
+
       // First, ensure we have a supplier ID (create draft if needed)
       let currentSupplierId = applicationId;
       if (!currentSupplierId) {
@@ -850,7 +1229,19 @@ const SupplierApplication = () => {
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-        'declarationSignatureFile'
+        'declarationSignatureFile',
+
+        // Partnership
+        'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
+
+        // Foreign Company
+        'shareCertificate', 'registryExtract', 'taxComplianceCertificate',
+
+        // Individual / Sole Proprietor
+        'nationalId', 'passportDocument', 'workPermit', 'policeClearance', 'resume',
+
+        // Trust
+        'trustDeed', 'founderPin'
       ];
 
       fileFields.forEach(field => {
@@ -868,7 +1259,16 @@ const SupplierApplication = () => {
       });
 
       // Handle array file fields
-      const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
+      const arrayFileFields = [
+        'directorsIds',
+        'partnerIds',
+        'directorsNationalIds',
+        'directorsPassports',
+        'foundersIds',
+        'beneficiariesIds',
+        'practicingCertificates',
+        'keyMembersResumes'
+      ];
       arrayFileFields.forEach(field => {
         if (Array.isArray(payload[field]) && payload[field].length > 0) {
           // Ensure all items are strings (filenames), not File objects
@@ -965,7 +1365,19 @@ const SupplierApplication = () => {
           const fileFields = [
             'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
             'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-            'declarationSignatureFile'
+            'declarationSignatureFile',
+
+            // Partnership
+            'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
+
+            // Foreign Company
+            'shareCertificate', 'registryExtract', 'taxComplianceCertificate',
+
+            // Individual / Sole Proprietor
+            'nationalId', 'passportDocument', 'workPermit', 'policeClearance', 'resume',
+
+            // Trust
+            'trustDeed', 'founderPin'
           ];
 
           fileFields.forEach(field => {
@@ -985,7 +1397,16 @@ const SupplierApplication = () => {
           });
 
           // Handle array file fields
-          const arrayFileFields = ['directorsIds', 'practicingCertificates', 'keyMembersResumes'];
+          const arrayFileFields = [
+            'directorsIds',
+            'partnerIds',
+            'directorsNationalIds',
+            'directorsPassports',
+            'foundersIds',
+            'beneficiariesIds',
+            'practicingCertificates',
+            'keyMembersResumes'
+          ];
           arrayFileFields.forEach(field => {
             if (Array.isArray(payload[field]) && payload[field].length > 0) {
               if (payload[field][0] instanceof File) {
@@ -1797,7 +2218,21 @@ const SupplierApplication = () => {
           </Box>
         );
 
-      case 1:
+      case 1: {
+        const entityType = formData.entityType;
+        const isCompanyLike = [
+          'Public/Private Company',
+          'Limited Company',
+          'Public Limited Company',
+          'NGO',
+          'Government Entity',
+          'Other'
+        ].includes(entityType);
+        const isPartnership = entityType === 'Partnership';
+        const isForeignCompany = entityType === 'Foreign Company';
+        const isIndividual = entityType === 'Sole Proprietorship';
+        const isTrust = entityType === 'Trust';
+
         return (
           <Box>
             {/* Entity Details Section */}
@@ -1883,7 +2318,8 @@ const SupplierApplication = () => {
 
                 {/* Required Documents - Two Columns */}
                 <Grid item xs={12} md={6}>
-                  <Box sx={{ mb: 2.5 }}>
+                  {(isCompanyLike || isForeignCompany) && (
+                    <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
                       sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
@@ -1937,8 +2373,27 @@ const SupplierApplication = () => {
                         No file chosen
                       </Typography>
                     )}
-                  </Box>
+                    </Box>
+                  )}
 
+                  {isPartnership && renderSingleFileUpload('partnershipDeed', 'Partnership Deed')}
+                  {isPartnership && renderSingleFileUpload('partnersPinCertificate', 'PIN Certificate of partners')}
+                  {isPartnership && renderSingleFileUpload('partnersTaxCompliance', 'Valid tax compliance certificate for each partner')}
+
+                  {isForeignCompany && renderSingleFileUpload('shareCertificate', 'Valid share certificate')}
+                  {isForeignCompany && renderSingleFileUpload('registryExtract', 'Valid registry extract')}
+                  {isForeignCompany && renderSingleFileUpload('taxComplianceCertificate', 'Valid tax compliance certificate')}
+
+                  {isIndividual && renderSingleFileUpload('nationalId', 'National Identification Card')}
+                  {isIndividual && renderSingleFileUpload('passportDocument', 'Passport')}
+                  {isIndividual && renderSingleFileUpload('workPermit', 'Work permit (for foreigners)')}
+                  {isIndividual && renderSingleFileUpload('policeClearance', 'Police clearance certificate')}
+                  {isIndividual && renderSingleFileUpload('resume', 'Resume (Curriculum vitae)')}
+
+                  {isTrust && renderSingleFileUpload('trustDeed', 'Trust Deed')}
+                  {isTrust && renderSingleFileUpload('founderPin', 'PIN Certificate of Founders')}
+
+                  {(isCompanyLike || isIndividual) && (
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
@@ -1993,7 +2448,9 @@ const SupplierApplication = () => {
                       </Typography>
                     )}
                   </Box>
+                  )}
 
+                  {(isCompanyLike || isPartnership || isIndividual) && (
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
@@ -2048,7 +2505,9 @@ const SupplierApplication = () => {
                       </Typography>
                     )}
                   </Box>
+                  )}
 
+                  {(isCompanyLike || isPartnership || isForeignCompany || isTrust) && (
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
@@ -2103,9 +2562,11 @@ const SupplierApplication = () => {
                       </Typography>
                     )}
                   </Box>
+                  )}
                 </Grid>
 
                 <Grid item xs={12} md={6}>
+                  {isCompanyLike && (
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
@@ -2160,7 +2621,9 @@ const SupplierApplication = () => {
                       </Typography>
                     )}
                   </Box>
+                  )}
 
+                  {(isCompanyLike || isPartnership || isForeignCompany) && (
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
                       variant="body2"
@@ -2215,6 +2678,7 @@ const SupplierApplication = () => {
                       </Typography>
                     )}
                   </Box>
+                  )}
 
                   <Box sx={{ mb: 2.5 }}>
                     <Typography
@@ -2272,78 +2736,21 @@ const SupplierApplication = () => {
                   </Box>
                 </Grid>
 
-                {/* Director's IDs/Passports Upload Area */}
-                <Grid item xs={12}>
-                  <Typography
-                    variant="body2"
-                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                  >
-                    Director's IDs/Passports
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
-                  >
-                    Please select up to 10 files
-                  </Typography>
-                  <Box
-                    component="label"
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px dashed #d1d5db',
-                      borderRadius: '8px',
-                      p: 4,
-                      cursor: 'pointer',
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        borderColor: '#9ca3af',
-                        backgroundColor: '#f9fafb'
-                      }
-                    }}
-                  >
-                    <input
-                      type="file"
-                      multiple
-                      hidden
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          const files = Array.from(e.target.files).slice(0, 10); // Limit to 10 files
-                          if (files.length < e.target.files.length) {
-                            toast.warning(`Only the first 10 files will be uploaded. ${e.target.files.length - files.length} file(s) ignored.`);
-                          }
-                          handleChange('directorsIds', files);
-                        }
-                      }}
-                      onClick={(e) => {
-                        e.target.value = '';
-                      }}
-                    />
-                    <Box
-                      component="img"
-                      src="/images/upload.svg"
-                      alt="Upload icon"
-                      sx={{ width: 40, height: 40, mb: 1.5 }}
-                    />
-                    <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
-                      Upload files
-                    </Typography>
-                    <Typography sx={{ fontSize: '12px', color: '#6b7280' }}>
-                      Click here or drag and drop to upload
-                    </Typography>
-                    {formData.directorsIds && formData.directorsIds.length > 0 && (
-                      <Typography sx={{ fontSize: '12px', color: theme.palette.green.main, mt: 1, fontWeight: 500 }}>
-                        {formData.directorsIds.length} file(s) selected
-                        {formData.directorsIds[0] instanceof File === false && formData.directorsIds[0] && (
-                          <span> ({typeof formData.directorsIds[0] === 'string' ? 'Previously saved' : ''})</span>
-                        )}
-                      </Typography>
-                    )}
-                  </Box>
-                </Grid>
+                {/* Entity-specific ID/Passport Documents */}
+                {isCompanyLike && renderMultiFileUpload('directorsIds', "Directors' IDs/Copies of Passports")}
+                {isPartnership && renderMultiFileUpload('partnerIds', "Partners' IDs/Copies of Passports")}
+                {isForeignCompany && (
+                  <>
+                    {renderMultiFileUpload('directorsNationalIds', "Directors' National Identification documents")}
+                    {renderMultiFileUpload('directorsPassports', "Directors' Passports")}
+                  </>
+                )}
+                {isTrust && (
+                  <>
+                    {renderMultiFileUpload('foundersIds', "Founders' IDs/Copies of Passports")}
+                    {renderMultiFileUpload('beneficiariesIds', 'Beneficaries IDs/Copies of Passport')}
+                  </>
+                )}
               </Grid>
             </Paper>
 
@@ -2585,6 +2992,7 @@ const SupplierApplication = () => {
             </Paper>
           </Box>
         );
+      }
 
       case 2:
         return (
@@ -3412,13 +3820,89 @@ const SupplierApplication = () => {
                         });
                       };
 
-                      return (
-                        <Grid item xs={12}>
-                          {/* Certificate of Incorporation - show all instances */}
-                          {formData.certificateOfIncorporation && renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                          {formData.directorsIds && formData.directorsIds.length > 0 && renderMultipleDocumentCards(formData.directorsIds, 'Certificate of Incorporation')}
-                        </Grid>
-                      );
+                      return (() => {
+                        const entityType = formData.entityType;
+                        const isCompanyLike = [
+                          'Public/Private Company',
+                          'Limited Company',
+                          'Public Limited Company',
+                          'NGO',
+                          'Government Entity',
+                          'Other'
+                        ].includes(entityType);
+                        const isPartnership = entityType === 'Partnership';
+                        const isForeignCompany = entityType === 'Foreign Company';
+                        const isIndividual = entityType === 'Sole Proprietorship';
+                        const isTrust = entityType === 'Trust';
+
+                        return (
+                          <Grid item xs={12}>
+                            {isCompanyLike && (
+                              <>
+                                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
+                                {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate of entity')}
+                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                                {renderDocumentCard(formData.cr12, 'Valid CR12 (not more than 30 days old)')}
+                                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
+                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                                {formData.directorsIds?.length > 0 && renderMultipleDocumentCards(formData.directorsIds, "Directors' IDs/Passports")}
+                              </>
+                            )}
+
+                            {isPartnership && (
+                              <>
+                                {renderDocumentCard(formData.partnershipDeed, 'Partnership Deed')}
+                                {renderDocumentCard(formData.partnersPinCertificate, 'PIN Certificate of partners')}
+                                {renderDocumentCard(formData.partnersTaxCompliance, 'Valid tax compliance certificate for each partner')}
+                                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
+                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                                {formData.partnerIds?.length > 0 && renderMultipleDocumentCards(formData.partnerIds, "Partners' IDs/Passports")}
+                              </>
+                            )}
+
+                            {isForeignCompany && (
+                              <>
+                                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
+                                {renderDocumentCard(formData.shareCertificate, 'Valid share certificate')}
+                                {renderDocumentCard(formData.registryExtract, 'Valid registry extract')}
+                                {renderDocumentCard(formData.taxComplianceCertificate, 'Valid tax compliance certificate')}
+                                {renderDocumentCard(formData.companyProfile, 'Firm profile')}
+                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                                {formData.directorsNationalIds?.length > 0 && renderMultipleDocumentCards(formData.directorsNationalIds, "Directors' National IDs")}
+                                {formData.directorsPassports?.length > 0 && renderMultipleDocumentCards(formData.directorsPassports, "Directors' Passports")}
+                              </>
+                            )}
+
+                            {isIndividual && (
+                              <>
+                                {renderDocumentCard(formData.nationalId, 'National Identification Card')}
+                                {renderDocumentCard(formData.passportDocument, 'Passport')}
+                                {renderDocumentCard(formData.workPermit, 'Work permit (for foreigners)')}
+                                {renderDocumentCard(formData.policeClearance, 'Police clearance certificate')}
+                                {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate')}
+                                {renderDocumentCard(formData.resume, 'Resume (Curriculum vitae)')}
+                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                              </>
+                            )}
+
+                            {isTrust && (
+                              <>
+                                {renderDocumentCard(formData.trustDeed, 'Trust Deed')}
+                                {renderDocumentCard(formData.founderPin, 'PIN Certificate of Founders')}
+                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                                {formData.foundersIds?.length > 0 && renderMultipleDocumentCards(formData.foundersIds, "Founders' IDs/Passports")}
+                                {formData.beneficiariesIds?.length > 0 && renderMultipleDocumentCards(formData.beneficiariesIds, 'Beneficaries IDs/Passport')}
+                              </>
+                            )}
+                          </Grid>
+                        );
+                      })();
                     })()}
                   </Grid>
                 </AccordionDetails>

@@ -146,6 +146,17 @@ const Layout = () => {
         { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
         { text: 'Contract Management', icon: <DescriptionIcon />, path: '/contracts' },
       ];
+    } else if (user.role === 'super_admin') {
+      return [
+        { text: 'All tasks', icon: <AssignmentIcon />, path: '/dashboard' },
+        { text: 'Dashboard', icon: <BusinessIcon />, path: '/suppliers' },
+        { text: 'Users', icon: <PeopleIcon />, path: '/users' },
+        { text: 'Setups', icon: <AssessmentIcon />, path: '/reports' },
+      ];
+    } else if (user.role === 'management') {
+      return [
+        { text: 'Contract Management', icon: <DescriptionIcon />, path: '/dashboard' },
+      ];
     } else {
       return [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },

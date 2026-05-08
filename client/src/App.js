@@ -16,6 +16,7 @@ import theme from './theme/theme';
 import Layout from './components/Layout/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import SupplierProfileGuard from './components/SupplierProfileGuard';
+import InternalPasswordGuard from './components/InternalPasswordGuard';
 
 // Pages
 import LandingPage from './pages/Landing/LandingPage';
@@ -110,7 +111,7 @@ function App() {
         />
 
         {/* Protected Routes */}
-        <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+        <Route element={<PrivateRoute><InternalPasswordGuard><Layout /></InternalPasswordGuard></PrivateRoute>}>
           <Route path="/dashboard" element={<SupplierProfileGuard><Dashboard /></SupplierProfileGuard>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit-contact" element={<EditContactInfo />} />

@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const crypto = require('crypto');
 const User = require('../models/User');
+const Supplier = require('../models/Supplier');
+const AdHocVendor = require('../models/AdHocVendor');
+const Contract = require('../models/Contract');
 const { protect, authorize } = require('../middleware/auth');
+const { sendUserInviteEmail } = require('../utils/email');
 
 // @route   GET /api/users
 // @desc    Get all users
@@ -35,15 +40,47 @@ router.get('/', protect, authorize('super_admin'), async (req, res) => {
     const users = await User.find(query)
       .select('-password')
       .populate('createdBy', 'firstName lastName')
+      .populate('supplier', 'authorizedPerson.phone')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+
+    // Fallback: some supplier users are linked via Supplier.submittedBy but may not have User.supplier set.
+    // Resolve a supplier phone by submittedBy and attach it to user.phone when user.phone is empty.
+    const userIds = users.map((u) => u._id);
+    const suppliers = await Supplier.find(
+      { submittedBy: { $in: userIds } },
+      { submittedBy: 1, authorizedPerson: 1, updatedAt: 1, createdAt: 1 }
+    )
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .lean();
+
+    const supplierPhoneByUserId = new Map();
+    suppliers.forEach((supplier) => {
+      const submittedBy = supplier.submittedBy?.toString();
+      const phone = supplier.authorizedPerson?.phone;
+      if (submittedBy && phone && !supplierPhoneByUserId.has(submittedBy)) {
+        supplierPhoneByUserId.set(submittedBy, phone);
+      }
+    });
+
+    const normalizedUsers = users.map((userDoc) => {
+      const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+      const fallbackPhone = supplierPhoneByUserId.get(user._id.toString()) || null;
+
+      if (!user.phone && fallbackPhone) {
+        user.phone = fallbackPhone;
+      }
+
+      user.supplierContactPhone = fallbackPhone;
+      return user;
+    });
 
     const count = await User.countDocuments(query);
 
     res.json({
       success: true,
-      data: users,
+      data: normalizedUsers,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -59,6 +96,45 @@ router.get('/', protect, authorize('super_admin'), async (req, res) => {
   }
 });
 
+// @route   GET /api/users/departments
+// @desc    Get distinct departments from supplier applications
+// @access  Private (Super Admin)
+router.get('/departments', protect, authorize('super_admin'), async (req, res) => {
+  try {
+    // Management users filter contracts by `contract.department`.
+    // So the dropdown must reflect departments already used on contracts.
+    const contractDepartments = await Contract.distinct('department', {
+      department: { $exists: true, $ne: null, $ne: '' }
+    });
+
+    // Also include any departments coming from ad-hoc vendor intake.
+    const adHocDepartments = await AdHocVendor.distinct('department', {
+      department: { $exists: true, $ne: null, $ne: '' }
+    });
+
+    const departmentsSet = new Set([
+      ...(contractDepartments || []),
+      ...(adHocDepartments || []),
+    ]);
+
+    const departments = Array.from(departmentsSet)
+      .map((dept) => String(dept || '').trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    res.json({
+      success: true,
+      data: departments
+    });
+  } catch (error) {
+    console.error('Get departments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching departments'
+    });
+  }
+});
+
 // @route   POST /api/users
 // @desc    Create new internal user
 // @access  Private (Super Admin)
@@ -66,8 +142,14 @@ router.post('/', protect, authorize('super_admin'), [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('role').isIn(['super_admin', 'procurement', 'legal', 'management']).withMessage('Valid role is required')
+  body('role').isIn(['super_admin', 'procurement', 'legal', 'management']).withMessage('Valid role is required'),
+  body('department')
+    .custom((value, { req }) => {
+      if (req.body.role === 'management' && (!value || !String(value).trim())) {
+        throw new Error('Department is required for management users');
+      }
+      return true;
+    })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -78,7 +160,7 @@ router.post('/', protect, authorize('super_admin'), [
       });
     }
 
-    const { firstName, lastName, email, password, role, department, phone } = req.body;
+    const { firstName, lastName, email, role, department, phone } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -89,24 +171,41 @@ router.post('/', protect, authorize('super_admin'), [
       });
     }
 
+    // Generate temporary password (sent via email)
+    const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+
     // Create user
     // Internal users (non-suppliers) don't need email verification
     const user = await User.create({
       firstName,
       lastName,
       email: email.toLowerCase(),
-      password,
+      password: tempPassword,
       role,
       department,
       phone,
       createdBy: req.user.id,
       isActive: true,
-      isEmailVerified: true // Internal users don't need email verification
+      isEmailVerified: true, // Internal users don't need email verification
+      mustChangePassword: role === 'legal' || role === 'procurement'
     });
+
+    // Send invite email with temporary password (non-blocking)
+    try {
+      await sendUserInviteEmail({
+        email: user.email,
+        tempPassword,
+        userName: `${user.firstName} ${user.lastName}`,
+        role: role.replace('_', ' ')
+      });
+    } catch (emailError) {
+      console.error('Failed to send user invite email:', emailError.message);
+    }
 
     res.status(201).json({
       success: true,
-      data: user.toPublicJSON()
+      data: user.toPublicJSON(),
+      message: 'User created successfully. Temporary password has been sent by email.'
     });
   } catch (error) {
     console.error('Create user error:', error);
@@ -152,7 +251,15 @@ router.get('/:id', protect, authorize('super_admin'), async (req, res) => {
 router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
   try {
     const { firstName, lastName, role, department, phone, isActive } = req.body;
-    
+
+    const existingUser = await User.findById(req.params.id).select('role department');
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     const updateFields = {};
     if (firstName) updateFields.firstName = firstName;
     if (lastName) updateFields.lastName = lastName;
@@ -161,18 +268,23 @@ router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
     if (phone !== undefined) updateFields.phone = phone;
     if (isActive !== undefined) updateFields.isActive = isActive;
 
+    const effectiveRole = updateFields.role || existingUser.role;
+    const effectiveDepartment = updateFields.department !== undefined
+      ? updateFields.department
+      : existingUser.department;
+
+    if (effectiveRole === 'management' && (!effectiveDepartment || !String(effectiveDepartment).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department is required for management users'
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
       updateFields,
       { new: true, runValidators: true }
     ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
 
     res.json({
       success: true,

@@ -568,6 +568,7 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
         'Partnership': 'partnership',
         'Foreign Company': 'foreign_company',
         'Individual': 'individual',
+        'Sole Proprietorship': 'individual',
         'Trust': 'trust',
         'Other': 'other'
       };
@@ -1033,6 +1034,89 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
         comprehensiveUpdate.entityType = mapEntityType(checkValue);
         console.log(`[SUBMIT] FINAL CHECK - Remapped entityType: "${checkValue}" -> "${comprehensiveUpdate.entityType}"`);
       }
+    }
+
+    // Validate required documents based on entityType before allowing submission.
+    // This duplicates the client-side validation so submissions can't be bypassed via API calls.
+    const isSinglePresent = (v) => {
+      if (v === undefined || v === null) return false;
+      if (typeof v === 'string') return v.trim() !== '';
+      return true;
+    };
+    const isArrayPresent = (v) => Array.isArray(v) && v.length > 0;
+
+    const missing = [];
+    const entityType = String(comprehensiveUpdate.entityType || '');
+
+    const requireSingle = (present, label) => {
+      if (!present) missing.push(label);
+    };
+    const requireArray = (present, label) => {
+      if (!present) missing.push(label);
+    };
+
+    const companyLike = ['private_company', 'public_company', 'other'].includes(entityType);
+
+    if (companyLike) {
+      requireSingle(isSinglePresent(comprehensiveUpdate.certificateOfIncorporation), 'Certificate of incorporation or registration');
+      requireSingle(isSinglePresent(comprehensiveUpdate.kraPinCertificate), 'PIN Certificate of entity');
+      requireSingle(isSinglePresent(comprehensiveUpdate.etimsProof), 'Proof of registration on e-TIMS');
+      requireSingle(isSinglePresent(comprehensiveUpdate.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(comprehensiveUpdate.cr12), 'Valid CR12 (not more than 30 days old)');
+      requireSingle(isSinglePresent(comprehensiveUpdate.companyProfile), 'Firm Company Profile');
+      requireSingle(isSinglePresent(comprehensiveUpdate.bankReferenceLetter), 'Bank reference letter');
+      requireArray(isArrayPresent(comprehensiveUpdate.directorsIds), "Directors' IDs/Copies of Passports");
+    } else if (entityType === 'partnership') {
+      requireSingle(isSinglePresent(comprehensiveUpdate.partnershipDeed), 'Partnership Deed');
+      requireSingle(isSinglePresent(comprehensiveUpdate.partnersPinCertificate), 'PIN Certificate of partners');
+      requireSingle(isSinglePresent(comprehensiveUpdate.partnersTaxCompliance), 'Valid tax compliance certificate for each partner');
+      requireArray(isArrayPresent(comprehensiveUpdate.partnerIds), "Partners' IDs/Copies of Passports");
+      requireSingle(isSinglePresent(comprehensiveUpdate.companyProfile), 'Firm Company Profile');
+      requireSingle(isSinglePresent(comprehensiveUpdate.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(comprehensiveUpdate.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(comprehensiveUpdate.etimsProof), 'Proof of registration on e-TIMS');
+    } else if (entityType === 'foreign_company') {
+      requireSingle(isSinglePresent(comprehensiveUpdate.certificateOfIncorporation), 'Certificate of incorporation or registration');
+
+      const hasShare = isSinglePresent(comprehensiveUpdate.shareCertificate);
+      const hasRegistry = isSinglePresent(comprehensiveUpdate.registryExtract);
+      if (!hasShare && !hasRegistry) missing.push('Valid share certificate or registry extract');
+
+      requireSingle(isSinglePresent(comprehensiveUpdate.taxComplianceCertificate), 'Valid tax compliance certificate');
+
+      const hasNationalIds = isArrayPresent(comprehensiveUpdate.directorsNationalIds);
+      const hasPassports = isArrayPresent(comprehensiveUpdate.directorsPassports);
+      if (!hasNationalIds && !hasPassports) missing.push("Directors' National Identification documents or passport");
+
+      requireSingle(isSinglePresent(comprehensiveUpdate.companyProfile), 'Firm profile');
+      requireSingle(isSinglePresent(comprehensiveUpdate.financialStatements), 'Current annual audited financial statements');
+      requireSingle(isSinglePresent(comprehensiveUpdate.bankReferenceLetter), 'Bank reference letter');
+    } else if (entityType === 'individual') {
+      const hasNationalId = isSinglePresent(comprehensiveUpdate.nationalId);
+      const hasPassport = isSinglePresent(comprehensiveUpdate.passportDocument);
+      if (!hasNationalId && !hasPassport) missing.push('National Identification Card/ Passport');
+
+      requireSingle(isSinglePresent(comprehensiveUpdate.workPermit), 'Work permit (for foreigners)');
+      requireSingle(isSinglePresent(comprehensiveUpdate.policeClearance), 'Police clearance certificate');
+      requireSingle(isSinglePresent(comprehensiveUpdate.kraPinCertificate), 'PIN Certificate');
+      requireSingle(isSinglePresent(comprehensiveUpdate.resume), 'Resume (Curriculum vitae)');
+      requireSingle(isSinglePresent(comprehensiveUpdate.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(comprehensiveUpdate.etimsProof), 'Proof of registration on e-TIMS');
+    } else if (entityType === 'trust') {
+      requireSingle(isSinglePresent(comprehensiveUpdate.trustDeed), 'Trust Deed');
+      requireSingle(isSinglePresent(comprehensiveUpdate.founderPin), 'PIN Certificate of Founders');
+      requireArray(isArrayPresent(comprehensiveUpdate.foundersIds), "Founders' IDs/Copies of Passports");
+      requireArray(isArrayPresent(comprehensiveUpdate.beneficiariesIds), 'Beneficaries IDs/Copies of Passport');
+      requireSingle(isSinglePresent(comprehensiveUpdate.bankReferenceLetter), 'Bank reference letter');
+      requireSingle(isSinglePresent(comprehensiveUpdate.financialStatements), 'Current annual audited financial statements');
+    }
+
+    if (missing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required documents',
+        missing
+      });
     }
 
     console.log('[SUBMIT] Comprehensive update object (FINAL - VERIFIED):', {

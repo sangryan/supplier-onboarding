@@ -209,6 +209,26 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
+    try {
+      const response = await api.get('/auth/me');
+      const userData = response.data.user;
+      setUser(userData || null);
+      return userData || null;
+    } catch (error) {
+      console.error('Refresh user failed:', error);
+      localStorage.removeItem('token');
+      setUser(null);
+      return null;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -216,6 +236,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    refreshUser,
     verifyOTP,
     resendOTP,
     isAuthenticated: !!user,

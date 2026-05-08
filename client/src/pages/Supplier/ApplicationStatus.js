@@ -173,6 +173,28 @@ const ApplicationStatus = () => {
     companyProfile: supplier.companyProfile || null,
     bankReferenceLetter: supplier.bankReferenceLetter || null,
     directorsIds: supplier.directorsIds || [],
+    // Partnership
+    partnershipDeed: supplier.partnershipDeed || null,
+    partnersPinCertificate: supplier.partnersPinCertificate || null,
+    partnersTaxCompliance: supplier.partnersTaxCompliance || null,
+    partnerIds: supplier.partnerIds || [],
+    // Foreign Company
+    shareCertificate: supplier.shareCertificate || null,
+    registryExtract: supplier.registryExtract || null,
+    taxComplianceCertificate: supplier.taxComplianceCertificate || null,
+    directorsNationalIds: supplier.directorsNationalIds || [],
+    directorsPassports: supplier.directorsPassports || [],
+    // Individual / Sole Proprietor
+    nationalId: supplier.nationalId || null,
+    passportDocument: supplier.passportDocument || null,
+    workPermit: supplier.workPermit || null,
+    policeClearance: supplier.policeClearance || null,
+    resume: supplier.resume || null,
+    // Trust
+    trustDeed: supplier.trustDeed || null,
+    founderPin: supplier.founderPin || null,
+    foundersIds: supplier.foundersIds || [],
+    beneficiariesIds: supplier.beneficiariesIds || [],
     practicingCertificates: supplier.practicingCertificates || [],
     keyMembersResumes: supplier.keyMembersResumes || [],
     sourceOfWealth: supplier.sourceOfWealth || '',
@@ -738,13 +760,82 @@ const ApplicationStatus = () => {
             </AccordionSummary>
             <AccordionDetails>
               <Box>
-                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                {renderDocumentCard(formData.kraPinCertificate, 'KRA PIN Certificate')}
-                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                {renderDocumentCard(formData.financialStatements, 'Financial Statements')}
-                {renderDocumentCard(formData.cr12, 'Valid CR12')}
-                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
-                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                {(() => {
+                  const entityType = formData.entityType;
+                  const isCompanyLike = ['private_company', 'public_company', 'other'].includes(entityType);
+                  const isPartnership = entityType === 'partnership';
+                  const isForeignCompany = entityType === 'foreign_company';
+                  const isIndividual = entityType === 'individual';
+                  const isTrust = entityType === 'trust';
+
+                  return (
+                    <>
+                      {isCompanyLike && (
+                        <>
+                          {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
+                          {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate of entity')}
+                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                          {renderDocumentCard(formData.cr12, 'Valid CR12')}
+                          {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
+                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                          {formData.directorsIds?.length > 0 && renderMultipleDocumentCards(formData.directorsIds, "Directors' IDs/Passports")}
+                        </>
+                      )}
+
+                      {isPartnership && (
+                        <>
+                          {renderDocumentCard(formData.partnershipDeed, 'Partnership Deed')}
+                          {renderDocumentCard(formData.partnersPinCertificate, 'PIN Certificate of partners')}
+                          {renderDocumentCard(formData.partnersTaxCompliance, 'Valid tax compliance certificate for each partner')}
+                          {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
+                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                          {formData.partnerIds?.length > 0 && renderMultipleDocumentCards(formData.partnerIds, "Partners' IDs/Passports")}
+                        </>
+                      )}
+
+                      {isForeignCompany && (
+                        <>
+                          {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
+                          {renderDocumentCard(formData.shareCertificate, 'Valid share certificate')}
+                          {renderDocumentCard(formData.registryExtract, 'Valid registry extract')}
+                          {renderDocumentCard(formData.taxComplianceCertificate, 'Valid tax compliance certificate')}
+                          {renderDocumentCard(formData.companyProfile, 'Firm profile')}
+                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                          {formData.directorsNationalIds?.length > 0 && renderMultipleDocumentCards(formData.directorsNationalIds, "Directors' National IDs")}
+                          {formData.directorsPassports?.length > 0 && renderMultipleDocumentCards(formData.directorsPassports, "Directors' Passports")}
+                        </>
+                      )}
+
+                      {isIndividual && (
+                        <>
+                          {renderDocumentCard(formData.nationalId, 'National Identification Card')}
+                          {renderDocumentCard(formData.passportDocument, 'Passport')}
+                          {renderDocumentCard(formData.workPermit, 'Work permit (for foreigners)')}
+                          {renderDocumentCard(formData.policeClearance, 'Police clearance certificate')}
+                          {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate')}
+                          {renderDocumentCard(formData.resume, 'Resume (Curriculum vitae)')}
+                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
+                        </>
+                      )}
+
+                      {isTrust && (
+                        <>
+                          {renderDocumentCard(formData.trustDeed, 'Trust Deed')}
+                          {renderDocumentCard(formData.founderPin, 'PIN Certificate of Founders')}
+                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
+                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
+                          {formData.foundersIds?.length > 0 && renderMultipleDocumentCards(formData.foundersIds, "Founders' IDs/Passports")}
+                          {formData.beneficiariesIds?.length > 0 && renderMultipleDocumentCards(formData.beneficiariesIds, 'Beneficaries IDs/Passport')}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </Box>
             </AccordionDetails>
           </Accordion>

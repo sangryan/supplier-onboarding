@@ -31,7 +31,7 @@ import Footer from '../../components/Footer/Footer';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [additionalContacts, setAdditionalContacts] = useState([]);
@@ -98,8 +98,16 @@ const Profile = () => {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
+      const updatedUser = await refreshUser();
       toast.success('Password updated successfully');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+      if (
+        (updatedUser?.role === 'legal' || updatedUser?.role === 'procurement') &&
+        !updatedUser?.mustChangePassword
+      ) {
+        navigate('/dashboard');
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update password');
     }

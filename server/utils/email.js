@@ -296,6 +296,55 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
 };
 
 /**
+ * Send temporary-password invite email for internal users
+ * @param {Object} options
+ * @param {String} options.email - Recipient email
+ * @param {String} options.tempPassword - Generated temporary password
+ * @param {String} options.userName - User full name
+ * @param {String} options.role - Assigned role
+ * @returns {Promise<void>}
+ */
+exports.sendUserInviteEmail = async ({ email, tempPassword, userName, role }) => {
+  if (!transporter) {
+    throw new Error('Email transporter not configured. Invite email not sent.');
+  }
+
+  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  if (!fromEmail) {
+    throw new Error('EMAIL_FROM or EMAIL_USER must be set for invite emails');
+  }
+
+  const mailOptions = {
+    from: `"${process.env.COMPANY_NAME || 'Supplier Onboarding Portal'}" <${fromEmail}>`,
+    to: email,
+    subject: 'You have been invited - Supplier Onboarding Portal',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin: 0 0 10px 0;">Account Invitation</h2>
+        </div>
+        <div style="color: #666; font-size: 16px; line-height: 1.6;">
+          <p>Hello ${userName || 'User'},</p>
+          <p>You have been added as <strong>${role}</strong> on the Supplier Onboarding Portal.</p>
+          <p>Use the temporary login password below:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <div style="display: inline-block; padding: 12px 24px; background-color: #f0f0f0; border-radius: 8px; border: 1px solid #d0d0d0;">
+              <div style="font-size: 24px; font-weight: 700; letter-spacing: 1px; color: #111827; font-family: 'Courier New', monospace;">
+                ${tempPassword}
+              </div>
+            </div>
+          </div>
+          <p style="color: #d32f2f; font-weight: 600;">Please change this password immediately after first login.</p>
+          <p>Best regards,<br>${process.env.COMPANY_NAME || 'Supplier Onboarding Portal'} Team</p>
+        </div>
+      </div>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+/**
  * Get email transporter status
  * @returns {Object} Status information
  */

@@ -130,6 +130,16 @@ router.get('/', protect, async (req, res) => {
 
     let query = {};
 
+    if (req.user.role === 'management') {
+      if (!req.user.department) {
+        return res.status(400).json({
+          success: false,
+          message: 'Your account is missing a department assignment'
+        });
+      }
+      query.department = req.user.department;
+    }
+
     // Filter by status
     if (status) {
       query.status = status;
@@ -175,6 +185,9 @@ router.get('/', protect, async (req, res) => {
 
     // Also find suppliers who are in 'pending_contract_upload' stage but might not have a contract record yet
     let supplierQuery = { status: 'pending_contract_upload' };
+    if (req.user.role === 'management') {
+      supplierQuery.department = req.user.department;
+    }
     if (search) {
       supplierQuery.supplierName = { $regex: search, $options: 'i' };
     }

@@ -33,7 +33,10 @@ const userSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    trim: true
+    trim: true,
+    required: function () {
+      return this.role === 'management';
+    }
   },
   phone: {
     type: String,
@@ -67,6 +70,10 @@ const userSchema = new mongoose.Schema({
     type: Date
   },
   isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  mustChangePassword: {
     type: Boolean,
     default: false
   }
@@ -103,6 +110,7 @@ userSchema.methods.toPublicJSON = function() {
     department: this.department,
     phone: this.phone,
     isActive: this.isActive,
+    mustChangePassword: this.mustChangePassword,
     lastLogin: this.lastLogin,
     createdAt: this.createdAt
   };

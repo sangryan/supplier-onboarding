@@ -20,6 +20,8 @@ import api from '../../utils/api';
 import SupplierDashboard from './SupplierDashboard';
 import ProcurementDashboard from './ProcurementDashboard';
 import LegalDashboard from './LegalDashboard';
+import DepartmentLeadDashboard from './DepartmentLeadDashboard';
+import AllTasks from '../Admin/AllTasks';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
@@ -80,6 +82,16 @@ const Dashboard = () => {
   // Legal Dashboard
   if (user.role === 'legal') {
     return <LegalDashboard />;
+  }
+
+  // Super Admin Dashboard
+  if (user.role === 'super_admin') {
+    return <AllTasks />;
+  }
+
+  // Department Lead Dashboard (Management role)
+  if (user.role === 'management') {
+    return <DepartmentLeadDashboard />;
   }
 
   // Admin/Internal User Dashboard

@@ -14,21 +14,21 @@ import {
   Button,
   Box,
   TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   CircularProgress,
   Grid,
   InputAdornment,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import {
   Visibility as VisibilityIcon,
   Search as SearchIcon,
   Download as DownloadIcon,
-  Add as AddIcon,
+  Groups2 as Groups2Icon,
+  AssignmentTurnedIn as AssignmentTurnedInIcon,
+  LockOpen as LockOpenIcon,
+  LockClock as LockClockIcon,
 } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
 
@@ -36,25 +36,27 @@ import Footer from '../../components/Footer/Footer';
 const SupplierList = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState({
-    total: 0,
-    approved: 0,
-    pending: 0,
-    rejected: 0,
+    totalOnboarded: 0,
+    totalApplications: 0,
+    activeContracts: 0,
+    expiredContracts: 0,
+    totalOnboardedMoM: 0,
+    totalApplicationsMoM: 0,
   });
 
   useEffect(() => {
     fetchSuppliers();
     fetchStats();
-  }, [page, rowsPerPage, statusFilter]);
+  }, [page, rowsPerPage]);
 
   const fetchSuppliers = async () => {
     try {
@@ -63,7 +65,6 @@ const SupplierList = () => {
         page: page + 1,
         limit: rowsPerPage,
       };
-      if (statusFilter) params.status = statusFilter;
       if (search) params.search = search;
       params.source = 'users';
 
@@ -81,16 +82,47 @@ const SupplierList = () => {
     try {
       const response = await api.get('/suppliers', { params: { source: 'users', limit: 1000 } });
       const allSuppliers = response.data.data || [];
-      const approved = allSuppliers.filter(s => s.status === 'approved' || s.status === 'completed').length;
-      const rejected = allSuppliers.filter(s => s.status === 'rejected').length;
-      const pendingLegal = allSuppliers.filter(s => s.status === 'pending_legal').length;
-      const pendingContract = allSuppliers.filter(s => s.status === 'pending_contract_upload').length;
-      const notApproved = allSuppliers.filter(s => s.status === 'not_approved').length;
+
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+      const currentMonthSuppliers = allSuppliers.filter((s) => {
+        const createdAt = s.createdAt ? new Date(s.createdAt) : null;
+        return createdAt && createdAt >= currentMonthStart;
+      }).length;
+
+      const previousMonthSuppliers = allSuppliers.filter((s) => {
+        const createdAt = s.createdAt ? new Date(s.createdAt) : null;
+        return createdAt && createdAt >= previousMonthStart && createdAt < currentMonthStart;
+      }).length;
+
+      const calculateMoMPercent = (currentValue, previousValue) => {
+        if (previousValue === 0) {
+          return currentValue > 0 ? 100 : 0;
+        }
+        return Math.round(((currentValue - previousValue) / previousValue) * 100);
+      };
+
+      const totalOnboardedMoM = calculateMoMPercent(currentMonthSuppliers, previousMonthSuppliers);
+      const totalApplicationsMoM = calculateMoMPercent(currentMonthSuppliers, previousMonthSuppliers);
+
+      const activeContracts = allSuppliers.filter((s) => {
+        const status = (s.status || '').toLowerCase();
+        return status === 'approved' || status === 'completed';
+      }).length;
+      const expiredContracts = allSuppliers.filter((s) => {
+        const status = (s.status || '').toLowerCase();
+        return status === 'rejected' || status === 'not_approved';
+      }).length;
+
       setStats({
-        total: allSuppliers.length,
-        approved,
-        pending: pendingLegal + pendingContract + notApproved,
-        rejected,
+        totalOnboarded: allSuppliers.length,
+        totalApplications: allSuppliers.length,
+        activeContracts,
+        expiredContracts,
+        totalOnboardedMoM,
+        totalApplicationsMoM,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -115,7 +147,7 @@ const SupplierList = () => {
     return statusMap[status] || status;
   };
 
-  const getStatusChip = (status, vendorNumber) => {
+  const getContractStatusChip = (status) => {
     const isApproved = status === 'approved' || status === 'completed';
     const isRejected = status === 'rejected';
     const isPendingLegal = status === 'pending_legal';
@@ -139,21 +171,24 @@ const SupplierList = () => {
     );
   };
 
-  const formatTaskId = (supplier) => {
-    if (!supplier || !supplier._id) return `APP-${new Date().getFullYear()}-000`;
-    const year = supplier.createdAt ? new Date(supplier.createdAt).getFullYear() : new Date().getFullYear();
-    const shortId = supplier._id.toString().slice(-3).toUpperCase();
-    return `APP-${year}-${shortId}`;
-  };
-
   const formatDate = (date) => {
-
+    if (!date) return '-';
 
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const formatPercentChange = (value) => {
+    if (value > 0) return `+${value}% from last month`;
+    if (value < 0) return `${value}% from last month`;
+    return '0% from last month';
+  };
+
+  const fontBase = {
+    fontFamily: 'Roboto, Arial, sans-serif',
   };
 
   return (
@@ -174,6 +209,7 @@ const SupplierList = () => {
               <Typography
                 variant="h4"
                 sx={{
+                  ...fontBase,
                   fontWeight: 'bold',
                   mb: 1,
                   color: '#111827',
@@ -181,181 +217,144 @@ const SupplierList = () => {
                   letterSpacing: '-0.01em',
                 }}
               >
-                All Suppliers
+                {isMobile ? 'Supplier Contract Management' : 'Supplier Management Dashboard'}
               </Typography>
               <Typography
                 sx={{
+                  ...fontBase,
                   color: '#6b7280',
                   fontSize: { xs: '13px', sm: '14px' },
                   lineHeight: 1.6,
+                  fontWeight: 400,
                 }}
               >
-                View and manage supplier applications and their onboarding status.
+                {isMobile
+                  ? 'Manage your onboarded supplier contracts effortlessly.'
+                  : 'Seamless, Smart, and Secure Supplier Onboarding for a Future-Ready Business.'}
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/vendors/new')}
-              sx={{
-                bgcolor: theme.palette.green?.main || '#2e7d32',
-                color: '#fff',
-                textTransform: 'none',
-                fontSize: '14px',
-                fontWeight: 500,
-                px: 2.5,
-                py: 1,
-                borderRadius: '6px',
-                boxShadow: 'none',
-                whiteSpace: 'nowrap',
-                '&:hover': {
-                  bgcolor: theme.palette.green?.hover || '#1b5e20',
-                  boxShadow: 'none'
-                }
-              }}
-            >
-              Add New On-Demand Vendor
-            </Button>
           </Box>
 
           {/* Summary Cards */}
-          <Grid container spacing={2.5} sx={{ mb: 4 }}>
-            <Grid item xs={6} sm={3}>
+          <Grid container spacing={{ xs: 1.75, sm: 2.5 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2.5,
+                  p: { xs: 2.25, sm: 2.5 },
                   border: '1px solid #e0e0e0',
                   borderRadius: 2,
-                  backgroundColor: '#fff'
+                  backgroundColor: '#fff',
+                  minHeight: { xs: 128, sm: 136 }
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: '#6b7280',
-                    fontSize: '13px',
-                    mb: 1,
-                    fontWeight: 400
-                  }}
-                >
-                  Total Suppliers
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: '24px',
-                    color: '#111827'
-                  }}
-                >
-                  {stats.total}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', mb: 1, fontWeight: 400 }}>
+                      Total Onboarded Suppliers
+                    </Typography>
+                    <Typography variant="h5" sx={{ ...fontBase, fontWeight: 600, fontSize: '24px', lineHeight: 1.2, color: '#111827', mb: 0.25 }}>
+                      {stats.totalOnboarded}
+                    </Typography>
+                    <Typography variant="caption" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', fontWeight: 400 }}>
+                      {formatPercentChange(stats.totalOnboardedMoM)}
+                    </Typography>
+                  </Box>
+                  <Groups2Icon sx={{ fontSize: 20, color: '#111827' }} />
+                </Box>
               </Paper>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2.5,
+                  p: { xs: 2.25, sm: 2.5 },
                   border: '1px solid #e0e0e0',
                   borderRadius: 2,
-                  backgroundColor: '#fff'
+                  backgroundColor: '#fff',
+                  minHeight: { xs: 128, sm: 136 }
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: '#6b7280',
-                    fontSize: '13px',
-                    mb: 1,
-                    fontWeight: 400
-                  }}
-                >
-                  Not Approved
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: '24px',
-                    color: '#111827'
-                  }}
-                >
-                  {stats.pending}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', mb: 1, fontWeight: 400 }}>
+                      Total Supplier Applications
+                    </Typography>
+                    <Typography variant="h5" sx={{ ...fontBase, fontWeight: 600, fontSize: '24px', lineHeight: 1.2, color: '#111827', mb: 0.25 }}>
+                      {stats.totalApplications}
+                    </Typography>
+                    <Typography variant="caption" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', fontWeight: 400 }}>
+                      {formatPercentChange(stats.totalApplicationsMoM)}
+                    </Typography>
+                  </Box>
+                  <AssignmentTurnedInIcon sx={{ fontSize: 20, color: '#111827' }} />
+                </Box>
               </Paper>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2.5,
+                  p: { xs: 2.25, sm: 2.5 },
                   border: '1px solid #e0e0e0',
                   borderRadius: 2,
-                  backgroundColor: '#fff'
+                  backgroundColor: '#fff',
+                  minHeight: { xs: 128, sm: 136 }
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: '#6b7280',
-                    fontSize: '13px',
-                    mb: 1,
-                    fontWeight: 400
-                  }}
-                >
-                  Approved
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: '24px',
-                    color: '#111827'
-                  }}
-                >
-                  {stats.approved}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', mb: 1, fontWeight: 400 }}>
+                      Active Contracts
+                    </Typography>
+                    <Typography variant="h5" sx={{ ...fontBase, fontWeight: 600, fontSize: '24px', lineHeight: 1.2, color: '#111827' }}>
+                      {stats.activeContracts}
+                    </Typography>
+                  </Box>
+                  <LockOpenIcon sx={{ fontSize: 20, color: '#578A18' }} />
+                </Box>
               </Paper>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2.5,
+                  p: { xs: 2.25, sm: 2.5 },
                   border: '1px solid #e0e0e0',
                   borderRadius: 2,
-                  backgroundColor: '#fff'
+                  backgroundColor: '#fff',
+                  minHeight: { xs: 128, sm: 136 }
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: '#6b7280',
-                    fontSize: '13px',
-                    mb: 1,
-                    fontWeight: 400
-                  }}
-                >
-                  Rejected
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: '24px',
-                    color: '#111827'
-                  }}
-                >
-                  {stats.rejected}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px', mb: 1, fontWeight: 400 }}>
+                      Expired Contracts
+                    </Typography>
+                    <Typography variant="h5" sx={{ ...fontBase, fontWeight: 600, fontSize: '24px', lineHeight: 1.2, color: '#111827' }}>
+                      {stats.expiredContracts}
+                    </Typography>
+                  </Box>
+                  <LockClockIcon sx={{ fontSize: 20, color: '#b91c1c' }} />
+                </Box>
               </Paper>
             </Grid>
           </Grid>
 
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h5"
+              sx={{ ...fontBase, fontWeight: 'bold', mb: 0.5, color: '#111827', fontSize: { xs: '22px', sm: '28px' }, letterSpacing: '-0.01em' }}
+            >
+              Supplier List
+            </Typography>
+            <Typography sx={{ ...fontBase, color: '#6b7280', fontSize: { xs: '13px', sm: '14px' }, mb: 2, fontWeight: 400 }}>
+              View and manage your onboarded suppliers here
+            </Typography>
+          </Box>
+
           {/* Search and Download */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 1.5 }}>
             <TextField
               placeholder="Search"
               value={search}
@@ -371,7 +370,7 @@ const SupplierList = () => {
               }}
               sx={{
                 flex: 1,
-                maxWidth: '400px',
+                maxWidth: { xs: '100%', sm: '400px' },
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: '#fff',
                   borderRadius: '8px',
@@ -388,42 +387,27 @@ const SupplierList = () => {
                 }
               }}
             />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel sx={{ fontSize: '14px' }}>Status Filter</InputLabel>
-                <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  label="Status Filter"
-                  sx={{ borderRadius: '8px', fontSize: '14px' }}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="approved">Approved</MenuItem>
-                  <MenuItem value="pending_legal">Pending Legal Approval</MenuItem>
-                  <MenuItem value="rejected">Rejected</MenuItem>
-                  <MenuItem value="not_approved">Not Approved</MenuItem>
-                </Select>
-              </FormControl>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                sx={{
-                  borderColor: '#d1d5db',
-                  color: '#374151',
-                  textTransform: 'none',
-                  fontSize: '14px',
-                  px: 2,
-                  py: 1,
-                  borderRadius: '8px',
-                  '&:hover': {
-                    borderColor: '#9ca3af',
-                    bgcolor: '#f9fafb'
-                  }
-                }}
-              >
-                Download all
-              </Button>
-            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              sx={{
+                borderColor: '#d1d5db',
+                color: '#374151',
+                textTransform: 'none',
+                fontSize: { xs: '13px', sm: '14px' },
+                fontWeight: 500,
+                px: { xs: 1.75, sm: 2 },
+                py: 1,
+                borderRadius: '8px',
+                whiteSpace: 'nowrap',
+                '&:hover': {
+                  borderColor: '#9ca3af',
+                  bgcolor: '#f9fafb'
+                }
+              }}
+            >
+              Download all
+            </Button>
           </Box>
         </Box>
 
@@ -443,23 +427,22 @@ const SupplierList = () => {
               backgroundColor: '#fff'
             }}
           >
-            <Table>
+            <Table sx={{ minWidth: { xs: 580, md: 900 } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Vendor #</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Supplier Name</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Reg #</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Contact</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Service Type</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}></TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Vendor Number</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Supplier Name</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Contract Expiry Date</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Last Updated</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Contract Status</TableCell>
+                  <TableCell align="right" sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {suppliers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px' }}>
+                      <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px' }}>
                         No suppliers found
                       </Typography>
                     </TableCell>
@@ -485,36 +468,24 @@ const SupplierList = () => {
                         }
                       }}
                     >
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400 }}>
                         {supplier.vendorNumber ? (
-                          <Chip
-                            label={supplier.vendorNumber}
-                            size="small"
-                            sx={{
-                              bgcolor: '#e8f5e9',
-                              color: '#2e7d32',
-                              fontWeight: 600,
-                              borderRadius: '4px'
-                            }}
-                          />
+                          supplier.vendorNumber
                         ) : (
                           <Typography variant="body2" color="textSecondary">-</Typography>
                         )}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 500 }}>
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 500, display: { xs: 'none', md: 'table-cell' } }}>
                         {supplier.supplierName}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
-                        {supplier.companyRegistrationNumber || '-'}
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
+                        {formatDate(supplier.contractExpiryDate || supplier.updatedAt)}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
-                        {supplier.authorizedPerson?.name || '-'}
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
+                        {formatDate(supplier.updatedAt || supplier.createdAt)}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, textTransform: 'capitalize' }}>
-                        {supplier.serviceType ? supplier.serviceType.replace('_', ' ') : '-'}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
-                        {getStatusChip(supplier.status, supplier.vendorNumber)}
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400 }}>
+                        {getContractStatusChip(supplier.status)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 1.5 }}>
                         <VisibilityIcon sx={{ color: '#6b7280', fontSize: 20 }} />
@@ -533,8 +504,8 @@ const SupplierList = () => {
               p: 2,
               borderTop: '1px solid #e0e0e0'
             }}>
-              <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px' }}>
-                Showing {suppliers.length} of {total} suppliers
+              <Typography variant="body2" sx={{ ...fontBase, color: '#6b7280', fontSize: '13px' }}>
+                0 of {total} row(s) selected.
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Button

@@ -99,6 +99,27 @@ async function createAdmin() {
     console.log('   Email: legal@betika.com');
     console.log('   Password: Legal@123\n');
 
+    // Create sample department lead user (management role)
+    const managementPassword = await bcrypt.hash('Management@123', salt);
+    await User.create({
+      firstName: 'Mary',
+      lastName: 'Lead',
+      email: 'management@betika.com',
+      password: managementPassword,
+      role: 'management',
+      department: 'Procurement',
+      phone: '+254700000003',
+      isActive: true,
+      isEmailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    console.log('✅ Sample Department Lead user created!');
+    console.log('   Email: management@betika.com');
+    console.log('   Password: Management@123');
+    console.log('   Department: Procurement\n');
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Error creating admin user:', error);

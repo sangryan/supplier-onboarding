@@ -137,7 +137,14 @@ const AllTasks = () => {
                     </Box>
 
                     {/* Search and Download */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        mb: 3,
+                        gap: 2
+                    }}>
                         <TextField
                             placeholder="Search"
                             value={search}
@@ -152,7 +159,7 @@ const AllTasks = () => {
                             }}
                             sx={{
                                 flex: 1,
-                                maxWidth: '400px',
+                                maxWidth: { xs: '100%', sm: '400px' },
                                 '& .MuiOutlinedInput-root': {
                                     backgroundColor: '#fff',
                                     borderRadius: '8px',
@@ -176,7 +183,8 @@ const AllTasks = () => {
                                 borderColor: '#d1d5db',
                                 color: '#374151',
                                 textTransform: 'none',
-                                fontSize: '14px',
+                                fontSize: { xs: '13px', sm: '14px' },
+                                width: { xs: '100%', sm: 'auto' },
                                 px: 2,
                                 py: 1,
                                 borderRadius: '8px',
@@ -207,12 +215,12 @@ const AllTasks = () => {
                             backgroundColor: '#fff'
                         }}
                     >
-                        <Table>
+                        <Table sx={{ minWidth: { xs: 620, md: 760 } }}>
                             <TableHead>
                                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>ID</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Supplier Name</TableCell>
-                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Entity Type</TableCell>
+                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Entity Type</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Submission Date</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Status</TableCell>
                                     <TableCell align="right" sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}></TableCell>
@@ -247,7 +255,7 @@ const AllTasks = () => {
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
                                                 {task.supplierName}
                                             </TableCell>
-                                            <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
+                                            <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>
                                                 {task.entityType}
                                             </TableCell>
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5 }}>
