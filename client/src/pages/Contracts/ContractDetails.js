@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -32,10 +32,12 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import UploadContractModal from '../../components/Contracts/UploadContractModal';
+import { buildUploadUrl, downloadDocument, fetchDocumentBlobUrl, fetchFileBlobUrl, isFallbackDocument } from '../../utils/fileAccess';
 
 const ContractDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,12 @@ const ContractDetails = () => {
   useEffect(() => {
     fetchContract();
   }, [id]);
+
+  useEffect(() => {
+    if (contract && searchParams.get('upload') === '1' && !contract.signedContract && contract.status !== 'active') {
+      setUploadModalOpen(true);
+    }
+  }, [contract, searchParams]);
 
   const fetchContract = async () => {
     try {
@@ -108,6 +116,7 @@ const ContractDetails = () => {
 
   const handleSaveContract = async (data) => {
     const formData = new FormData();
+    if (contract?.supplier?._id) formData.append('supplierId', contract.supplier._id);
     formData.append('contract', data.file);
     if (data.startDate) formData.append('startDate', data.startDate);
     if (data.validityMonths) formData.append('validityMonths', data.validityMonths);
@@ -117,34 +126,37 @@ const ContractDetails = () => {
 
     setUploading(true);
     try {
-      await api.post(`/contracts/${id}/upload-signed`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post(`/contracts/${id}/upload-signed`, formData);
       toast.success('Contract updated successfully');
       setUploadModalOpen(false);
       fetchContract();
     } catch (error) {
+      console.error('Upload contract error:', error.response?.data || error);
       toast.error(error.response?.data?.message || 'Failed to upload contract');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleViewFile = (document) => {
+  const handleViewFile = async (document) => {
     let url;
     let fileName = document.originalName || document.fileName || 'Document';
 
-    if (document._id && typeof document._id === 'string' && (document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-'))) {
+    if (isFallbackDocument(document)) {
       const filePath = document.fileName || document.originalName;
-      if (filePath.startsWith('http')) {
-        url = filePath;
-      } else if (filePath.startsWith('uploads/')) {
-        url = `/${filePath}`;
-      } else {
-        url = `/uploads/${supplier._id}/${filePath}`;
+      try {
+        url = await fetchFileBlobUrl(buildUploadUrl(filePath, contract?.supplier?._id));
+      } catch (error) {
+        toast.error(error.message || 'Failed to open document');
+        return;
       }
     } else {
-      url = `/api/documents/${document._id}/download`;
+      try {
+        url = await fetchDocumentBlobUrl(document._id);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to open document');
+        return;
+      }
     }
 
     setFileViewerUrl(url);
@@ -152,22 +164,28 @@ const ContractDetails = () => {
     setFileViewerOpen(true);
   };
 
-  const handleDownloadFile = (document) => {
+  const handleDownloadFile = async (document) => {
     let url;
-    if (document._id && typeof document._id === 'string' && (document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-'))) {
+    if (isFallbackDocument(document)) {
       const filePath = document.fileName || document.originalName;
-      if (filePath.startsWith('http')) {
-        url = filePath;
-      } else if (filePath.startsWith('uploads/')) {
-        url = `/${filePath}`;
-      } else {
-        url = `/uploads/${supplier._id}/${filePath}`;
-      }
+      url = buildUploadUrl(filePath, contract?.supplier?._id);
       window.open(url, '_blank');
     } else {
-      url = `/api/documents/${document._id}/download`;
-      window.open(url, '_blank');
+      try {
+        await downloadDocument(document);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to download document');
+      }
     }
+  };
+
+  const handleCloseFileViewer = () => {
+    if (fileViewerUrl?.startsWith('blob:')) {
+      window.URL.revokeObjectURL(fileViewerUrl);
+    }
+    setFileViewerOpen(false);
+    setFileViewerUrl(null);
+    setFileViewerName('');
   };
 
   const formatFileSize = (bytes) => {
@@ -284,6 +302,13 @@ const ContractDetails = () => {
     return `${day}${suffix(day)} ${month}, ${year}`;
   };
 
+  const formatApplicationNumber = (application) => {
+    if (!application?._id) return '-';
+    const year = application.createdAt ? new Date(application.createdAt).getFullYear() : new Date().getFullYear();
+    const shortId = application._id.toString().slice(-3).padStart(3, '0').toUpperCase();
+    return `APP-${year}-${shortId}`;
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
@@ -301,6 +326,7 @@ const ContractDetails = () => {
   }
 
   const supplier = contract.supplier || {};
+  const applicationNumber = supplier.applicationNumber || contract.applicationNumber || formatApplicationNumber(supplier);
 
   const accordionStyle = {
     boxShadow: 'none',
@@ -425,7 +451,7 @@ const ContractDetails = () => {
         </Box>
 
         <Chip
-          label="New Application"
+          label={applicationNumber !== '-' ? `Application ${applicationNumber}` : 'Application'}
           sx={{
             display: { xs: 'none', sm: 'inline-flex' },
             bgcolor: '#f3f4f6',
@@ -448,6 +474,10 @@ const ContractDetails = () => {
           </AccordionSummary>
           <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
             <Grid container spacing={3}>
+              <Grid item xs={12} sm={4}>
+                <Typography sx={labelStyle}>Application Number</Typography>
+                <Typography sx={valueStyle}>{applicationNumber}</Typography>
+              </Grid>
               <Grid item xs={12} sm={4}>
                 <Typography sx={labelStyle}>Supplier Name</Typography>
                 <Typography sx={valueStyle}>{supplier.supplierName || '-'}</Typography>
@@ -711,7 +741,7 @@ const ContractDetails = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={fileViewerOpen} onClose={() => setFileViewerOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: '8px', maxHeight: '90vh' } }}>
+      <Dialog open={fileViewerOpen} onClose={handleCloseFileViewer} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: '8px', maxHeight: '90vh' } }}>
         <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, color: '#111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{fileViewerName}</DialogTitle>
         <DialogContent>
           {fileViewerUrl && (

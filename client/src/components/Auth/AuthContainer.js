@@ -172,7 +172,7 @@ const AuthContainer = ({ mode = 'login' }) => {
               }
             } else if (result.user?.role === 'procurement' || result.user?.role === 'legal') {
               if (result.user.mustChangePassword) {
-                navigate('/profile');
+                navigate('/change-password');
               } else {
                 // Procurement and Legal users go to dashboard (ProcurementDashboard)
                 navigate('/dashboard');
@@ -631,4 +631,3 @@ const AuthContainer = ({ mode = 'login' }) => {
 };
 
 export default AuthContainer;
-

@@ -380,5 +380,64 @@ router.post('/:id/reset-password', protect, authorize('super_admin'), [
   }
 });
 
-module.exports = router;
+// @route   PUT /api/users/:id/supplier-approval
+// @desc    Approve or reject supplier registration
+// @access  Private (Procurement, Super Admin)
+router.put('/:id/supplier-approval', protect, authorize('procurement', 'super_admin'), [
+  body('status').isIn(['approved', 'rejected']).withMessage('Status must be approved or rejected'),
+  body('comment').optional().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
 
+    const { status, comment } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.role !== 'supplier') {
+      return res.status(400).json({
+        success: false,
+        message: 'Approval is only available for supplier accounts'
+      });
+    }
+
+    if (user.supplierApprovalStatus === 'profile_incomplete') {
+      return res.status(400).json({
+        success: false,
+        message: 'Supplier profile is incomplete. Approval can only be done after profile details are completed.'
+      });
+    }
+
+    user.supplierApprovalStatus = status;
+    user.supplierApprovalReviewedBy = req.user.id;
+    user.supplierApprovalReviewedAt = new Date();
+    user.supplierApprovalComment = comment || '';
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: `Supplier registration ${status} successfully`,
+      data: user.toPublicJSON()
+    });
+  } catch (error) {
+    console.error('Supplier registration approval error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error processing supplier registration approval'
+    });
+  }
+});
+
+module.exports = router;

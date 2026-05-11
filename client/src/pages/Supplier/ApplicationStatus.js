@@ -30,6 +30,7 @@ import { format, parse, isValid } from 'date-fns';
 import api, { API_BASE_URL } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
+import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
 
 const ApplicationStatus = () => {
   const { id } = useParams();
@@ -205,7 +206,7 @@ const ApplicationStatus = () => {
     declarationSignatureFile: supplier.declarationSignatureFile || null,
   };
 
-  const handleViewFile = (file, fileName = '') => {
+  const handleViewFile = async (file, fileName = '') => {
     if (!file) return;
 
     let fileUrl = null;
@@ -218,29 +219,33 @@ const ApplicationStatus = () => {
     } else if (typeof file === 'string') {
       // Check if it's already a full URL
       if (file.startsWith('http://') || file.startsWith('https://')) {
-        fileUrl = file;
-      } else {
-        // Files are stored in uploads/supplierId/filename format
-        // If the path already includes 'uploads/', use it directly
-        if (file.startsWith('uploads/')) {
-          fileUrl = `/${file}`;
-        } else if (file.startsWith('./uploads/')) {
-          fileUrl = file.replace('./uploads/', '/uploads/');
-        } else {
-          // Files are stored in uploads/supplierId/filename format
-          const supplierId = supplier?._id || id;
-          if (supplierId) {
-            fileUrl = `${API_BASE_URL}/uploads/${supplierId}/${file}`;
+        try {
+          const parsed = new URL(file);
+          const frontendOrigin = window.location.origin;
+          // If legacy data points to frontend host for uploads, rewrite to API host
+          if (parsed.origin === frontendOrigin && parsed.pathname.startsWith('/uploads/')) {
+            fileUrl = `${API_BASE_URL}${parsed.pathname}`;
           } else {
-            // Fallback: try without supplier ID (might work for some files)
-            fileUrl = `${API_BASE_URL}/uploads/${file}`;
+            fileUrl = file;
           }
+        } catch {
+          fileUrl = file;
         }
+      } else {
+        fileUrl = buildUploadUrl(file, supplier?._id || id);
       }
       displayName = fileName || file.split('/').pop() || 'File';
     }
 
     if (fileUrl) {
+      if (!fileUrl.startsWith('blob:')) {
+        try {
+          fileUrl = await fetchFileBlobUrl(fileUrl);
+        } catch (error) {
+          toast.error(error.message || 'Failed to open file');
+          return;
+        }
+      }
       setFileViewerUrl(fileUrl);
       setFileViewerName(displayName);
       setImageLoadError(false);

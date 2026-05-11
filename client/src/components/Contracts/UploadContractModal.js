@@ -135,6 +135,7 @@ const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
                             <FileInputWrapper>
                                 <input
                                     type="file"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                                     onChange={handleFileChange}
                                 />
                             </FileInputWrapper>

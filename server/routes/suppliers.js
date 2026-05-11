@@ -8,11 +8,62 @@ const Document = require('../models/Document');
 const { protect, authorize, supplierAccess } = require('../middleware/auth');
 const { createNotification } = require('../utils/notifications');
 
+const isSupplierProfileComplete = (supplier) => {
+  if (!supplier) return false;
+
+  const authorizedPerson = supplier.authorizedPerson || {};
+  const contactComplete = Boolean(
+    authorizedPerson.name &&
+    authorizedPerson.relationship &&
+    authorizedPerson.idPassportNumber &&
+    authorizedPerson.phone &&
+    authorizedPerson.email
+  );
+
+  const address = supplier.companyPhysicalAddress || {};
+  const fullAddress = address
+    ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
+    : supplier.physicalAddress || '';
+
+  const companyComplete = Boolean(
+    supplier.supplierName &&
+    (supplier.registeredCountry || address.country) &&
+    supplier.companyRegistrationNumber &&
+    supplier.companyEmail &&
+    fullAddress
+  );
+
+  return contactComplete && companyComplete;
+};
+
+const ensureSupplierRegistrationApproved = (req, res) => {
+  if (req.user.role !== 'supplier') return true;
+  if (req.user.supplierApprovalStatus === 'approved') return true;
+
+  const status = req.user.supplierApprovalStatus || 'pending';
+  const statusText = status === 'rejected'
+    ? 'rejected'
+    : (status === 'profile_incomplete' ? 'incomplete' : 'pending procurement approval');
+  const message = status === 'profile_incomplete'
+    ? 'Complete your supplier profile details first. Procurement approval starts after profile completion.'
+    : `Your supplier registration is ${statusText}. Procurement approval is required before creating applications.`;
+
+  res.status(403).json({
+    success: false,
+    message,
+    supplierApprovalStatus: status
+  });
+  return false;
+};
+
 // @route   POST /api/suppliers/draft
 // @desc    Create or update draft supplier application
 // @access  Private (Supplier)
 router.post('/draft', protect, authorize('supplier'), async (req, res) => {
   try {
+    const isProfileOnlyDraft = req.body.isProfileOnly === true;
+    if (!isProfileOnlyDraft && !ensureSupplierRegistrationApproved(req, res)) return;
+
     // Map frontend field names to model structure
     const draftData = {
       // Basic Information (required fields with defaults)
@@ -102,6 +153,8 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
 // @access  Private (Supplier)
 router.post('/create-complete', protect, authorize('supplier'), async (req, res) => {
   try {
+    if (!ensureSupplierRegistrationApproved(req, res)) return;
+
     const completeData = {
       supplierName: 'Complete Supplier Application',
       legalNature: 'company',
@@ -206,6 +259,8 @@ router.post('/', protect, authorize('supplier'), [
   body('serviceType').notEmpty().withMessage('Service type is required')
 ], async (req, res) => {
   try {
+    if (!ensureSupplierRegistrationApproved(req, res)) return;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -284,9 +339,13 @@ router.get('/', protect, async (req, res) => {
       // 1. Get all supplier users
       const supplierUsers = await User.find(userQuery).lean();
 
-      // 2. Get all applications related to these users
+      // 2. Get all real applications related to these users.
+      // Exclude profile-only records so registration approval placeholders still show up.
       const userIds = supplierUsers.map(u => u._id);
-      const userApplications = await Supplier.find({ submittedBy: { $in: userIds } })
+      const userApplications = await Supplier.find({
+        submittedBy: { $in: userIds },
+        isProfileOnly: { $ne: true }
+      })
         .populate('submittedBy', 'firstName lastName email')
         .lean();
 
@@ -309,10 +368,21 @@ router.get('/', protect, async (req, res) => {
       supplierUsers.forEach(u => {
         const hasApp = userApplications.some(a => a.submittedBy?._id?.toString() === u._id.toString());
         if (!hasApp) {
+          const registrationStatus = u.isEmailVerified === false
+            ? 'pending_verification'
+            : (u.supplierApprovalStatus === 'approved'
+              ? 'registration_approved'
+              : (u.supplierApprovalStatus === 'rejected'
+                ? 'registration_rejected'
+                : (u.supplierApprovalStatus === 'pending'
+                  ? 'pending_registration_approval'
+                  : 'registration_profile_incomplete')));
+
           allRecords.push({
             _id: `user-${u._id}`,
+            userId: u._id,
             supplierName: `${u.firstName} ${u.lastName}`,
-            status: 'not_approved',
+            status: registrationStatus,
             submittedBy: {
               _id: u._id,
               firstName: u.firstName,
@@ -338,6 +408,11 @@ router.get('/', protect, async (req, res) => {
         'more_info_required': 30,
         'rejected': 20,
         'draft': 10,
+        'registration_approved': 5,
+        'pending_registration_approval': 4,
+        'registration_rejected': 3,
+        'registration_profile_incomplete': 2,
+        'pending_verification': 1,
         'not_approved': 0
       };
 
@@ -563,12 +638,15 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
     const mapEntityType = (value) => {
       const mapping = {
         'Public/Private Company': 'private_company',
+        'Private/Public Company': 'private_company',
         'Limited Company': 'private_company',
         'Public Limited Company': 'public_company',
         'Partnership': 'partnership',
+        'Partnerships': 'partnership',
         'Foreign Company': 'foreign_company',
         'Individual': 'individual',
         'Sole Proprietorship': 'individual',
+        'Individual/Sole Proprietor': 'individual',
         'Trust': 'trust',
         'Other': 'other'
       };
@@ -685,6 +763,39 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
           console.error('Error updating user email:', userUpdateError);
           // Don't fail the entire request if user email update fails
           // Log it but continue with the supplier update
+        }
+      }
+
+      // Transition supplier registration to procurement queue only after profile is complete
+      if (req.user.role === 'supplier') {
+        const profileComplete = isSupplierProfileComplete(supplier);
+        if (profileComplete) {
+          const supplierUser = await User.findById(originalSubmittedBy);
+          if (
+            supplierUser &&
+            ['profile_incomplete', 'rejected'].includes(supplierUser.supplierApprovalStatus || 'profile_incomplete')
+          ) {
+            supplierUser.supplierApprovalStatus = 'pending';
+            supplierUser.supplierApprovalReviewedBy = undefined;
+            supplierUser.supplierApprovalReviewedAt = undefined;
+            supplierUser.supplierApprovalComment = '';
+            await supplierUser.save();
+
+            const procurementUsers = await User.find({ role: 'procurement', isActive: true });
+            for (const procurementUser of procurementUsers) {
+              await createNotification({
+                recipient: procurementUser._id,
+                type: 'new_task_assigned',
+                title: 'Supplier Registration Ready For Approval',
+                message: `${supplierUser.firstName} ${supplierUser.lastName} (${supplierUser.email}) completed profile details and is ready for procurement approval.`,
+                relatedEntity: {
+                  entityType: 'user',
+                  entityId: supplierUser._id
+                },
+                actionUrl: '/suppliers'
+              });
+            }
+          }
         }
       }
 
@@ -826,6 +937,8 @@ router.delete('/:id', protect, authorize('supplier'), supplierAccess, async (req
 // @access  Private (Supplier)
 router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async (req, res) => {
   try {
+    if (!ensureSupplierRegistrationApproved(req, res)) return;
+
     // Use MongoDB collection directly to load supplier and bypass Mongoose validation
     // This prevents validation errors if the document has unmapped enum values
     const collection = Supplier.collection;
@@ -895,11 +1008,15 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
     const mapEntityType = (value) => {
       const mapping = {
         'Public/Private Company': 'private_company',
+        'Private/Public Company': 'private_company',
         'Limited Company': 'private_company',
         'Public Limited Company': 'public_company',
         'Partnership': 'partnership',
+        'Partnerships': 'partnership',
         'Foreign Company': 'foreign_company',
         'Individual': 'individual',
+        'Sole Proprietorship': 'individual',
+        'Individual/Sole Proprietor': 'individual',
         'Trust': 'trust',
         'Other': 'other'
       };
@@ -1307,4 +1424,3 @@ router.post('/:id/profile-update-request', protect, authorize('supplier'), suppl
 });
 
 module.exports = router;
-

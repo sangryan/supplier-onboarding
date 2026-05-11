@@ -94,9 +94,12 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
       supplier.currentApprovalStage = 'contract_upload';
       supplier.status = 'pending_contract_upload';
 
-      // Create a draft contract record if it doesn't exist
+      // Create or relink a draft contract record if it doesn't exist
       const Contract = require('../models/Contract');
-      let contract = await Contract.findOne({ supplier: supplier._id });
+      let contract = supplier.contract ? await Contract.findById(supplier.contract) : null;
+      if (!contract) {
+        contract = await Contract.findOne({ supplier: supplier._id });
+      }
       if (!contract) {
         const contractNumber = await Contract.generateContractNumber();
         contract = await Contract.create({
@@ -110,8 +113,8 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
           status: 'draft',
           uploadedBy: req.user.id
         });
-        supplier.contract = contract._id;
       }
+      supplier.contract = contract._id;
 
       // Calculate SLA metrics
       if (supplier.slaMetrics && supplier.slaMetrics.submissionDate) {
@@ -541,4 +544,3 @@ router.post('/:supplierId/complete-contract', protect, authorize('procurement'),
 });
 
 module.exports = router;
-

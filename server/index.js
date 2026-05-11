@@ -6,6 +6,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -51,10 +52,32 @@ app.use(express.urlencoded({ extended: true }));
 // Static files for uploads - use absolute path to ensure correct directory
 const uploadsPath = path.resolve(process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads'));
 
+const findUploadByName = (dir, fileName) => {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isFile() && entry.name === fileName) {
+      return entryPath;
+    }
+
+    if (entry.isDirectory()) {
+      const found = findUploadByName(entryPath, fileName);
+      if (found) return found;
+    }
+  }
+
+  return null;
+};
+
 // Fallback middleware to check temp folder if file not found in supplier folder
 app.use('/uploads', (req, res, next) => {
   const filePath = path.join(uploadsPath, req.path);
-  const fs = require('fs');
   if (fs.existsSync(filePath)) {
     return next();
   }
@@ -64,7 +87,14 @@ app.use('/uploads', (req, res, next) => {
   const tempPath = path.join(uploadsPath, 'temp', filename);
   if (fs.existsSync(tempPath)) {
     req.url = '/temp/' + filename;
+    return next();
   }
+
+  const fallbackPath = findUploadByName(uploadsPath, filename);
+  if (fallbackPath) {
+    req.url = '/' + path.relative(uploadsPath, fallbackPath).split(path.sep).join('/');
+  }
+
   next();
 });
 
@@ -158,4 +188,3 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 });
 
 module.exports = app;
-

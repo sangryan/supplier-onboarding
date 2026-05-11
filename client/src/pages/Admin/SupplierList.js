@@ -31,9 +31,12 @@ import {
 } from '@mui/icons-material';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-toastify';
 
 
 const SupplierList = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -134,6 +137,21 @@ const SupplierList = () => {
     fetchSuppliers();
   };
 
+  const handleSupplierRegistrationApproval = async (userId, status, event) => {
+    event.stopPropagation();
+    if (!userId) return;
+
+    try {
+      await api.put(`/users/${userId}/supplier-approval`, { status });
+      toast.success(`Registration ${status} successfully`);
+      await fetchSuppliers();
+      await fetchStats();
+    } catch (error) {
+      console.error('Failed to update supplier registration approval:', error);
+      toast.error(error.response?.data?.message || 'Failed to update registration approval');
+    }
+  };
+
   const getStatusLabel = (status) => {
     const statusMap = {
       approved: 'Approved',
@@ -141,6 +159,11 @@ const SupplierList = () => {
       pending_contract_upload: 'Pending Contract Upload',
       completed: 'Completed',
       rejected: 'Rejected',
+      pending_verification: 'Pending Verification',
+      registration_profile_incomplete: 'Profile Incomplete',
+      pending_registration_approval: 'Pending Registration Approval',
+      registration_approved: 'Registration Approved',
+      registration_rejected: 'Registration Rejected',
       not_approved: 'Not Approved',
       more_info_required: 'Requested More Info'
     };
@@ -151,14 +174,15 @@ const SupplierList = () => {
     const isApproved = status === 'approved' || status === 'completed';
     const isRejected = status === 'rejected';
     const isPendingLegal = status === 'pending_legal';
-    const isPendingContract = status === 'pending_contract_upload';
+    const isPendingRegistration = status === 'pending_registration_approval' || status === 'pending_verification' || status === 'registration_profile_incomplete';
+    const isRegistrationRejected = status === 'registration_rejected';
     return (
       <Chip
         label={getStatusLabel(status)}
         size="small"
         sx={{
-          backgroundColor: isApproved ? '#dcfce7' : isRejected ? '#fef2f2' : isPendingLegal ? '#dbeafe' : '#fef9c3',
-          color: isApproved ? '#166534' : isRejected ? '#991b1b' : isPendingLegal ? '#1e40af' : '#854d0e',
+          backgroundColor: isApproved ? '#dcfce7' : (isRejected || isRegistrationRejected) ? '#fef2f2' : isPendingLegal ? '#dbeafe' : '#fef9c3',
+          color: isApproved ? '#166534' : (isRejected || isRegistrationRejected) ? '#991b1b' : isPendingLegal ? '#1e40af' : (isPendingRegistration ? '#854d0e' : '#854d0e'),
           fontWeight: 500,
           fontSize: '13px',
           height: '24px',
@@ -488,7 +512,45 @@ const SupplierList = () => {
                         {getContractStatusChip(supplier.status)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 1.5 }}>
-                        <VisibilityIcon sx={{ color: '#6b7280', fontSize: 20 }} />
+                        {user?.role === 'procurement' && supplier.status === 'pending_registration_approval' && supplier.userId ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId, 'approved', e)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '12px',
+                                minWidth: '72px',
+                                bgcolor: '#578A18',
+                                '&:hover': { bgcolor: '#467014' }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId, 'rejected', e)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '12px',
+                                minWidth: '62px',
+                                borderColor: '#dc2626',
+                                color: '#dc2626',
+                                '&:hover': {
+                                  borderColor: '#b91c1c',
+                                  color: '#b91c1c',
+                                  backgroundColor: '#fef2f2'
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        ) : (
+                          <VisibilityIcon sx={{ color: '#6b7280', fontSize: 20 }} />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

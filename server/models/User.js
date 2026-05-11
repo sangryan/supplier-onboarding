@@ -73,6 +73,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  supplierApprovalStatus: {
+    type: String,
+    enum: ['profile_incomplete', 'pending', 'approved', 'rejected'],
+    default: function () {
+      return this.role === 'supplier' ? 'profile_incomplete' : 'approved';
+    }
+  },
+  supplierApprovalReviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  supplierApprovalReviewedAt: {
+    type: Date
+  },
+  supplierApprovalComment: {
+    type: String,
+    trim: true
+  },
   mustChangePassword: {
     type: Boolean,
     default: false
@@ -110,6 +128,8 @@ userSchema.methods.toPublicJSON = function() {
     department: this.department,
     phone: this.phone,
     isActive: this.isActive,
+    isEmailVerified: this.isEmailVerified,
+    supplierApprovalStatus: this.supplierApprovalStatus,
     mustChangePassword: this.mustChangePassword,
     lastLogin: this.lastLogin,
     createdAt: this.createdAt
@@ -117,4 +137,3 @@ userSchema.methods.toPublicJSON = function() {
 };
 
 module.exports = mongoose.model('User', userSchema);
-

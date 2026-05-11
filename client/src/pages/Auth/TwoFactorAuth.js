@@ -116,8 +116,12 @@ const TwoFactorAuth = () => {
             navigate('/profile');
           }
         } else if (result.user?.role === 'procurement' || result.user?.role === 'legal') {
-          // Procurement and Legal users go to dashboard (ProcurementDashboard)
-          navigate('/dashboard');
+          if (result.user.mustChangePassword) {
+            navigate('/change-password');
+          } else {
+            // Procurement and Legal users go to dashboard (ProcurementDashboard)
+            navigate('/dashboard');
+          }
         } else {
           navigate('/dashboard');
         }
@@ -314,4 +318,3 @@ const TwoFactorAuth = () => {
 };
 
 export default TwoFactorAuth;
-

@@ -27,10 +27,11 @@ import {
   History,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import api, { API_BASE_URL } from '../../utils/api';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import ActionModal from '../../components/ActionModal/ActionModal';
+import { buildUploadUrl, downloadDocument, fetchDocumentBlobUrl, fetchFileBlobUrl, isFallbackDocument } from '../../utils/fileAccess';
 
 const SupplierDetails = () => {
   const { id } = useParams();
@@ -173,24 +174,25 @@ const SupplierDetails = () => {
     return map[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const handleViewFile = (document) => {
+  const handleViewFile = async (document) => {
     let url;
     let fileName = document.originalName || document.fileName || 'Document';
 
-    // If document has _id and starts with 'doc-', it's a fallback document (filename string)
-    if (document._id && (document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-'))) {
-      // It's a filename string, construct URL
+    if (isFallbackDocument(document)) {
       const filePath = document.fileName || document.originalName;
-      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        url = filePath;
-      } else if (filePath.startsWith('uploads/')) {
-        url = `${API_BASE_URL}/${filePath}`;
-      } else {
-        url = `${API_BASE_URL}/uploads/${id}/${filePath}`;
+      try {
+        url = await fetchFileBlobUrl(buildUploadUrl(filePath, id));
+      } catch (error) {
+        toast.error(error.message || 'Failed to open document');
+        return;
       }
     } else {
-      // It's a proper document object from API
-      url = `${API_BASE_URL}/api/documents/${document._id}/download`;
+      try {
+        url = await fetchDocumentBlobUrl(document._id);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to open document');
+        return;
+      }
     }
 
     setFileViewerUrl(url);
@@ -198,26 +200,29 @@ const SupplierDetails = () => {
     setFileViewerOpen(true);
   };
 
-  const handleDownloadFile = (document) => {
+  const handleDownloadFile = async (document) => {
     let url;
 
-    // If document has _id and starts with 'doc-', it's a fallback document (filename string)
-    if (document._id && (document._id.startsWith('doc-') || document._id.startsWith('practicing-') || document._id.startsWith('resume-'))) {
-      // It's a filename string, construct URL
+    if (isFallbackDocument(document)) {
       const filePath = document.fileName || document.originalName;
-      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        url = filePath;
-      } else if (filePath.startsWith('uploads/')) {
-        url = `${API_BASE_URL}/${filePath}`;
-      } else {
-        url = `${API_BASE_URL}/uploads/${id}/${filePath}`;
-      }
+      url = buildUploadUrl(filePath, id);
+      window.open(url, '_blank');
     } else {
-      // It's a proper document object from API
-      url = `${API_BASE_URL}/api/documents/${document._id}/download`;
+      try {
+        await downloadDocument(document);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to download document');
+      }
     }
+  };
 
-    window.open(url, '_blank');
+  const handleCloseFileViewer = () => {
+    if (fileViewerUrl?.startsWith('blob:')) {
+      window.URL.revokeObjectURL(fileViewerUrl);
+    }
+    setFileViewerOpen(false);
+    setFileViewerUrl(null);
+    setFileViewerName('');
   };
 
   const getEntityDocuments = () => {
@@ -1923,7 +1928,7 @@ const SupplierDetails = () => {
       {/* File Viewer Dialog */}
       <Dialog
         open={fileViewerOpen}
-        onClose={() => setFileViewerOpen(false)}
+        onClose={handleCloseFileViewer}
         maxWidth="lg"
         fullWidth
         PaperProps={{
@@ -1949,7 +1954,7 @@ const SupplierDetails = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button
-            onClick={() => setFileViewerOpen(false)}
+            onClick={handleCloseFileViewer}
             sx={{
               textTransform: 'none',
               color: '#6b7280',

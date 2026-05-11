@@ -35,7 +35,6 @@ export const isSupplierProfileComplete = (supplier, user) => {
     (supplier.registeredCountry || address?.country) &&
     supplier.companyRegistrationNumber &&
     supplier.companyEmail &&
-    supplier.legalNature &&
     fullAddress;
 
   return contactComplete && companyComplete;
@@ -66,4 +65,3 @@ export const checkSupplierProfileComplete = async (user) => {
     return false; // On error, assume incomplete
   }
 };
-

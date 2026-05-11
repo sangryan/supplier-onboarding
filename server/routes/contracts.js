@@ -1,12 +1,95 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
 const Contract = require('../models/Contract');
 const Supplier = require('../models/Supplier');
 const Document = require('../models/Document');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { createNotification } = require('../utils/notifications');
+
+const ensureDraftContractForSupplier = async (supplier, userId) => {
+  if (supplier.contract) {
+    const existingContract = await Contract.findById(supplier.contract);
+    if (existingContract) return existingContract;
+  }
+
+  let contract = await Contract.findOne({ supplier: supplier._id });
+  if (contract) {
+    supplier.contract = contract._id;
+    await supplier.save();
+    return contract;
+  }
+
+  const contractNumber = await Contract.generateContractNumber();
+  contract = await Contract.create({
+    supplier: supplier._id,
+    contractNumber,
+    title: `Contract for ${supplier.supplierName}`,
+    contractType: 'services',
+    value: { amount: 0, currency: 'KES' },
+    startDate: new Date(),
+    endDate: new Date(),
+    status: 'draft',
+    uploadedBy: userId
+  });
+
+  supplier.contract = contract._id;
+  await supplier.save();
+
+  return contract;
+};
+
+const loadContractForUpload = async (req, res, next) => {
+  try {
+    const contract = await Contract.findById(req.params.id);
+    if (!contract) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contract not found'
+      });
+    }
+
+    req.contract = contract;
+    req.params.supplierId = String(contract.supplier);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const handleSignedContractUpload = (req, res, next) => {
+  upload.single('contract')(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File is too large. Maximum allowed size is 10MB.'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Contract upload failed'
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'Contract upload failed'
+    });
+  });
+};
+
+const getApplicationNumber = (supplier) => {
+  if (!supplier?._id) return '-';
+  const year = supplier.createdAt ? new Date(supplier.createdAt).getFullYear() : new Date().getFullYear();
+  const shortId = supplier._id.toString().slice(-3).padStart(3, '0');
+  return `APP-${year}-${shortId}`;
+};
 
 // @route   POST /api/contracts
 // @desc    Create new contract
@@ -171,7 +254,7 @@ router.get('/', protect, async (req, res) => {
 
     // Fetch contracts and filter by associated supplier status or contact status
     let contracts = await Contract.find(query)
-      .populate('supplier', 'supplierName vendorNumber status')
+      .populate('supplier', 'supplierName vendorNumber status createdAt updatedAt submittedAt')
       .populate('uploadedBy', 'firstName lastName')
       .populate('signedContract')
       .lean();
@@ -181,7 +264,11 @@ router.get('/', protect, async (req, res) => {
       if (c.status === 'active') return true;
       if (c.supplier && c.supplier.status === 'pending_contract_upload') return true;
       return false;
-    });
+    }).map(c => ({
+      ...c,
+      applicationNumber: getApplicationNumber(c.supplier),
+      applicationUpdatedAt: c.supplier?.updatedAt || c.supplier?.submittedAt || c.updatedAt || c.createdAt
+    }));
 
     // Also find suppliers who are in 'pending_contract_upload' stage but might not have a contract record yet
     let supplierQuery = { status: 'pending_contract_upload' };
@@ -202,7 +289,14 @@ router.get('/', protect, async (req, res) => {
         ];
       }
     }
-    const pendingSuppliers = await Supplier.find(supplierQuery).populate('contract').lean();
+    const pendingSupplierDocs = await Supplier.find(supplierQuery).populate('contract');
+    const pendingSuppliers = [];
+
+    for (const supplier of pendingSupplierDocs) {
+      await ensureDraftContractForSupplier(supplier, req.user.id);
+      await supplier.populate('contract');
+      pendingSuppliers.push(supplier.toObject());
+    }
 
     // Merge pending suppliers who don't have contracts in the list yet
     pendingSuppliers.forEach(s => {
@@ -214,18 +308,24 @@ router.get('/', protect, async (req, res) => {
             _id: s._id,
             supplierName: s.supplierName,
             vendorNumber: s.vendorNumber,
-            status: s.status
+            status: s.status,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+            submittedAt: s.submittedAt,
+            applicationNumber: s.applicationNumber || getApplicationNumber(s)
           },
           status: 'pending_upload',
-          createdAt: s.updatedAt,
-          updatedAt: s.updatedAt,
+          createdAt: s.contract?.createdAt || s.createdAt,
+          updatedAt: s.contract?.updatedAt || s.updatedAt,
+          applicationNumber: s.applicationNumber || getApplicationNumber(s),
+          applicationUpdatedAt: s.updatedAt || s.submittedAt || s.createdAt,
           isPlaceholder: !s.contract
         });
       }
     });
 
     // Re-sort after merge
-    contracts.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    contracts.sort((a, b) => new Date(b.applicationUpdatedAt || b.updatedAt || b.createdAt) - new Date(a.applicationUpdatedAt || a.updatedAt || a.createdAt));
 
     const total = contracts.length;
     const paginatedContracts = contracts.slice((page - 1) * limit, page * limit);
@@ -398,7 +498,7 @@ router.post('/:id/activate', protect, authorize('legal', 'super_admin'), async (
 // @route   POST /api/contracts/:id/upload-signed
 // @desc    Upload signed contract document
 // @access  Private (Legal)
-router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), upload.single('contract'), async (req, res) => {
+router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), loadContractForUpload, handleSignedContractUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -407,13 +507,7 @@ router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), up
       });
     }
 
-    const contract = await Contract.findById(req.params.id);
-    if (!contract) {
-      return res.status(404).json({
-        success: false,
-        message: 'Contract not found'
-      });
-    }
+    const contract = req.contract;
 
     // Create document record
     const document = await Document.create({
@@ -657,4 +751,3 @@ router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async 
 });
 
 module.exports = router;
-

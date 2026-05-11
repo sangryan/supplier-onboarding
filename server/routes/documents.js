@@ -2,15 +2,106 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs').promises;
+const multer = require('multer');
 const Document = require('../models/Document');
 const Supplier = require('../models/Supplier');
 const { protect, supplierAccess } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+const uploadsPath = path.resolve(process.env.UPLOAD_PATH || path.join(__dirname, '..', 'uploads'));
+
+const findFileByName = async (dir, fileName) => {
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isFile() && entry.name === fileName) {
+      return entryPath;
+    }
+
+    if (entry.isDirectory()) {
+      const found = await findFileByName(entryPath, fileName);
+      if (found) return found;
+    }
+  }
+
+  return null;
+};
+
+const resolveDocumentPath = async (document) => {
+  const candidates = [];
+
+  if (document.filePath) {
+    candidates.push(path.resolve(document.filePath));
+
+    const normalized = String(document.filePath).replace(/\\/g, '/').replace(/^\.\//, '');
+    if (normalized.startsWith('uploads/')) {
+      candidates.push(path.join(uploadsPath, normalized.replace(/^uploads\//, '')));
+    } else if (!path.isAbsolute(document.filePath)) {
+      candidates.push(path.join(uploadsPath, normalized));
+    }
+  }
+
+  if (document.supplier && document.fileName) {
+    const supplierId = document.supplier._id || document.supplier;
+    candidates.push(path.join(uploadsPath, String(supplierId), document.fileName));
+  }
+
+  if (document.fileName) {
+    candidates.push(path.join(uploadsPath, 'temp', document.fileName));
+    candidates.push(path.join(uploadsPath, document.fileName));
+  }
+
+  for (const candidate of [...new Set(candidates)]) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Try the next known storage shape.
+    }
+  }
+
+  if (document.fileName) {
+    return findFileByName(uploadsPath, document.fileName);
+  }
+
+  return null;
+};
+
+const handleUpload = (req, res, next) => {
+  upload.single('document')(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File is too large. Maximum allowed size is 10MB.'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Upload failed'
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'Upload failed'
+    });
+  });
+};
+
 // @route   POST /api/documents/upload
 // @desc    Upload document
 // @access  Private
-router.post('/upload', protect, upload.single('document'), async (req, res) => {
+router.post('/upload', protect, handleUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -167,12 +258,9 @@ router.get('/:id/download', protect, async (req, res) => {
       }
     }
 
-    // Check if file exists - ensure path is resolved absolutely
-    const absolutePath = path.resolve(document.filePath);
-    try {
-      await fs.access(absolutePath);
-    } catch (error) {
-      console.error(`File not found: ${absolutePath}`);
+    const absolutePath = await resolveDocumentPath(document);
+    if (!absolutePath) {
+      console.error(`File not found for document ${document._id}. Stored path: ${document.filePath}`);
       return res.status(404).json({
         success: false,
         message: 'File not found on server'
@@ -285,4 +373,3 @@ router.put('/:id/status', protect, async (req, res) => {
 });
 
 module.exports = router;
-

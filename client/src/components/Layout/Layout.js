@@ -27,9 +27,9 @@ import {
   Description as DescriptionIcon,
   People as PeopleIcon,
   Assessment as AssessmentIcon,
-  Notifications as NotificationsIcon,
   NotificationsOutlined as NotificationsOutlinedIcon,
   AccountCircle,
+  LockReset as LockResetIcon,
   Logout,
   HeadsetMic as HeadsetIcon,
   History as HistoryIcon,
@@ -126,6 +126,11 @@ const Layout = () => {
   const handleProfile = () => {
     handleClose();
     navigate('/profile');
+  };
+
+  const handleChangePassword = () => {
+    handleClose();
+    navigate('/change-password');
   };
 
   // Menu items based on role - matching the design
@@ -643,6 +648,12 @@ const Layout = () => {
                   <AccountCircle fontSize="small" />
                 </ListItemIcon>
                 Profile
+              </MenuItem>
+              <MenuItem onClick={handleChangePassword}>
+                <ListItemIcon>
+                  <LockResetIcon fontSize="small" />
+                </ListItemIcon>
+                Change Password
               </MenuItem>
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>

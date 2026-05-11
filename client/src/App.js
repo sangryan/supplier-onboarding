@@ -40,6 +40,7 @@ import Reports from './pages/Reports/Reports';
 import Profile from './pages/Profile/Profile';
 import EditContactInfo from './pages/Profile/EditContactInfo';
 import EditCompanyDetails from './pages/Profile/EditCompanyDetails';
+import ChangePassword from './pages/Profile/ChangePassword';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -116,6 +117,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit-contact" element={<EditContactInfo />} />
           <Route path="/profile/edit-company" element={<EditCompanyDetails />} />
+          <Route path="/change-password" element={<ChangePassword />} />
 
           {/* Supplier Routes */}
           <Route path="/application/new" element={<SupplierApplication />} />
@@ -148,4 +150,3 @@ function App() {
 }
 
 export default App;
-

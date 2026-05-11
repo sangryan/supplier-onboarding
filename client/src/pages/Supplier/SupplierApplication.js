@@ -29,10 +29,11 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { ArrowBack, ArrowForward, Search, Check, KeyboardArrowDown, CalendarToday, NavigateBefore, NavigateNext, ExpandMore, Close } from '@mui/icons-material';
-import api from '../../utils/api';
+import api, { API_BASE_URL } from '../../utils/api';
 import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
 import { useAuth } from '../../context/AuthContext';
+import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
 import { format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
 const steps = [
@@ -78,32 +79,49 @@ const countries = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
-const legalNatures = [
-  'Private Limited Company',
-  'Public Limited Company',
-  'Partnership',
-  'Sole Proprietorship',
-  'Trust',
-  'NGO',
-  'Other'
-];
-
 const currencies = ['KES', 'USD', 'EUR', 'GBP'];
 
 const creditPeriods = ['7 Days', '14 Days', '30 Days', '60 Days', '90 Days'];
 
 const entityTypes = [
-  'Public/Private Company',
-  'Limited Company',
-  'Public Limited Company',
-  'Partnership',
+  'Private/Public Company',
+  'Partnerships',
   'Foreign Company',
-  'Sole Proprietorship',
-  'Trust',
-  'NGO',
-  'Government Entity',
-  'Other'
+  'Individual/Sole Proprietor',
+  'Trust'
 ];
+
+const mapEntityTypeToDisplay = (value) => {
+  const mapping = {
+    private_company: 'Private/Public Company',
+    public_company: 'Private/Public Company',
+    partnership: 'Partnerships',
+    foreign_company: 'Foreign Company',
+    individual: 'Individual/Sole Proprietor',
+    trust: 'Trust',
+    other: 'Private/Public Company',
+    'Public/Private Company': 'Private/Public Company',
+    'Limited Company': 'Private/Public Company',
+    'Public Limited Company': 'Private/Public Company',
+    'Partnership': 'Partnerships',
+    'Sole Proprietorship': 'Individual/Sole Proprietor'
+  };
+
+  return mapping[value] || value || '';
+};
+
+const mapEntityTypeToLegalNature = (value) => {
+  const displayValue = mapEntityTypeToDisplay(value);
+  const mapping = {
+    'Private/Public Company': 'company',
+    'Partnerships': 'partnership',
+    'Foreign Company': 'foreign_company',
+    'Individual/Sole Proprietor': 'individual',
+    'Trust': 'trust'
+  };
+
+  return mapping[displayValue] || 'company';
+};
 
 const serviceTypes = [
   'Goods Supply',
@@ -194,8 +212,6 @@ const SupplierApplication = () => {
     declarantCapacity: '',
     declarantIdPassport: '',
     declarationDate: '',
-    signature: '',
-    declarationSignatureFile: null,
     consentToProcessing: false,
     confirmInformationAccurate: false,
   });
@@ -230,7 +246,7 @@ const SupplierApplication = () => {
     }
   };
 
-  const handleViewFile = (file, fileName = '') => {
+  const handleViewFile = async (file, fileName = '') => {
     if (!file) return;
 
     let fileUrl = null;
@@ -243,30 +259,33 @@ const SupplierApplication = () => {
     } else if (typeof file === 'string') {
       // Check if it's already a full URL
       if (file.startsWith('http://') || file.startsWith('https://')) {
-        fileUrl = file;
-      } else {
-        // Files are stored in uploads/supplierId/filename format
-        // If the path already includes 'uploads/', use it directly
-        if (file.startsWith('uploads/')) {
-          fileUrl = `/${file}`;
-        } else if (file.startsWith('./uploads/')) {
-          fileUrl = file.replace('./uploads/', '/uploads/');
-        } else {
-          // If it's just a filename, construct the path with supplier ID
-          // Files are stored in uploads/supplierId/filename format
-          const supplierId = applicationId || id;
-          if (supplierId) {
-            fileUrl = `/uploads/${supplierId}/${file}`;
+        try {
+          const parsed = new URL(file);
+          const frontendOrigin = window.location.origin;
+          // If legacy data points to frontend host for uploads, rewrite to API host
+          if (parsed.origin === frontendOrigin && parsed.pathname.startsWith('/uploads/')) {
+            fileUrl = `${API_BASE_URL}${parsed.pathname}`;
           } else {
-            // Fallback: try without supplier ID (might work for some files)
-            fileUrl = `/uploads/${file}`;
+            fileUrl = file;
           }
+        } catch {
+          fileUrl = file;
         }
+      } else {
+        fileUrl = buildUploadUrl(file, applicationId || id);
       }
       displayName = fileName || file.split('/').pop() || 'File';
     }
 
     if (fileUrl) {
+      if (!fileUrl.startsWith('blob:')) {
+        try {
+          fileUrl = await fetchFileBlobUrl(fileUrl);
+        } catch (error) {
+          toast.error(error.message || 'Failed to open file');
+          return;
+        }
+      }
       setFileViewerUrl(fileUrl);
       setFileViewerName(displayName);
       setImageLoadError(false);
@@ -295,7 +314,6 @@ const SupplierApplication = () => {
       'cr12': 'cr12',
       'companyProfile': 'company_profile',
       'bankReferenceLetter': 'bank_reference',
-      'declarationSignatureFile': 'source_funds_declaration',
       'directorsIds': 'directors_id',
       'practicingCertificates': 'practicing_certificate',
       'keyMembersResumes': 'member_resume',
@@ -478,6 +496,201 @@ const SupplierApplication = () => {
     );
   };
 
+  // Build dynamic documents list based on entity type
+  const getRequiredDocuments = () => {
+    const entityType = formData.entityType;
+    const isCompanyLike = entityType === 'Private/Public Company';
+    const isPartnership = entityType === 'Partnerships';
+    const isForeignCompany = entityType === 'Foreign Company';
+    const isIndividual = entityType === 'Individual/Sole Proprietor';
+    const isTrust = entityType === 'Trust';
+    const docs = [];
+    
+    // Add Certificate of Incorporation for company-like and foreign companies
+    if (isCompanyLike || isForeignCompany) {
+      docs.push({
+        type: 'single',
+        field: 'certificateOfIncorporation',
+        label: 'Certificate of Incorporation or Registration'
+      });
+    }
+
+    // Partnership documents
+    if (isPartnership) {
+      docs.push({
+        type: 'single',
+        field: 'partnershipDeed',
+        label: 'Partnership Deed'
+      });
+      docs.push({
+        type: 'single',
+        field: 'partnersPinCertificate',
+        label: 'PIN Certificate of partners'
+      });
+      docs.push({
+        type: 'single',
+        field: 'partnersTaxCompliance',
+        label: 'Valid tax compliance certificate for each partner'
+      });
+      docs.push({
+        type: 'multi',
+        field: 'partnerIds',
+        label: "Partners' IDs/Copies of Passports"
+      });
+    }
+
+    // Foreign Company documents
+    if (isForeignCompany) {
+      docs.push({
+        type: 'multi',
+        field: 'directorsNationalIds',
+        label: "Directors' National Identification documents"
+      });
+      docs.push({
+        type: 'multi',
+        field: 'directorsPassports',
+        label: "Directors' Passports"
+      });
+      docs.push({
+        type: 'single',
+        field: 'shareCertificate',
+        label: 'Valid share certificate'
+      });
+      docs.push({
+        type: 'single',
+        field: 'registryExtract',
+        label: 'Valid registry extract (alternative to share certificate)'
+      });
+      docs.push({
+        type: 'single',
+        field: 'taxComplianceCertificate',
+        label: 'Valid tax compliance certificate'
+      });
+    }
+
+    // Individual documents
+    if (isIndividual) {
+      docs.push({
+        type: 'single',
+        field: 'nationalId',
+        label: 'National Identification Card'
+      });
+      docs.push({
+        type: 'single',
+        field: 'passportDocument',
+        label: 'Passport'
+      });
+      docs.push({
+        type: 'single',
+        field: 'workPermit',
+        label: 'Work permit (for foreigners)'
+      });
+      docs.push({
+        type: 'single',
+        field: 'policeClearance',
+        label: 'Police clearance certificate'
+      });
+      docs.push({
+        type: 'single',
+        field: 'resume',
+        label: 'Resume (Curriculum vitae)'
+      });
+    }
+
+    // Trust documents
+    if (isTrust) {
+      docs.push({
+        type: 'multi',
+        field: 'foundersIds',
+        label: "Founders' IDs/Copies of Passports"
+      });
+      docs.push({
+        type: 'multi',
+        field: 'beneficiariesIds',
+        label: 'Beneficaries IDs/Copies of Passport'
+      });
+      docs.push({
+        type: 'single',
+        field: 'trustDeed',
+        label: 'Trust Deed'
+      });
+      docs.push({
+        type: 'single',
+        field: 'founderPin',
+        label: 'PIN Certificate of Founders'
+      });
+    }
+
+    // Company-like multi-file documents
+    if (isCompanyLike) {
+      docs.push({
+        type: 'multi',
+        field: 'directorsIds',
+        label: "Directors' IDs/Copies of Passports"
+      });
+    }
+
+    // Shared documents
+    if (isCompanyLike || isPartnership || isForeignCompany) {
+      docs.push({
+        type: 'single',
+        field: 'companyProfile',
+        label: 'Firm Company Profile'
+      });
+    }
+
+    if (isCompanyLike) {
+      docs.push({
+        type: 'single',
+        field: 'cr12',
+        label: 'Valid CR12 (not more than 30 days old)'
+      });
+    }
+
+    // Universal documents
+    docs.push({
+      type: 'single',
+      field: 'bankReferenceLetter',
+      label: 'Bank reference letter'
+    });
+
+    if (isCompanyLike || isIndividual) {
+      docs.push({
+        type: 'single',
+        field: 'kraPinCertificate',
+        label: isCompanyLike ? 'PIN Certificate of entity' : 'PIN Certificate'
+      });
+    }
+
+    if (isCompanyLike || isPartnership || isIndividual) {
+      docs.push({
+        type: 'single',
+        field: 'etimsProof',
+        label: 'Proof of registration on e-TIMS'
+      });
+    }
+
+    if (isCompanyLike || isPartnership || isForeignCompany || isTrust) {
+      docs.push({
+        type: 'single',
+        field: 'financialStatements',
+        label: 'Current annual audited financial statements'
+      });
+    }
+
+    return docs;
+  };
+
+  // Render dynamic document
+  const renderDocument = (doc) => {
+    if (doc.type === 'single') {
+      return renderSingleFileUpload(doc.field, doc.label);
+    } else if (doc.type === 'multi') {
+      return renderMultiFileUpload(doc.field, doc.label);
+    }
+    return null;
+  };
+
   // Upload a single file
   const uploadFile = async (file, fieldName, supplierId) => {
     if (!file || !(file instanceof File)) {
@@ -503,7 +716,8 @@ const SupplierApplication = () => {
       return null;
     } catch (error) {
       console.error(`Error uploading ${fieldName}:`, error);
-      toast.error(`Failed to upload ${fieldName}`);
+      const serverMessage = error.response?.data?.message;
+      toast.error(serverMessage || `Failed to upload ${fieldName}`);
       return null;
     }
   };
@@ -516,7 +730,6 @@ const SupplierApplication = () => {
     const singleFileFields = [
       'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
       'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-      'declarationSignatureFile',
 
       // Partnership
       'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
@@ -624,7 +837,6 @@ const SupplierApplication = () => {
               companyProfile: app.companyProfile,
               bankReferenceLetter: app.bankReferenceLetter,
               entityType: app.entityType,
-              declarationSignatureFile: app.declarationSignatureFile,
               directorsIds: app.directorsIds,
               practicingCertificates: app.practicingCertificates,
               keyMembersResumes: app.keyMembersResumes
@@ -640,7 +852,7 @@ const SupplierApplication = () => {
               companyRegistrationNumber: app.companyRegistrationNumber || '',
               companyEmail: app.companyEmail || '',
               companyWebsite: app.companyWebsite || '',
-              legalNature: app.legalNature || '',
+              legalNature: mapEntityTypeToLegalNature(app.entityType),
               physicalAddress: app.physicalAddress || app.companyPhysicalAddress?.street || '',
 
               // Contact Person (map from authorizedPerson if direct fields don't exist)
@@ -668,7 +880,7 @@ const SupplierApplication = () => {
               })() : '',
 
               // Entity Details
-              entityType: app.entityType || '',
+              entityType: mapEntityTypeToDisplay(app.entityType),
               serviceTypes: app.serviceTypes || app.serviceType || '',
               servicesDescription: app.servicesDescription || '',
 
@@ -678,7 +890,6 @@ const SupplierApplication = () => {
               declarantCapacity: app.declarantCapacity || app.sourceOfFunds?.declarantCapacity || '',
               declarantIdPassport: app.declarantIdPassport || app.sourceOfFunds?.declarantIdPassport || '',
               declarationDate: app.declarationDate || (app.sourceOfFunds?.declarationDate ? new Date(app.sourceOfFunds.declarationDate).toISOString().split('T')[0] : ''),
-              signature: app.signature || '',
               consentToProcessing: app.consentToProcessing !== undefined ? app.consentToProcessing : (app.dataProcessingConsent?.granted || false),
               confirmInformationAccurate: app.confirmInformationAccurate || false,
 
@@ -721,7 +932,6 @@ const SupplierApplication = () => {
               directorsIds: Array.isArray(app.directorsIds) && app.directorsIds.length > 0 ? app.directorsIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               practicingCertificates: Array.isArray(app.practicingCertificates) && app.practicingCertificates.length > 0 ? app.practicingCertificates.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               keyMembersResumes: Array.isArray(app.keyMembersResumes) && app.keyMembersResumes.length > 0 ? app.keyMembersResumes.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
-              declarationSignatureFile: (app.declarationSignatureFile && typeof app.declarationSignatureFile === 'string' && app.declarationSignatureFile.trim() !== '') ? app.declarationSignatureFile : null,
             };
 
             // Set form data - update all mapped fields
@@ -739,7 +949,6 @@ const SupplierApplication = () => {
                 companyProfile: updated.companyProfile,
                 bankReferenceLetter: updated.bankReferenceLetter,
                 entityType: updated.entityType,
-                declarationSignatureFile: updated.declarationSignatureFile,
                 directorsIds: updated.directorsIds,
                 practicingCertificates: updated.practicingCertificates,
                 keyMembersResumes: updated.keyMembersResumes
@@ -770,26 +979,6 @@ const SupplierApplication = () => {
                     ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
                     : supplierData.physicalAddress || '';
 
-                  const mapLegalNatureToDisplay = (dbValue) => {
-                    const mapping = {
-                      'company': 'Private Limited Company',
-                      'partnership': 'Partnership',
-                      'individual': 'Sole Proprietorship',
-                      'state_owned': 'Private Limited Company',
-                      'ngo': 'NGO',
-                      'foundation': 'Private Limited Company',
-                      'association': 'Private Limited Company',
-                      'foreign_company': 'Private Limited Company',
-                      'trust': 'Trust',
-                      'other': 'Other'
-                    };
-                    return mapping[dbValue] || '';
-                  };
-
-                  const legalNatureDisplay = supplierData.legalNature
-                    ? mapLegalNatureToDisplay(supplierData.legalNature)
-                    : '';
-
                   // Compare application data with profile data
                   const prefilled = [];
                   if (mappedData.contactFullName === registeredFullName) prefilled.push('contactFullName');
@@ -802,7 +991,6 @@ const SupplierApplication = () => {
                   if (mappedData.companyRegistrationNumber === (supplierData.companyRegistrationNumber || '')) prefilled.push('companyRegistrationNumber');
                   if (mappedData.companyEmail === (supplierData.companyEmail || '')) prefilled.push('companyEmail');
                   if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.push('companyWebsite');
-                  if (mappedData.legalNature === legalNatureDisplay) prefilled.push('legalNature');
                   if (mappedData.physicalAddress === fullAddress) prefilled.push('physicalAddress');
 
                   console.log('🟡 [PREFILL] Existing application - marking matching fields as prefilled:', prefilled);
@@ -856,27 +1044,6 @@ const SupplierApplication = () => {
                 ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
                 : supplierData.physicalAddress || '';
 
-              // Map legalNature from database enum to display value
-              const mapLegalNatureToDisplay = (dbValue) => {
-                const mapping = {
-                  'company': 'Private Limited Company',
-                  'partnership': 'Partnership',
-                  'individual': 'Sole Proprietorship',
-                  'state_owned': 'Private Limited Company',
-                  'ngo': 'NGO',
-                  'foundation': 'Private Limited Company',
-                  'association': 'Private Limited Company',
-                  'foreign_company': 'Private Limited Company',
-                  'trust': 'Trust',
-                  'other': 'Other'
-                };
-                return mapping[dbValue] || '';
-              };
-
-              const legalNatureDisplay = supplierData.legalNature
-                ? mapLegalNatureToDisplay(supplierData.legalNature)
-                : '';
-
               // Mark fields as prefilled - mark ALL fields that come from profile
               const prefilled = [];
               // Always mark contactFullName and contactEmail as prefilled (from user registration)
@@ -890,7 +1057,6 @@ const SupplierApplication = () => {
               if (supplierData.companyRegistrationNumber) prefilled.push('companyRegistrationNumber');
               if (supplierData.companyEmail) prefilled.push('companyEmail');
               if (supplierData.companyWebsite) prefilled.push('companyWebsite');
-              if (legalNatureDisplay) prefilled.push('legalNature');
               if (fullAddress) prefilled.push('physicalAddress');
 
               console.log('🟡 [PREFILL] Marking fields as prefilled:', prefilled);
@@ -909,7 +1075,6 @@ const SupplierApplication = () => {
                 companyRegistrationNumber: supplierData.companyRegistrationNumber || '',
                 companyEmail: supplierData.companyEmail || '',
                 companyWebsite: supplierData.companyWebsite || '',
-                legalNature: legalNatureDisplay,
                 physicalAddress: fullAddress,
               }));
 
@@ -955,6 +1120,13 @@ const SupplierApplication = () => {
     }
   }, [id, user]);
 
+  useEffect(() => {
+    if (!id && user?.role === 'supplier' && user?.supplierApprovalStatus !== 'approved') {
+      toast.error('Your registration is awaiting procurement approval before you can start a new application.');
+      navigate('/dashboard');
+    }
+  }, [id, navigate, user]);
+
   // Debug: Log prefilledFields to verify it's working
   useEffect(() => {
     if (prefilledFields.length > 0) {
@@ -973,7 +1145,7 @@ const SupplierApplication = () => {
         // Create a minimal draft to get supplier ID
         const draftPayload = {
           supplierName: formData.supplierName || 'Draft Application',
-          legalNature: formData.legalNature || 'company',
+          legalNature: mapEntityTypeToLegalNature(formData.entityType),
           serviceType: formData.serviceTypes || 'professional_services',
           currentStep: activeStep,
           lastModified: new Date().toISOString()
@@ -993,6 +1165,7 @@ const SupplierApplication = () => {
 
       const payload = {
         ...updatedFormData,
+        legalNature: mapEntityTypeToLegalNature(updatedFormData.entityType),
         status: 'draft',
         currentStep: activeStep,
         lastModified: new Date().toISOString()
@@ -1002,7 +1175,6 @@ const SupplierApplication = () => {
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-        'declarationSignatureFile',
 
         // Partnership
         'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
@@ -1088,17 +1260,10 @@ const SupplierApplication = () => {
       return false;
     }
 
-    const isCompanyLike = [
-      'Public/Private Company',
-      'Limited Company',
-      'Public Limited Company',
-      'NGO',
-      'Government Entity',
-      'Other'
-    ].includes(entityType);
-    const isPartnership = entityType === 'Partnership';
+    const isCompanyLike = entityType === 'Private/Public Company';
+    const isPartnership = entityType === 'Partnerships';
     const isForeign = entityType === 'Foreign Company';
-    const isIndividual = entityType === 'Sole Proprietorship';
+    const isIndividual = entityType === 'Individual/Sole Proprietor';
     const isTrust = entityType === 'Trust';
 
     const missing = [];
@@ -1199,7 +1364,7 @@ const SupplierApplication = () => {
         // Create a minimal draft to get supplier ID
         const draftPayload = {
           supplierName: formData.supplierName || 'Draft Application',
-          legalNature: formData.legalNature || 'company',
+          legalNature: mapEntityTypeToLegalNature(formData.entityType),
           serviceType: formData.serviceTypes || 'professional_services',
           currentStep: activeStep,
           lastModified: new Date().toISOString()
@@ -1220,6 +1385,7 @@ const SupplierApplication = () => {
       // Create payload with ALL form data from all steps (now with uploaded filenames)
       const payload = {
         ...updatedFormData,
+        legalNature: mapEntityTypeToLegalNature(updatedFormData.entityType),
         status: activeStep === steps.length - 1 ? 'submitted' : 'draft',
         currentStep: activeStep, // Save the current step the user is on
         lastModified: new Date().toISOString()
@@ -1229,7 +1395,6 @@ const SupplierApplication = () => {
       const fileFields = [
         'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
         'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-        'declarationSignatureFile',
 
         // Partnership
         'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
@@ -1307,7 +1472,6 @@ const SupplierApplication = () => {
         kraPinCertificate: payload.kraPinCertificate,
         etimsProof: payload.etimsProof,
         entityType: payload.entityType,
-        declarationSignatureFile: payload.declarationSignatureFile,
         directorsIds: payload.directorsIds,
         practicingCertificates: payload.practicingCertificates,
         keyMembersResumes: payload.keyMembersResumes
@@ -1320,7 +1484,6 @@ const SupplierApplication = () => {
         hasCr12: !!payload.cr12,
         hasProfile: !!payload.companyProfile,
         hasBankRef: !!payload.bankReferenceLetter,
-        hasSignature: !!payload.declarationSignatureFile,
         directorsCount: Array.isArray(payload.directorsIds) ? payload.directorsIds.length : 0
       });
 
@@ -1365,7 +1528,6 @@ const SupplierApplication = () => {
           const fileFields = [
             'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
             'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
-            'declarationSignatureFile',
 
             // Partnership
             'partnershipDeed', 'partnersPinCertificate', 'partnersTaxCompliance',
@@ -1767,45 +1929,6 @@ const SupplierApplication = () => {
                       }
                     }}
                   />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography
-                    variant="body2"
-                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                  >
-                    Legal Nature of Entity
-                  </Typography>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={formData.legalNature}
-                      onChange={(e) => handleChange('legalNature', e.target.value)}
-                      disabled={prefilledFields.includes('legalNature')}
-                      displayEmpty
-                      IconComponent={KeyboardArrowDown}
-                      sx={{
-                        backgroundColor: '#fff',
-                        ...(prefilledFields.includes('legalNature') && {
-                          cursor: 'not-allowed',
-                          '& .MuiSelect-select': {
-                            cursor: 'not-allowed',
-                          }
-                        }),
-                        '& .MuiSelect-icon': {
-                          color: '#6b7280'
-                        }
-                      }}
-                    >
-                      <MenuItem value="" disabled>
-                        Select
-                      </MenuItem>
-                      {legalNatures.map((nature) => (
-                        <MenuItem key={nature} value={nature}>
-                          {nature}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
                 </Grid>
 
                 <Grid item xs={12}>
@@ -2220,17 +2343,10 @@ const SupplierApplication = () => {
 
       case 1: {
         const entityType = formData.entityType;
-        const isCompanyLike = [
-          'Public/Private Company',
-          'Limited Company',
-          'Public Limited Company',
-          'NGO',
-          'Government Entity',
-          'Other'
-        ].includes(entityType);
-        const isPartnership = entityType === 'Partnership';
+        const isCompanyLike = entityType === 'Private/Public Company';
+        const isPartnership = entityType === 'Partnerships';
         const isForeignCompany = entityType === 'Foreign Company';
-        const isIndividual = entityType === 'Sole Proprietorship';
+        const isIndividual = entityType === 'Individual/Sole Proprietor';
         const isTrust = entityType === 'Trust';
 
         return (
@@ -2316,441 +2432,36 @@ const SupplierApplication = () => {
                   </Typography>
                 </Grid>
 
-                {/* Required Documents - Two Columns */}
-                <Grid item xs={12} md={6}>
-                  {(isCompanyLike || isForeignCompany) && (
-                    <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Certificate of Incorporation or Registration
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.certificateOfIncorporation
-                        ? (formData.certificateOfIncorporation instanceof File
-                          ? formData.certificateOfIncorporation.name
-                          : typeof formData.certificateOfIncorporation === 'string'
-                            ? formData.certificateOfIncorporation
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('certificateOfIncorporation', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          // Reset value to allow selecting the same file again
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.certificateOfIncorporation && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                    </Box>
-                  )}
+                {/* Required Documents - Dynamically Balanced Two Columns */}
+                {(() => {
+                  const documents = getRequiredDocuments();
+                  const midpoint = Math.ceil(documents.length / 2);
+                  const leftDocs = documents.slice(0, midpoint);
+                  const rightDocs = documents.slice(midpoint);
 
-                  {isPartnership && renderSingleFileUpload('partnershipDeed', 'Partnership Deed')}
-                  {isPartnership && renderSingleFileUpload('partnersPinCertificate', 'PIN Certificate of partners')}
-                  {isPartnership && renderSingleFileUpload('partnersTaxCompliance', 'Valid tax compliance certificate for each partner')}
+                  return (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        {leftDocs.map((doc, idx) => (
+                          <div key={`left-${idx}`}>
+                            {renderDocument(doc)}
+                          </div>
+                        ))}
+                      </Grid>
 
-                  {isForeignCompany && renderSingleFileUpload('shareCertificate', 'Valid share certificate')}
-                  {isForeignCompany && renderSingleFileUpload('registryExtract', 'Valid registry extract')}
-                  {isForeignCompany && renderSingleFileUpload('taxComplianceCertificate', 'Valid tax compliance certificate')}
+                      {rightDocs.length > 0 && (
+                        <Grid item xs={12} md={6}>
+                          {rightDocs.map((doc, idx) => (
+                            <div key={`right-${idx}`}>
+                              {renderDocument(doc)}
+                            </div>
+                          ))}
+                        </Grid>
+                      )}
+                    </>
+                  );
+                })()}
 
-                  {isIndividual && renderSingleFileUpload('nationalId', 'National Identification Card')}
-                  {isIndividual && renderSingleFileUpload('passportDocument', 'Passport')}
-                  {isIndividual && renderSingleFileUpload('workPermit', 'Work permit (for foreigners)')}
-                  {isIndividual && renderSingleFileUpload('policeClearance', 'Police clearance certificate')}
-                  {isIndividual && renderSingleFileUpload('resume', 'Resume (Curriculum vitae)')}
-
-                  {isTrust && renderSingleFileUpload('trustDeed', 'Trust Deed')}
-                  {isTrust && renderSingleFileUpload('founderPin', 'PIN Certificate of Founders')}
-
-                  {(isCompanyLike || isIndividual) && (
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      KRA PIN Certificate
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.kraPinCertificate
-                        ? (formData.kraPinCertificate instanceof File
-                          ? formData.kraPinCertificate.name
-                          : typeof formData.kraPinCertificate === 'string'
-                            ? formData.kraPinCertificate
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('kraPinCertificate', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.kraPinCertificate && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                  )}
-
-                  {(isCompanyLike || isPartnership || isIndividual) && (
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Proof of registration on e-TIMS
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.etimsProof
-                        ? (formData.etimsProof instanceof File
-                          ? formData.etimsProof.name
-                          : typeof formData.etimsProof === 'string'
-                            ? formData.etimsProof
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('etimsProof', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.etimsProof && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                  )}
-
-                  {(isCompanyLike || isPartnership || isForeignCompany || isTrust) && (
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Current annual audited financial statements
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.financialStatements
-                        ? (formData.financialStatements instanceof File
-                          ? formData.financialStatements.name
-                          : typeof formData.financialStatements === 'string'
-                            ? formData.financialStatements
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('financialStatements', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.financialStatements && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                  )}
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  {isCompanyLike && (
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Valid CR12 (not more than 30 days old)
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.cr12
-                        ? (formData.cr12 instanceof File
-                          ? formData.cr12.name
-                          : typeof formData.cr12 === 'string'
-                            ? formData.cr12
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('cr12', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.cr12 && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                  )}
-
-                  {(isCompanyLike || isPartnership || isForeignCompany) && (
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Firm Company Profile
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.companyProfile
-                        ? (formData.companyProfile instanceof File
-                          ? formData.companyProfile.name
-                          : typeof formData.companyProfile === 'string'
-                            ? formData.companyProfile
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('companyProfile', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.companyProfile && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                  )}
-
-                  <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                    >
-                      Bank reference letter
-                    </Typography>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        borderColor: '#d1d5db',
-                        color: '#6b7280',
-                        fontSize: '14px',
-                        py: 0.75,
-                        '&:hover': {
-                          borderColor: '#9ca3af',
-                          backgroundColor: '#f9fafb'
-                        }
-                      }}
-                    >
-                      {formData.bankReferenceLetter
-                        ? (formData.bankReferenceLetter instanceof File
-                          ? formData.bankReferenceLetter.name
-                          : typeof formData.bankReferenceLetter === 'string'
-                            ? formData.bankReferenceLetter
-                            : 'File selected')
-                        : 'Choose file'}
-                      <input
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleChange('bankReferenceLetter', e.target.files[0]);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.target.value = '';
-                        }}
-                      />
-                    </Button>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
-                      Accepted: PDF, Word, Excel, Images (Max 10MB)
-                    </Typography>
-                    {!formData.bankReferenceLetter && (
-                      <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                        No file chosen
-                      </Typography>
-                    )}
-                  </Box>
-                </Grid>
-
-                {/* Entity-specific ID/Passport Documents */}
-                {isCompanyLike && renderMultiFileUpload('directorsIds', "Directors' IDs/Copies of Passports")}
-                {isPartnership && renderMultiFileUpload('partnerIds', "Partners' IDs/Copies of Passports")}
-                {isForeignCompany && (
-                  <>
-                    {renderMultiFileUpload('directorsNationalIds', "Directors' National Identification documents")}
-                    {renderMultiFileUpload('directorsPassports', "Directors' Passports")}
-                  </>
-                )}
-                {isTrust && (
-                  <>
-                    {renderMultiFileUpload('foundersIds', "Founders' IDs/Copies of Passports")}
-                    {renderMultiFileUpload('beneficiariesIds', 'Beneficaries IDs/Copies of Passport')}
-                  </>
-                )}
               </Grid>
             </Paper>
 
@@ -2979,7 +2690,7 @@ const SupplierApplication = () => {
                     rows={6}
                     value={formData.servicesDescription}
                     onChange={(e) => handleChange('servicesDescription', e.target.value)}
-                    placeholder="Type your physical address here. Be as detailed as possible"
+                    placeholder="Describe the services your company provides. Be as detailed as possible"
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
@@ -3262,69 +2973,6 @@ const SupplierApplication = () => {
                   </ClickAwayListener>
                 </Grid>
 
-                {/* Signature Upload Area */}
-                <Grid item xs={12}>
-                  <Typography
-                    variant="body2"
-                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                  >
-                    Signature
-                  </Typography>
-                  <Box
-                    component="label"
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px dashed #d1d5db',
-                      borderRadius: '8px',
-                      p: 4,
-                      cursor: 'pointer',
-                      backgroundColor: '#fafafa',
-                      '&:hover': {
-                        borderColor: '#9ca3af',
-                        backgroundColor: '#f9fafb'
-                      }
-                    }}
-                  >
-                    <input
-                      type="file"
-                      hidden
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleChange('declarationSignatureFile', e.target.files[0]);
-                        }
-                      }}
-                      onClick={(e) => {
-                        // Reset value to allow selecting the same file again
-                        e.target.value = '';
-                      }}
-                    />
-                    <Box
-                      component="img"
-                      src="/images/upload.svg"
-                      alt="Upload icon"
-                      sx={{ width: 40, height: 40, mb: 1.5 }}
-                    />
-                    <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
-                      Upload file
-                    </Typography>
-                    <Typography sx={{ fontSize: '12px', color: '#6b7280' }}>
-                      Click here or drag and drop to upload
-                    </Typography>
-                    {formData.declarationSignatureFile && (
-                      <Typography sx={{ fontSize: '12px', color: theme.palette.green.main, mt: 1, fontWeight: 500 }}>
-                        {formData.declarationSignatureFile instanceof File
-                          ? formData.declarationSignatureFile.name
-                          : typeof formData.declarationSignatureFile === 'string'
-                            ? formData.declarationSignatureFile
-                            : 'File selected'}
-                      </Typography>
-                    )}
-                  </Box>
-                </Grid>
-
                 {/* Checkboxes */}
                 <Grid item xs={12}>
                   <FormControlLabel
@@ -3482,14 +3130,6 @@ const SupplierApplication = () => {
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
                         {formData.companyRegistrationNumber || '-'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
-                        Legal Nature of Entity
-                      </Typography>
-                      <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                        {formData.legalNature || '-'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12}>
@@ -3822,17 +3462,10 @@ const SupplierApplication = () => {
 
                       return (() => {
                         const entityType = formData.entityType;
-                        const isCompanyLike = [
-                          'Public/Private Company',
-                          'Limited Company',
-                          'Public Limited Company',
-                          'NGO',
-                          'Government Entity',
-                          'Other'
-                        ].includes(entityType);
-                        const isPartnership = entityType === 'Partnership';
+                        const isCompanyLike = entityType === 'Private/Public Company';
+                        const isPartnership = entityType === 'Partnerships';
                         const isForeignCompany = entityType === 'Foreign Company';
-                        const isIndividual = entityType === 'Sole Proprietorship';
+                        const isIndividual = entityType === 'Individual/Sole Proprietor';
                         const isTrust = entityType === 'Trust';
 
                         return (
@@ -4168,77 +3801,6 @@ const SupplierApplication = () => {
                         })() : '-'}
                       </Typography>
                     </Grid>
-                    {formData.declarationSignatureFile && (
-                      <Grid item xs={12}>
-                        <Typography variant="body2" sx={{ mb: 1, color: '#6b7280', fontSize: '12px' }}>
-                          Signature File
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            p: 1.5,
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '6px',
-                            backgroundColor: '#fff',
-                            '&:hover': {
-                              borderColor: '#d1d5db',
-                              backgroundColor: '#f9fafb'
-                            }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                            <Box
-                              component="img"
-                              src="/images/File.svg"
-                              alt="File icon"
-                              sx={{ width: 24, height: 24, color: '#6b7280' }}
-                            />
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography sx={{ fontSize: '14px', color: '#374151', fontWeight: 500, mb: 0.25 }}>
-                                {formData.declarationSignatureFile instanceof File
-                                  ? formData.declarationSignatureFile.name
-                                  : typeof formData.declarationSignatureFile === 'string'
-                                    ? formData.declarationSignatureFile
-                                    : 'Signature File'}
-                              </Typography>
-                              <Typography sx={{ fontSize: '12px', color: '#9ca3af' }}>
-                                {(() => {
-                                  const fileName = formData.declarationSignatureFile instanceof File
-                                    ? formData.declarationSignatureFile.name
-                                    : typeof formData.declarationSignatureFile === 'string'
-                                      ? formData.declarationSignatureFile
-                                      : '';
-                                  const fileExtension = fileName.split('.').pop()?.toUpperCase() || 'PDF';
-                                  const fileSize = formData.declarationSignatureFile instanceof File && formData.declarationSignatureFile.size
-                                    ? `${(formData.declarationSignatureFile.size / (1024 * 1024)).toFixed(1)} MB`
-                                    : '2.3 MB';
-                                  return `${fileExtension} • ${fileSize}`;
-                                })()}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <IconButton
-                            size="small"
-                            sx={{
-                              color: '#6b7280',
-                              '&:hover': {
-                                backgroundColor: 'transparent',
-                                color: '#374151'
-                              }
-                            }}
-                          >
-                            <Box
-                              component="img"
-                              src="/images/eye.svg"
-                              alt="View icon"
-                              sx={{ width: 20, height: 20 }}
-                            />
-                          </IconButton>
-                        </Box>
-                      </Grid>
-                    )}
                   </Grid>
                 </AccordionDetails>
               </Accordion>

@@ -31,16 +31,30 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  // Allowed file types
-  const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|xls|xlsx/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExtensions = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx']);
+  const allowedMimeTypes = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]);
 
-  if (mimetype && extname) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const extAllowed = allowedExtensions.has(ext);
+
+  // Some clients may send generic mime types, so extension is primary;
+  // MIME check is strict when provided.
+  const mime = (file.mimetype || '').toLowerCase();
+  const mimeAllowed = !mime || allowedMimeTypes.has(mime) || mime === 'application/octet-stream';
+
+  if (extAllowed && mimeAllowed) {
     return cb(null, true);
-  } else {
-    cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, PNG, XLS, and XLSX files are allowed.'));
   }
+
+  cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, JPEG, PNG, XLS, and XLSX files are allowed.'));
 };
 
 // Create multer instance
@@ -53,4 +67,3 @@ const upload = multer({
 });
 
 module.exports = upload;
-

@@ -8,18 +8,13 @@ import {
   TextField,
   Grid,
   IconButton,
-  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Visibility,
-  VisibilityOff,
-  Help as HelpIcon,
   Close as CloseIcon,
   ArrowBack,
 } from '@mui/icons-material';
@@ -31,27 +26,14 @@ import Footer from '../../components/Footer/Footer';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [additionalContacts, setAdditionalContacts] = useState([]);
   
-  // Password state
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false,
-  });
-  
   // Dialog states
   const [editContactDialog, setEditContactDialog] = useState(false);
   const [addContactDialog, setAddContactDialog] = useState(false);
-  const [editProfileDialog, setEditProfileDialog] = useState(false);
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', idPassport: '', relationship: '' });
   const [editingContactIndex, setEditingContactIndex] = useState(null);
@@ -77,40 +59,6 @@ const Profile = () => {
       }
     }
     setLoading(false);
-  };
-
-  const handlePasswordChange = (field, value) => {
-    setPasswordData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleUpdatePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    if (passwordData.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long');
-      return;
-    }
-
-    try {
-      await api.put('/auth/change-password', {
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
-      const updatedUser = await refreshUser();
-      toast.success('Password updated successfully');
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-
-      if (
-        (updatedUser?.role === 'legal' || updatedUser?.role === 'procurement') &&
-        !updatedUser?.mustChangePassword
-      ) {
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update password');
-    }
   };
 
   const handleAddContact = () => {
@@ -274,7 +222,6 @@ const Profile = () => {
         companyRegistrationNumber: supplier.companyRegistrationNumber || '',
         companyEmail: supplier.companyEmail || '',
         companyWebsite: supplier.companyWebsite || '',
-        legalNature: supplier.legalNature || '',
         physicalAddress: fullAddress,
       };
     }
@@ -284,7 +231,6 @@ const Profile = () => {
       companyRegistrationNumber: '',
       companyEmail: '',
       companyWebsite: '',
-      legalNature: '',
       physicalAddress: '',
     };
   };
@@ -309,7 +255,6 @@ const Profile = () => {
         companyInfo.registeredCountry && 
         companyInfo.companyRegistrationNumber && 
         companyInfo.companyEmail && 
-        companyInfo.legalNature && 
         companyInfo.physicalAddress;
 
       return contactFilled && companyFilled;
@@ -727,22 +672,6 @@ const Profile = () => {
                   variant="body2" 
                   sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                 >
-                  Legal Nature of Entity
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 400, fontSize: '14px', color: '#111827' }}>
-                  {companyInfo.legalNature
-                    ? companyInfo.legalNature
-                        .split('_')
-                        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                        .join(' ')
-                    : 'N/A'}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography 
-                  variant="body2" 
-                  sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-                >
                   Physical Address
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 400, fontSize: '14px', color: '#111827' }}>
@@ -752,162 +681,6 @@ const Profile = () => {
             </Grid>
           </Paper>
         )}
-
-        {/* Security Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, md: 3 },
-            mb: { xs: 2, md: 3 },
-            border: '1px solid #e0e0e0',
-            borderRadius: 2,
-            backgroundColor: '#fff',
-          }}
-        >
-          <Box sx={{ mb: { xs: 2, md: 3 } }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
-                mb: 0.5,
-                fontSize: { xs: '16px', md: '18px' },
-                color: '#111827'
-              }}
-            >
-              Security
-            </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: '#6b7280',
-                fontSize: { xs: '13px', md: '14px' },
-                mb: { xs: 2, md: 3 }
-              }}
-            >
-              Update your password to keep your account secure
-            </Typography>
-          </Box>
-
-          <Grid container spacing={{ xs: 2, md: 2.5 }}>
-            <Grid item xs={12}>
-              <Typography 
-                variant="body2" 
-                sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-              >
-                Verify current password
-              </Typography>
-              <TextField
-                fullWidth
-                type={showPasswords.current ? 'text' : 'password'}
-                value={passwordData.currentPassword}
-                onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                size="small"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPasswords.current ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography 
-                variant="body2" 
-                sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-              >
-                New password
-              </Typography>
-              <TextField
-                fullWidth
-                type={showPasswords.new ? 'text' : 'password'}
-                value={passwordData.newPassword}
-                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                size="small"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPasswords.new ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography 
-                variant="body2" 
-                sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
-              >
-                Confirm password
-              </Typography>
-              <TextField
-                fullWidth
-                type={showPasswords.confirm ? 'text' : 'password'}
-                value={passwordData.confirmPassword}
-                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                size="small"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPasswords.confirm ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                onClick={handleUpdatePassword}
-                sx={{
-                  bgcolor: '#578A18',
-                  textTransform: 'none',
-                  px: 4,
-                  width: { xs: '100%', md: 'auto' },
-                  mt: 1,
-                  '&:hover': {
-                    bgcolor: '#467014',
-                  },
-                }}
-              >
-                Update Password
-              </Button>
-            </Grid>
-          </Grid>
-        </Paper>
 
         {/* Delete Account Section */}
         <Paper

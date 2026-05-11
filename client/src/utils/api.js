@@ -1,7 +1,15 @@
 import axios from 'axios';
 
 const apiUrl = process.env.REACT_APP_API_URL || '';
-export const API_BASE_URL = apiUrl.replace('/api', '') || window.location.origin;
+const getDefaultApiBaseUrl = () => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+
+  return window.location.origin;
+};
+
+export const API_BASE_URL = apiUrl.replace(/\/api\/?$/, '') || getDefaultApiBaseUrl();
 
 const api = axios.create({
   baseURL: apiUrl || '/api',
@@ -16,6 +24,10 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
     }
     return config;
   },
@@ -46,4 +58,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

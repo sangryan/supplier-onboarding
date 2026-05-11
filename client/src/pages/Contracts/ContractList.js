@@ -114,6 +114,14 @@ const ContractList = () => {
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
+  const getApplicationUpdatedAt = (contract) => {
+    return contract.applicationUpdatedAt ||
+      contract.supplier?.updatedAt ||
+      contract.supplier?.submittedAt ||
+      contract.updatedAt ||
+      contract.createdAt;
+  };
+
   const getContractStatusChip = (contract) => {
     let status = contract.status;
 
@@ -473,7 +481,9 @@ const ContractList = () => {
                       }}
                       onClick={() => {
                         if (contract.isPlaceholder && contract.supplier?._id) {
-                          navigate(`/suppliers/${contract.supplier._id}`);
+                          navigate('/contracts');
+                        } else if (contract.status === 'pending_upload' || (contract.status === 'draft' && !contract.signedContract)) {
+                          navigate(`/contracts/${contract._id}?upload=1`);
                         } else {
                           navigate(`/contracts/${contract._id}`);
                         }
@@ -489,7 +499,7 @@ const ContractList = () => {
                         {supplierType}
                       </TableCell>
                       <TableCell sx={{ fontSize: '14px', color: '#111827', py: 2, borderBottom: '1px solid #f3f4f6' }}>
-                        {formatDate(contract.updatedAt || contract.createdAt)}
+                        {formatDate(getApplicationUpdatedAt(contract))}
                       </TableCell>
                       <TableCell sx={{ py: 2, borderBottom: '1px solid #f3f4f6' }}>
                         {getContractStatusChip(contract)}

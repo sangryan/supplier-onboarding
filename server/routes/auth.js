@@ -69,7 +69,8 @@ router.post('/register', [
         role: 'supplier',
         otpCode,
         otpExpire,
-        isEmailVerified: false
+        isEmailVerified: false,
+        supplierApprovalStatus: 'profile_incomplete'
       });
     }
 
@@ -615,4 +616,3 @@ router.post('/resend-otp', [
 });
 
 module.exports = router;
-

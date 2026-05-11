@@ -7,9 +7,6 @@ import {
   Button,
   TextField,
   Grid,
-  FormControl,
-  Select,
-  MenuItem,
   ClickAwayListener,
   InputAdornment,
 } from '@mui/material';
@@ -25,16 +22,6 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
-
-const legalNatures = [
-  'Private Limited Company',
-  'Public Limited Company',
-  'Partnership',
-  'Sole Proprietorship',
-  'Trust',
-  'NGO',
-  'Other'
-];
 
 const countries = [
   { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
@@ -56,37 +43,6 @@ const countries = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
-// Reverse mapping: Convert database enum values to display values
-const mapLegalNatureToDisplay = (dbValue) => {
-  const mapping = {
-    'company': 'Private Limited Company', // Default to Private Limited Company
-    'partnership': 'Partnership',
-    'individual': 'Sole Proprietorship',
-    'state_owned': 'Private Limited Company', // Map to closest match
-    'ngo': 'NGO',
-    'foundation': 'Private Limited Company', // Map to closest match
-    'association': 'Private Limited Company', // Map to closest match
-    'foreign_company': 'Private Limited Company', // Map to closest match
-    'trust': 'Trust',
-    'other': 'Other'
-  };
-  return mapping[dbValue] || '';
-};
-
-// Map display values back to database enum values
-const mapDisplayToLegalNature = (displayValue) => {
-  const reverseMapping = {
-    'Private Limited Company': 'company',
-    'Public Limited Company': 'company',
-    'Partnership': 'partnership',
-    'Sole Proprietorship': 'individual',
-    'Trust': 'trust',
-    'NGO': 'ngo',
-    'Other': 'other'
-  };
-  return reverseMapping[displayValue] || 'company'; // Default to 'company'
-};
-
 const EditCompanyDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -100,7 +56,6 @@ const EditCompanyDetails = () => {
     companyRegistrationNumber: '',
     companyEmail: '',
     companyWebsite: '',
-    legalNature: '',
     physicalAddress: '',
     comment: '',
   });
@@ -128,18 +83,12 @@ const EditCompanyDetails = () => {
             ? `${address.street || ''}, ${address.city || ''}, ${address.country || ''}${address.postalCode ? `, ${address.postalCode}` : ''}`.replace(/^,\s*|,\s*$/g, '')
             : supplierData.physicalAddress || '';
 
-          // Map legalNature from database enum to display value
-          const legalNatureDisplay = supplierData.legalNature
-            ? mapLegalNatureToDisplay(supplierData.legalNature)
-            : '';
-
           setFormData({
             supplierName: supplierData.supplierName || '',
             registeredCountry: supplierData.registeredCountry || address?.country || '',
             companyRegistrationNumber: supplierData.companyRegistrationNumber || '',
             companyEmail: supplierData.companyEmail || '',
             companyWebsite: supplierData.companyWebsite || '',
-            legalNature: legalNatureDisplay,
             physicalAddress: fullAddress,
             comment: '',
           });
@@ -161,9 +110,6 @@ const EditCompanyDetails = () => {
 
   const handleSubmit = async () => {
     try {
-      // Map legalNature display value back to database enum
-      const legalNatureDb = formData.legalNature ? mapDisplayToLegalNature(formData.legalNature) : 'company';
-
       // Parse physical address - if it's a string, try to structure it
       // Otherwise, keep it as is if it's already structured
       let physicalAddressData = formData.physicalAddress;
@@ -185,7 +131,6 @@ const EditCompanyDetails = () => {
         companyRegistrationNumber: formData.companyRegistrationNumber,
         companyEmail: formData.companyEmail,
         companyWebsite: formData.companyWebsite,
-        legalNature: legalNatureDb,
         physicalAddress: typeof formData.physicalAddress === 'string' ? formData.physicalAddress : undefined,
         companyPhysicalAddress: physicalAddressData,
         companyUpdateComment: formData.comment,
@@ -213,7 +158,7 @@ const EditCompanyDetails = () => {
 
         const initialData = {
           supplierName: formData.supplierName || registeredFullName,
-          legalNature: legalNatureDb || 'company', // Required field
+          legalNature: 'company', // Internal default; application captures actual entity type.
           serviceType: 'professional_services', // Default required field
           authorizedPerson: {
             name: registeredFullName,
@@ -542,37 +487,6 @@ const EditCompanyDetails = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography
-                variant="body2"
-                sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
-              >
-                Legal Nature of Entity
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={formData.legalNature}
-                  onChange={(e) => handleChange('legalNature', e.target.value)}
-                  displayEmpty
-                  IconComponent={KeyboardArrowDown}
-                  sx={{
-                    backgroundColor: '#fff',
-                    '& .MuiSelect-icon': {
-                      color: '#6b7280'
-                    }
-                  }}
-                >
-                  <MenuItem value="" disabled>
-                    Select
-                  </MenuItem>
-                  {legalNatures.map((nature) => (
-                    <MenuItem key={nature} value={nature}>
-                      {nature}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
             <Grid item xs={12}>
               <Typography
                 variant="body2"
@@ -672,4 +586,3 @@ const EditCompanyDetails = () => {
 };
 
 export default EditCompanyDetails;
-

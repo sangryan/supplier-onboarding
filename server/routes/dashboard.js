@@ -193,8 +193,18 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
     // Fetch all tasks (we'll process them to categorize)
     const suppliers = await Supplier.find(query)
       .populate('submittedBy', 'firstName lastName email')
+      .populate('approvalHistory.approver', 'firstName department')
       .sort({ submittedAt: 1, 'profileUpdateRequests.requestedAt': 1 })
       .lean();
+
+    const getLastApproverInfo = (supplier) => {
+      const history = supplier.approvalHistory || [];
+      const last = [...history].reverse().find(h => h.approver);
+      return {
+        lastApprover: last?.approver?.firstName || '-',
+        lastApproverDepartment: last?.approver?.department || '-',
+      };
+    };
 
     // Process tasks to create unified task list
     suppliers.forEach(supplier => {
@@ -211,6 +221,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
               supplier.status === 'more_info_required' ? 'More Info Required' : 'Pending Review',
           rawStatus: supplier.status,
           entityType: supplier.entityType || supplier.legalNature,
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -226,6 +237,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           status: 'Pending Approval',
           rawStatus: 'pending_legal',
           entityType: supplier.entityType || supplier.legalNature,
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -240,6 +252,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           status: 'Approved',
           rawStatus: 'approved',
           entityType: supplier.entityType || supplier.legalNature,
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -247,6 +260,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
       if (supplier.status === 'pending_contract_upload' && !supplier.isProfileOnly) {
         allTasks.push({
           _id: supplier._id,
+          contractId: supplier.contract,
           taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
           supplierName: supplier.supplierName,
           requestType: 'Supplier Application',
@@ -254,6 +268,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           status: 'Pending Contract Upload',
           rawStatus: 'pending_contract_upload',
           entityType: supplier.entityType || supplier.legalNature,
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -269,6 +284,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           status: 'Rejected',
           rawStatus: 'rejected',
           entityType: supplier.entityType || supplier.legalNature,
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -282,6 +298,7 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
           requestType: 'Vendor Number Assignment',
           submissionDate: supplier.approvedAt || supplier.updatedAt,
           status: 'Pending Vendor Number Assignment',
+          ...getLastApproverInfo(supplier),
           supplier: supplier
         });
       }
@@ -398,6 +415,7 @@ router.get('/all-tasks', protect, authorize('procurement', 'legal', 'super_admin
     const total = await Supplier.countDocuments(query);
     const suppliers = await Supplier.find(query)
       .populate('submittedBy', 'firstName lastName email')
+      .populate('approvalHistory.approver', 'firstName department')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -416,19 +434,26 @@ router.get('/all-tasks', protect, authorize('procurement', 'legal', 'super_admin
       more_info_required: 'More Info Required',
     };
 
-    const tasks = suppliers.map(supplier => ({
-      _id: supplier._id,
-      taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
-      supplierName: supplier.supplierName,
-      entityType: supplier.entityType
-        ? supplier.entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-        : supplier.legalNature
-          ? supplier.legalNature.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-          : '-',
-      submissionDate: supplier.submittedAt || supplier.createdAt,
-      status: statusMap[supplier.status] || supplier.status,
-      rawStatus: supplier.status,
-    }));
+    const tasks = suppliers.map(supplier => {
+      const history = supplier.approvalHistory || [];
+      const lastEntry = [...history].reverse().find(h => h.approver);
+      return {
+        _id: supplier._id,
+        contractId: supplier.status === 'pending_contract_upload' ? supplier.contract : undefined,
+        taskId: `APP-${new Date(supplier.submittedAt || supplier.createdAt).getFullYear()}-${supplier._id.toString().slice(-3).toUpperCase()}`,
+        supplierName: supplier.supplierName,
+        entityType: supplier.entityType
+          ? supplier.entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          : supplier.legalNature
+            ? supplier.legalNature.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+            : '-',
+        lastApprover: lastEntry?.approver?.firstName || '-',
+        lastApproverDepartment: lastEntry?.approver?.department || '-',
+        submissionDate: supplier.submittedAt || supplier.createdAt,
+        status: statusMap[supplier.status] || supplier.status,
+        rawStatus: supplier.status,
+      };
+    });
 
     res.json({
       success: true,
@@ -557,4 +582,3 @@ router.get('/contract-summary', protect, authorize('management', 'legal', 'procu
 });
 
 module.exports = router;
-

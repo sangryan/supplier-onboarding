@@ -7,10 +7,10 @@ const InternalPasswordGuard = ({ children }) => {
   const location = useLocation();
 
   const isInternalRole = user?.role === 'legal' || user?.role === 'procurement';
-  const isProfileRoute = location.pathname.startsWith('/profile');
+  const isChangePasswordRoute = location.pathname === '/change-password';
 
-  if (isInternalRole && user?.mustChangePassword && !isProfileRoute) {
-    return <Navigate to="/profile" replace />;
+  if (isInternalRole && user?.mustChangePassword && !isChangePasswordRoute) {
+    return <Navigate to="/change-password" replace />;
   }
 
   return children;

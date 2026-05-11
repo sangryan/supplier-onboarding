@@ -156,6 +156,7 @@ const SupplierDashboard = () => {
 
   const hasApplications = applications.length > 0;
   const hasActiveApplications = activeApplications.length > 0;
+  const isRegistrationApproved = user?.supplierApprovalStatus === 'approved';
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
@@ -228,6 +229,7 @@ const SupplierDashboard = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate('/application/new')}
+              disabled={!isRegistrationApproved}
               sx={{
                 backgroundColor: theme.palette.green.main,
                 color: '#fff',
@@ -243,11 +245,26 @@ const SupplierDashboard = () => {
                   backgroundColor: theme.palette.green.hover,
                   boxShadow: 'none',
                 },
+                '&.Mui-disabled': {
+                  backgroundColor: '#d1d5db',
+                  color: '#6b7280'
+                }
               }}
             >
               New Application
             </Button>
           </Box>
+          {!isRegistrationApproved && (
+            <Typography
+              sx={{
+                color: '#92400e',
+                fontSize: '13px',
+                mb: 2
+              }}
+            >
+              New applications are locked until procurement approves your registration.
+            </Typography>
+          )}
 
           {/* Applications Content */}
           {loading ? (
@@ -610,4 +627,3 @@ const SupplierDashboard = () => {
 };
 
 export default SupplierDashboard;
-
