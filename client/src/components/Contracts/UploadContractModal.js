@@ -14,6 +14,8 @@ import {
     styled,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import { toast } from 'react-toastify';
+import { processFileForUpload } from '../../utils/compressImage';
 
 const DEPARTMENTS = [
     'Procurement',
@@ -89,8 +91,14 @@ const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
         }
     }, [startDate, validity]);
 
-    const handleFileChange = (e) => {
-        setFile(e.target.files[0]);
+    const handleFileChange = async (e) => {
+        if (!e.target.files[0]) return;
+        try {
+            const file = await processFileForUpload(e.target.files[0]);
+            setFile(file);
+        } catch (err) {
+            toast.error(err.message);
+        }
     };
 
     const handleSave = () => {

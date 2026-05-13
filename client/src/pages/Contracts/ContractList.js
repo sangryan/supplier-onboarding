@@ -18,6 +18,10 @@ import {
   CircularProgress,
   Grid,
   IconButton,
+  Select,
+  MenuItem,
+  FormControl,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -27,6 +31,8 @@ import {
   Warning as WarningIcon,
   ErrorOutline as ErrorOutlineIcon,
   Assignment as AssignmentIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
 import { keyframes } from '@mui/system';
 import DottedArrowIcon from '../../components/DottedArrowIcon';
@@ -53,6 +59,8 @@ const ContractList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   // Stats
   const [stats, setStats] = useState({
@@ -65,7 +73,7 @@ const ContractList = () => {
   useEffect(() => {
     fetchContracts();
     fetchStats();
-  }, [page, search, activeTab]);
+  }, [page, search, activeTab, statusFilter, sortOrder]);
 
   const fetchStats = async () => {
     try {
@@ -85,10 +93,12 @@ const ContractList = () => {
         page: page + 1,
         limit: rowsPerPage,
         search,
+        sortOrder,
       };
 
       if (activeTab === 'Registered Suppliers') params.supplierType = 'registered';
       if (activeTab === 'Ad-hoc Vendors') params.supplierType = 'adhoc';
+      if (statusFilter) params.status = statusFilter;
 
       const response = await api.get('/contracts', { params });
 
@@ -379,8 +389,8 @@ const ContractList = () => {
           </Typography>
         </Box>
 
-        {/* Search and Download */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2 }}>
+        {/* Search, Filter and Download */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, mb: 2, gap: 2, flexWrap: 'wrap' }}>
           <TextField
             placeholder="Search"
             value={search}
@@ -395,23 +405,52 @@ const ContractList = () => {
             }}
             sx={{
               flex: 1,
-              maxWidth: '300px',
+              minWidth: { xs: '100%', sm: '180px' },
+              maxWidth: { xs: '100%', sm: '260px' },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#fff',
                 borderRadius: '6px',
-                '& fieldset': {
-                  borderColor: '#e5e7eb'
-                },
-                '&:hover fieldset': {
-                  borderColor: '#d1d5db'
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#9ca3af',
-                  borderWidth: '1px'
-                }
+                '& fieldset': { borderColor: '#e5e7eb' },
+                '&:hover fieldset': { borderColor: '#d1d5db' },
+                '&.Mui-focused fieldset': { borderColor: '#9ca3af', borderWidth: '1px' }
               }
             }}
           />
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <Select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+              displayEmpty
+              sx={{ borderRadius: '6px', fontSize: '14px', backgroundColor: '#fff' }}
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="expiring_soon">Expiring Soon</MenuItem>
+              <MenuItem value="expired">Expired</MenuItem>
+              <MenuItem value="pending_upload">Pending Upload</MenuItem>
+            </Select>
+          </FormControl>
+          <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(0); }}
+              startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+              sx={{
+                borderColor: '#e5e7eb',
+                color: '#374151',
+                textTransform: 'none',
+                fontSize: '13px',
+                px: 2,
+                py: 0.75,
+                borderRadius: '6px',
+                whiteSpace: 'nowrap',
+                '&:hover': { borderColor: '#d1d5db', bgcolor: '#f9fafb' }
+              }}
+            >
+              {sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}
+            </Button>
+          </Tooltip>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon fontSize="small" />}
@@ -424,10 +463,7 @@ const ContractList = () => {
               px: 2,
               py: 0.75,
               borderRadius: '6px',
-              '&:hover': {
-                borderColor: '#d1d5db',
-                bgcolor: '#f9fafb'
-              }
+              '&:hover': { borderColor: '#d1d5db', bgcolor: '#f9fafb' }
             }}
           >
             Download all

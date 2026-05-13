@@ -17,11 +17,17 @@ import {
     IconButton,
     Chip,
     CircularProgress,
+    Select,
+    MenuItem,
+    FormControl,
+    Tooltip,
 } from '@mui/material';
 import {
     Search as SearchIcon,
     Download as DownloadIcon,
     ChevronRight as ChevronRightIcon,
+    ArrowUpward as ArrowUpwardIcon,
+    ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
 import { keyframes } from '@mui/system';
 import DottedArrowIcon from '../../components/DottedArrowIcon';
@@ -41,16 +47,18 @@ const AllTasks = () => {
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
     const [selectedRows, setSelectedRows] = useState([]);
+    const [statusFilter, setStatusFilter] = useState('');
+    const [sortOrder, setSortOrder] = useState('desc');
 
     useEffect(() => {
         fetchTasks();
-    }, [page, search]);
+    }, [page, search, statusFilter, sortOrder]);
 
     const fetchTasks = async () => {
         try {
             setLoading(true);
             const response = await api.get('/dashboard/all-tasks', {
-                params: { page, limit: 10, search }
+                params: { page, limit: 10, search, status: statusFilter, sortOrder }
             });
 
             if (response.data.success) {
@@ -143,14 +151,14 @@ const AllTasks = () => {
                         </Typography>
                     </Box>
 
-                    {/* Search and Download */}
+                    {/* Search, Filter and Download */}
                     <Box sx={{
                         display: 'flex',
                         flexDirection: { xs: 'column', sm: 'row' },
-                        justifyContent: 'space-between',
                         alignItems: { xs: 'stretch', sm: 'center' },
                         mb: 3,
-                        gap: 2
+                        gap: 2,
+                        flexWrap: 'wrap',
                     }}>
                         <TextField
                             placeholder="Search"
@@ -166,23 +174,56 @@ const AllTasks = () => {
                             }}
                             sx={{
                                 flex: 1,
-                                maxWidth: { xs: '100%', sm: '400px' },
+                                minWidth: { xs: '100%', sm: '180px' },
+                                maxWidth: { xs: '100%', sm: '280px' },
                                 '& .MuiOutlinedInput-root': {
                                     backgroundColor: '#fff',
                                     borderRadius: '8px',
-                                    '& fieldset': {
-                                        borderColor: '#e0e0e0'
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: '#9ca3af'
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#1976d2',
-                                        borderWidth: '1px'
-                                    }
+                                    '& fieldset': { borderColor: '#e0e0e0' },
+                                    '&:hover fieldset': { borderColor: '#9ca3af' },
+                                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '1px' }
                                 }
                             }}
                         />
+                        <FormControl size="small" sx={{ minWidth: 180 }}>
+                            <Select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                                displayEmpty
+                                sx={{ borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
+                            >
+                                <MenuItem value="">All Statuses</MenuItem>
+                                <MenuItem value="submitted">Submitted</MenuItem>
+                                <MenuItem value="pending_procurement">Pending Procurement</MenuItem>
+                                <MenuItem value="more_info_required">More Info Required</MenuItem>
+                                <MenuItem value="pending_legal">Pending Legal</MenuItem>
+                                <MenuItem value="pending_contract_upload">Pending Contract Upload</MenuItem>
+                                <MenuItem value="approved">Approved</MenuItem>
+                                <MenuItem value="rejected">Rejected</MenuItem>
+                                <MenuItem value="completed">Completed</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(1); }}
+                                startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                                sx={{
+                                    borderColor: '#d1d5db',
+                                    color: '#374151',
+                                    textTransform: 'none',
+                                    fontSize: '14px',
+                                    px: 2,
+                                    py: 1,
+                                    borderRadius: '8px',
+                                    whiteSpace: 'nowrap',
+                                    '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
+                                }}
+                            >
+                                {sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}
+                            </Button>
+                        </Tooltip>
                         <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
@@ -195,10 +236,7 @@ const AllTasks = () => {
                                 px: 2,
                                 py: 1,
                                 borderRadius: '8px',
-                                '&:hover': {
-                                    borderColor: '#9ca3af',
-                                    bgcolor: '#f9fafb'
-                                }
+                                '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
                             }}
                         >
                             Download all

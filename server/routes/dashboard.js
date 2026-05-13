@@ -173,7 +173,7 @@ router.get('/recent-activities', protect, async (req, res) => {
 // @access  Private (Procurement, Legal)
 router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', requestType = '' } = req.query;
+    const { page = 1, limit = 10, search = '', requestType = '', status = '', sortOrder = 'asc' } = req.query;
     let query = {};
     let allTasks = [];
 
@@ -363,6 +363,18 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
       allTasks = allTasks.filter(task => task.requestType === requestType);
     }
 
+    // Apply status filter
+    if (status) {
+      allTasks = allTasks.filter(task => task.rawStatus === status || task.status === status);
+    }
+
+    // Apply sort
+    allTasks.sort((a, b) => {
+      const dateA = new Date(a.submissionDate || 0);
+      const dateB = new Date(b.submissionDate || 0);
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
     // Calculate counts
     const counts = {
       pendingApplications: allTasks.filter(t => t.requestType === 'New Supplier Application').length,
@@ -402,21 +414,30 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
 // @access  Private (Procurement, Legal, Super Admin)
 router.get('/all-tasks', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 10, search = '', status = '', sortOrder = 'desc' } = req.query;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
     let query = { isProfileOnly: { $ne: true } };
 
     if (search) {
-      query.supplierName = { $regex: search, $options: 'i' };
+      query.$or = [
+        { supplierName: { $regex: search, $options: 'i' } },
+        { vendorNumber: { $regex: search, $options: 'i' } },
+      ];
     }
+
+    if (status) {
+      query.status = status;
+    }
+
+    const sortDir = sortOrder === 'asc' ? 1 : -1;
 
     const total = await Supplier.countDocuments(query);
     const suppliers = await Supplier.find(query)
       .populate('submittedBy', 'firstName lastName email')
       .populate('approvalHistory.approver', 'firstName department')
-      .sort({ createdAt: -1 })
+      .sort({ submittedAt: sortDir, createdAt: sortDir })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .lean();

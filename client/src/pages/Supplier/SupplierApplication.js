@@ -34,6 +34,7 @@ import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
+import { processFileForUpload, processFilesForUpload } from '../../utils/compressImage';
 import { format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
 const steps = [
@@ -347,7 +348,7 @@ const SupplierApplication = () => {
     return fieldToDocType[fieldName] || 'other';
   };
 
-  const renderSingleFileUpload = (fieldKey, label, helperText = 'Accepted: PDF, Word, Excel, Images (Max 10MB)') => {
+  const renderSingleFileUpload = (fieldKey, label, helperText = 'Accepted: PDF, Word, Excel, Images (Max 20MB — images auto-resized if larger)') => {
     const value = formData[fieldKey];
     const displayValue = value
       ? (value instanceof File
@@ -387,13 +388,17 @@ const SupplierApplication = () => {
             type="file"
             hidden
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-            onChange={(e) => {
+            onChange={async (e) => {
               if (e.target.files && e.target.files[0]) {
-                handleChange(fieldKey, e.target.files[0]);
+                try {
+                  const file = await processFileForUpload(e.target.files[0]);
+                  handleChange(fieldKey, file);
+                } catch (err) {
+                  toast.error(err.message);
+                }
               }
             }}
             onClick={(e) => {
-              // Reset value to allow selecting the same file again
               e.target.value = '';
             }}
           />
@@ -458,13 +463,16 @@ const SupplierApplication = () => {
             multiple
             hidden
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-            onChange={(e) => {
+            onChange={async (e) => {
               if (e.target.files && e.target.files.length > 0) {
-                const files = Array.from(e.target.files).slice(0, maxFiles);
-                if (files.length < e.target.files.length) {
-                  toast.warning(`Only the first ${maxFiles} files will be uploaded. ${e.target.files.length - files.length} file(s) ignored.`);
+                let selected = Array.from(e.target.files);
+                if (selected.length > maxFiles) {
+                  toast.warning(`Only the first ${maxFiles} files will be uploaded. ${selected.length - maxFiles} file(s) ignored.`);
+                  selected = selected.slice(0, maxFiles);
                 }
-                handleChange(fieldKey, files);
+                const { processed, errors } = await processFilesForUpload(selected);
+                errors.forEach(msg => toast.error(msg));
+                if (processed.length > 0) handleChange(fieldKey, processed);
               }
             }}
             onClick={(e) => {
@@ -2954,8 +2962,9 @@ const SupplierApplication = () => {
                                     cursor: isCurrentMonth ? 'pointer' : 'default',
                                     borderRadius: '4px',
                                     backgroundColor: isSelected ? theme.palette.green.main : 'transparent',
-                                    color: isSelected ? '#fff' : isCurrentMonth ? '#374151' : '#d1d5db',
-                                    fontWeight: isToday ? 600 : isSelected ? 600 : 400,
+                                    color: isSelected ? '#fff' : isToday && isCurrentMonth ? theme.palette.green.main : isCurrentMonth ? '#374151' : '#d1d5db',
+                                    fontWeight: isToday || isSelected ? 700 : 400,
+                                    border: isToday && !isSelected ? `1.5px solid ${theme.palette.green.main}` : '1.5px solid transparent',
                                     fontSize: '14px',
                                     '&:hover': {
                                       backgroundColor: isCurrentMonth && !isSelected ? '#f3f4f6' : undefined,

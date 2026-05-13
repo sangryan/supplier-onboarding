@@ -154,7 +154,7 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
           entityType: 'supplier',
           entityId: supplier._id
         },
-        actionUrl: `/application/status`
+        actionUrl: `/application/${supplier._id}`
       });
     }
 
@@ -525,7 +525,7 @@ router.post('/:supplierId/complete-contract', protect, authorize('procurement'),
           entityType: 'supplier',
           entityId: supplier._id
         },
-        actionUrl: `/applications/${supplier._id}`
+        actionUrl: `/application/${supplier._id}`
       });
     }
 

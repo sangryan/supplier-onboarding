@@ -67,7 +67,7 @@ const handleSignedContractUpload = (req, res, next) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
-          message: 'File is too large. Maximum allowed size is 10MB.'
+          message: 'File is too large. Maximum allowed size is 20MB.'
         });
       }
 
@@ -209,7 +209,7 @@ router.get('/stats', protect, async (req, res) => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10, supplierType } = req.query;
+    const { status, search, page = 1, limit = 10, supplierType, sortOrder = 'desc' } = req.query;
 
     let query = {};
 
@@ -223,9 +223,11 @@ router.get('/', protect, async (req, res) => {
       query.department = req.user.department;
     }
 
-    // Filter by status
-    if (status) {
+    // Filter by status — only pre-filter at DB level for derived-status-safe values
+    if (status && !['expiring_soon', 'expired', 'pending_upload'].includes(status)) {
       query.status = status;
+    } else if (status === 'expiring_soon' || status === 'expired') {
+      query.status = 'active';
     }
 
     // Search
@@ -324,8 +326,22 @@ router.get('/', protect, async (req, res) => {
       }
     });
 
+    // Post-merge derived status filter
+    if (status) {
+      const now = new Date();
+      contracts = contracts.filter(c => {
+        const daysLeft = c.endDate ? Math.ceil((new Date(c.endDate) - now) / (1000 * 60 * 60 * 24)) : null;
+        if (status === 'pending_upload') return c.status === 'pending_upload';
+        if (status === 'active') return c.status === 'active' && (daysLeft === null || daysLeft > 30);
+        if (status === 'expiring_soon') return c.status === 'active' && daysLeft !== null && daysLeft > 0 && daysLeft <= 30;
+        if (status === 'expired') return c.status === 'active' && daysLeft !== null && daysLeft <= 0;
+        return c.status === status;
+      });
+    }
+
     // Re-sort after merge
-    contracts.sort((a, b) => new Date(b.applicationUpdatedAt || b.updatedAt || b.createdAt) - new Date(a.applicationUpdatedAt || a.updatedAt || a.createdAt));
+    const sortDir = sortOrder === 'asc' ? 1 : -1;
+    contracts.sort((a, b) => sortDir * (new Date(a.applicationUpdatedAt || a.updatedAt || a.createdAt) - new Date(b.applicationUpdatedAt || b.updatedAt || b.createdAt)));
 
     const total = contracts.length;
     const paginatedContracts = contracts.slice((page - 1) * limit, page * limit);
@@ -574,7 +590,7 @@ router.post('/:id/upload-signed', protect, authorize('legal', 'super_admin'), lo
             entityType: 'supplier',
             entityId: supplier._id
           },
-          actionUrl: `/application/status`
+          actionUrl: `/application/${supplier._id}`
         });
       }
     }

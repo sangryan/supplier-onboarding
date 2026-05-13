@@ -297,7 +297,7 @@ router.post('/', protect, authorize('supplier'), [
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10, groupBy, source } = req.query;
+    const { status, search, page = 1, limit = 10, groupBy, source, sortOrder = 'desc' } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
@@ -509,7 +509,7 @@ router.get('/', protect, async (req, res) => {
       suppliers = await Supplier.find(query)
         .populate('submittedBy', 'firstName lastName email')
         .populate('approvalHistory.approver', 'firstName lastName')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: sortOrder === 'asc' ? 1 : -1 })
         .limit(limitNum)
         .skip(skip)
         .lean();

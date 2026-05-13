@@ -33,7 +33,10 @@ import {
   Visibility as VisibilityIcon,
   Close as CloseIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
+import { Tooltip, FormControl, Select } from '@mui/material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
@@ -45,6 +48,8 @@ const UserManagement = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [search, setSearch] = useState('');
   const [roleSearch, setRoleSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -265,13 +270,20 @@ const UserManagement = () => {
     const email = (u.email || '').toLowerCase();
     const phone = (getDisplayPhone(u) || '').toLowerCase();
     const term = search.toLowerCase();
-    return fullName.includes(term) || email.includes(term) || phone.includes(term);
+    const matchesSearch = fullName.includes(term) || email.includes(term) || phone.includes(term);
+    if (!matchesSearch) return false;
+    if (statusFilter === 'active') return u.isActive !== false && !(u.role === 'supplier' && u.isEmailVerified === false);
+    if (statusFilter === 'inactive') return u.isActive === false;
+    if (statusFilter === 'pending_verification') return u.role === 'supplier' && u.isEmailVerified === false;
+    return true;
   }).sort((a, b) => {
     const aSupplier = a.role === 'supplier';
     const bSupplier = b.role === 'supplier';
     if (aSupplier && !bSupplier) return 1;
     if (!aSupplier && bSupplier) return -1;
-    return 0;
+    const dateA = new Date(a.createdAt || 0);
+    const dateB = new Date(b.createdAt || 0);
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
   });
 
   if (loading) {
@@ -347,16 +359,7 @@ const UserManagement = () => {
           Add New User
         </Button>
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'row', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 1.5,
-            mb: 3
-          }}
-        >
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
           <TextField
             placeholder="Search"
             value={search}
@@ -371,7 +374,8 @@ const UserManagement = () => {
             }}
             sx={{
               flex: 1,
-              maxWidth: { xs: '100%', sm: '400px' },
+              minWidth: { xs: '100%', sm: '180px' },
+              maxWidth: { xs: '100%', sm: '280px' },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#fff',
                 borderRadius: '8px',
@@ -381,6 +385,40 @@ const UserManagement = () => {
               }
             }}
           />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              displayEmpty
+              sx={{ borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="pending_verification">Pending Verification</MenuItem>
+            </Select>
+          </FormControl>
+          <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setSortOrder(s => s === 'asc' ? 'desc' : 'asc')}
+              startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+              sx={{
+                borderColor: '#d1d5db',
+                color: '#374151',
+                textTransform: 'none',
+                fontSize: '14px',
+                px: 2,
+                py: 1,
+                borderRadius: '8px',
+                whiteSpace: 'nowrap',
+                '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
+              }}
+            >
+              {sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}
+            </Button>
+          </Tooltip>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -393,10 +431,7 @@ const UserManagement = () => {
               py: 1,
               borderRadius: '8px',
               whiteSpace: 'nowrap',
-              '&:hover': {
-                borderColor: '#9ca3af',
-                bgcolor: '#f9fafb'
-              }
+              '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
             }}
           >
             Download all

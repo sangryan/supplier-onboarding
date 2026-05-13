@@ -46,10 +46,30 @@ const ApplicationStatus = () => {
   const [imageLoadError, setImageLoadError] = useState(false);
 
   useEffect(() => {
-    if (id) {
+    if (id === 'status') {
+      resolveStatusRedirect();
+    } else if (id) {
       fetchSupplierApplication();
     }
   }, [id]);
+
+  const resolveStatusRedirect = async () => {
+    try {
+      const response = await api.get('/suppliers/my-applications');
+      const apps = response.data.data || [];
+      if (apps.length === 1) {
+        navigate(`/application/${apps[0]._id}`, { replace: true });
+      } else if (apps.length > 1) {
+        // Most recent submitted/active application first
+        const sorted = [...apps].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        navigate(`/application/${sorted[0]._id}`, { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (error) {
+      navigate('/dashboard', { replace: true });
+    }
+  };
 
   const fetchSupplierApplication = async () => {
     try {
@@ -92,17 +112,36 @@ const ApplicationStatus = () => {
 
   const getApprovalStep = () => {
     if (!supplier) return 0;
+    if (supplier.status === 'rejected') return 0;
+
     const statusMap = {
       draft: 0,
       submitted: 1,
       pending_procurement: 1,
+      more_info_required: 1,
       pending_legal: 2,
       under_review: 2,
+      pending_contract_upload: 3,
       approved: 3,
-      rejected: 0,
-      more_info_required: 1,
+      completed: 3,
+      active: 3,
     };
-    return statusMap[supplier.status] || 0;
+
+    // currentApprovalStage is set during every approval transition and is
+    // often more up-to-date than status for edge cases
+    const stageMap = {
+      procurement: 1,
+      legal: 2,
+      contract_upload: 3,
+      completed: 3,
+    };
+
+    const fromStatus = statusMap[supplier.status] ?? -1;
+    const fromStage = stageMap[supplier.currentApprovalStage] ?? -1;
+
+    // Take the furthest step from either signal so we never show a step
+    // lower than what the workflow has already reached
+    return Math.max(0, fromStatus, fromStage);
   };
 
   const approvalSteps = [

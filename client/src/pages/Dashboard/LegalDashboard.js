@@ -15,11 +15,17 @@ import {
     IconButton,
     Chip,
     CircularProgress,
+    Select,
+    MenuItem,
+    FormControl,
+    Tooltip,
 } from '@mui/material';
 import {
     Search as SearchIcon,
     Download as DownloadIcon,
     ChevronRight as ChevronRightIcon,
+    ArrowUpward as ArrowUpwardIcon,
+    ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
 import { keyframes } from '@mui/system';
 import DottedArrowIcon from '../../components/DottedArrowIcon';
@@ -55,6 +61,8 @@ const LegalDashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [sortOrder, setSortOrder] = useState('asc');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
     const [selectedRows, setSelectedRows] = useState([]);
@@ -62,7 +70,7 @@ const LegalDashboard = () => {
 
     useEffect(() => {
         fetchTasks();
-    }, [page, search, activeTab]);
+    }, [page, search, activeTab, statusFilter, sortOrder]);
 
     const fetchTasks = async () => {
         try {
@@ -76,7 +84,7 @@ const LegalDashboard = () => {
             }
 
             const response = await api.get(endpoint, {
-                params: { page, limit: 10, search }
+                params: { page, limit: 10, search, status: statusFilter, sortOrder }
             });
 
             if (response.data.success) {
@@ -252,15 +260,8 @@ const LegalDashboard = () => {
                     </Box>
                 </Box>
 
-                {/* Search and Download */}
-                <Box sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    justifyContent: 'space-between',
-                    alignItems: { xs: 'stretch', sm: 'center' },
-                    mb: 3,
-                    gap: 2
-                }}>
+                {/* Search, Filter, Sort */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 3, alignItems: 'center' }}>
                     <TextField
                         placeholder="Search"
                         value={search}
@@ -274,44 +275,49 @@ const LegalDashboard = () => {
                             ),
                         }}
                         sx={{
-                            flex: 1,
-                            maxWidth: { xs: '100%', sm: '400px' },
+                            flex: '1 1 200px',
+                            maxWidth: '320px',
                             '& .MuiOutlinedInput-root': {
                                 backgroundColor: '#fff',
                                 borderRadius: '8px',
-                                '& fieldset': {
-                                    borderColor: '#e0e0e0'
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#9ca3af'
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#1976d2',
-                                    borderWidth: '1px'
-                                }
+                                '& fieldset': { borderColor: '#e0e0e0' },
+                                '&:hover fieldset': { borderColor: '#9ca3af' },
                             }
                         }}
                     />
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <Select
+                            value={statusFilter}
+                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                            displayEmpty
+                            sx={{ borderRadius: '8px', fontSize: '14px', bgcolor: '#fff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' } }}
+                        >
+                            <MenuItem value="">All Statuses</MenuItem>
+                            <MenuItem value="pending_legal">Pending Approval</MenuItem>
+                            <MenuItem value="pending_contract_upload">Pending Contract Upload</MenuItem>
+                            <MenuItem value="approved">Approved</MenuItem>
+                            <MenuItem value="rejected">Rejected</MenuItem>
+                            <MenuItem value="completed">Completed</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(1); }}
+                            startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                            sx={{ borderColor: '#e0e0e0', color: '#374151', textTransform: 'none', borderRadius: '8px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                        >
+                            {sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}
+                        </Button>
+                    </Tooltip>
                     <Button
                         variant="outlined"
                         startIcon={<DownloadIcon />}
                         onClick={handleDownload}
-                        sx={{
-                            borderColor: '#d1d5db',
-                            color: '#374151',
-                            textTransform: 'none',
-                            fontSize: '14px',
-                            px: 2,
-                            py: 1,
-                            borderRadius: '8px',
-                            width: { xs: '100%', sm: 'auto' },
-                            '&:hover': {
-                                borderColor: '#9ca3af',
-                                bgcolor: '#f9fafb'
-                            }
-                        }}
+                        sx={{ borderColor: '#d1d5db', color: '#374151', textTransform: 'none', fontSize: '14px', borderRadius: '8px', ml: 'auto' }}
                     >
-                        Download all
+                        Download
                     </Button>
                 </Box>
 

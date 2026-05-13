@@ -137,7 +137,7 @@ const Layout = () => {
   const getMenuItems = () => {
     if (user.role === 'supplier') {
       return [
-        { text: 'My Application', icon: <AssignmentIcon />, path: '/application/status' },
+        { text: 'My Application', icon: <AssignmentIcon />, path: '/dashboard' },
         { text: 'New Application', icon: <BusinessIcon />, path: '/application/new' },
       ];
     } else if (user.role === 'procurement') {

@@ -17,6 +17,10 @@ import {
   CircularProgress,
   Grid,
   InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  Tooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -28,6 +32,8 @@ import {
   AssignmentTurnedIn as AssignmentTurnedInIcon,
   LockOpen as LockOpenIcon,
   LockClock as LockClockIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
@@ -47,6 +53,8 @@ const SupplierList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [stats, setStats] = useState({
     totalOnboarded: 0,
     totalApplications: 0,
@@ -59,7 +67,7 @@ const SupplierList = () => {
   useEffect(() => {
     fetchSuppliers();
     fetchStats();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, statusFilter, sortOrder]);
 
   const fetchSuppliers = async () => {
     try {
@@ -67,8 +75,10 @@ const SupplierList = () => {
       const params = {
         page: page + 1,
         limit: rowsPerPage,
+        sortOrder,
       };
       if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
       params.source = 'users';
 
       const response = await api.get('/suppliers', { params });
@@ -380,12 +390,12 @@ const SupplierList = () => {
             </Typography>
           </Box>
 
-          {/* Search and Download */}
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 1.5 }}>
+          {/* Search, Filter and Download */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2, flexWrap: 'wrap' }}>
             <TextField
               placeholder="Search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               size="small"
               InputProps={{
@@ -397,23 +407,58 @@ const SupplierList = () => {
               }}
               sx={{
                 flex: 1,
-                maxWidth: { xs: '100%', sm: '400px' },
+                minWidth: { xs: '100%', sm: '180px' },
+                maxWidth: { xs: '100%', sm: '280px' },
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: '#fff',
                   borderRadius: '8px',
-                  '& fieldset': {
-                    borderColor: '#e0e0e0'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: '#9ca3af'
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#1976d2',
-                    borderWidth: '1px'
-                  }
+                  '& fieldset': { borderColor: '#e0e0e0' },
+                  '&:hover fieldset': { borderColor: '#9ca3af' },
+                  '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '1px' }
                 }
               }}
             />
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <Select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+                displayEmpty
+                sx={{ borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                <MenuItem value="pending_registration_approval">Pending Registration</MenuItem>
+                <MenuItem value="registration_approved">Registration Approved</MenuItem>
+                <MenuItem value="registration_rejected">Registration Rejected</MenuItem>
+                <MenuItem value="pending_verification">Pending Verification</MenuItem>
+                <MenuItem value="submitted">Submitted</MenuItem>
+                <MenuItem value="pending_procurement">Pending Procurement</MenuItem>
+                <MenuItem value="pending_legal">Pending Legal</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+              </Select>
+            </FormControl>
+            <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(0); }}
+                startIcon={sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                sx={{
+                  borderColor: '#d1d5db',
+                  color: '#374151',
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
+                }}
+              >
+                {sortOrder === 'asc' ? 'Oldest first' : 'Newest first'}
+              </Button>
+            </Tooltip>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
@@ -427,10 +472,7 @@ const SupplierList = () => {
                 py: 1,
                 borderRadius: '8px',
                 whiteSpace: 'nowrap',
-                '&:hover': {
-                  borderColor: '#9ca3af',
-                  bgcolor: '#f9fafb'
-                }
+                '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' }
               }}
             >
               Download all

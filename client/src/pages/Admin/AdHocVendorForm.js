@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { processFileForUpload } from '../../utils/compressImage';
 
 const DEPARTMENTS = [
     'Finance',
@@ -150,9 +151,15 @@ const AdHocVendorForm = () => {
         setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const { name, files: f } = e.target;
-        setFiles(prev => ({ ...prev, [name]: f[0] || null }));
+        if (!f[0]) return;
+        try {
+            const file = await processFileForUpload(f[0]);
+            setFiles(prev => ({ ...prev, [name]: file }));
+        } catch (err) {
+            toast.error(err.message);
+        }
     };
 
     const buildFormData = (submitForApproval) => {
