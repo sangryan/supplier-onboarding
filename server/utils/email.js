@@ -344,6 +344,84 @@ exports.sendUserInviteEmail = async ({ email, tempPassword, userName, role }) =>
   await transporter.sendMail(mailOptions);
 };
 
+const escapeHtml = (value) => {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const buildActionUrl = (actionUrl) => {
+  if (!actionUrl) return null;
+  if (/^https?:\/\//i.test(actionUrl)) return actionUrl;
+
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  return `${clientUrl.replace(/\/$/, '')}/${String(actionUrl).replace(/^\//, '')}`;
+};
+
+/**
+ * Send an email copy of an in-app notification.
+ * @param {Object} options
+ * @param {String} options.email - Recipient email
+ * @param {String} options.title - Notification title
+ * @param {String} options.message - Notification message
+ * @param {String} options.actionUrl - Optional relative or absolute action URL
+ * @returns {Promise<Object>} Nodemailer send result
+ */
+exports.sendNotificationEmail = async ({ email, title, message, actionUrl }) => {
+  if (!transporter) {
+    throw new Error('Email transporter not configured. Notification email not sent.');
+  }
+
+  if (!transporterVerified) {
+    console.warn('⚠️  Email transporter not yet verified. Attempting to send notification email anyway...');
+  }
+
+  const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  if (!fromEmail) {
+    throw new Error('EMAIL_FROM or EMAIL_USER must be set for notification emails');
+  }
+
+  const fullActionUrl = buildActionUrl(actionUrl);
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+  const companyName = escapeHtml(process.env.COMPANY_NAME || 'Supplier Onboarding Portal');
+
+  const mailOptions = {
+    from: `"${companyName}" <${fromEmail}>`,
+    to: email,
+    subject: title,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin: 0;">${safeTitle}</h2>
+        </div>
+        <div style="color: #666; font-size: 16px; line-height: 1.6;">
+          <p>${safeMessage}</p>
+          ${fullActionUrl ? `
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${escapeHtml(fullActionUrl)}"
+                 style="display: inline-block; padding: 14px 28px; background-color: #578A18;
+                        color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;
+                        font-size: 16px;">
+                View Details
+              </a>
+            </div>
+          ` : ''}
+        </div>
+        <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated message from ${companyName}. Please do not reply to this email.
+        </p>
+      </div>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 /**
  * Get email transporter status
  * @returns {Object} Status information
@@ -380,4 +458,3 @@ exports.getEmailStatus = () => {
 };
 
 module.exports = exports;
-

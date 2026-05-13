@@ -28,9 +28,16 @@ import {
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import { keyframes } from '@mui/system';
+import DottedArrowIcon from '../../components/DottedArrowIcon';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import Footer from '../../components/Footer/Footer';
+
+const bounceRight = keyframes`
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(5px); }
+`;
 
 const TaskList = () => {
   const navigate = useNavigate();
@@ -511,12 +518,20 @@ const TaskList = () => {
                             e.stopPropagation();
                             handleRowClick(task);
                           }}
-                          sx={{ color: '#6b7280' }}
+                          sx={{
+                            color: '#578A18',
+                            animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                            '&:hover': {
+                              color: '#467014',
+                              backgroundColor: 'transparent',
+                              animationDuration: '0.5s',
+                            },
+                          }}
                         >
                           {task.requestType === 'Ad-hoc Vendor Application' ? (
                             <VisibilityIcon fontSize="small" />
                           ) : (
-                            <ArrowForwardIcon fontSize="small" />
+                            <DottedArrowIcon size={18} />
                           )}
                         </IconButton>
                       </TableCell>

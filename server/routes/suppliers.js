@@ -346,7 +346,7 @@ router.get('/', protect, async (req, res) => {
         submittedBy: { $in: userIds },
         isProfileOnly: { $ne: true }
       })
-        .populate('submittedBy', 'firstName lastName email')
+        .populate('submittedBy', 'firstName lastName email supplierApprovalStatus supplierApprovalReviewedAt')
         .lean();
 
       // 3. Get all ad-hoc applications (no specific user linkage via submittedBy in some cases, or procurement-created)
@@ -383,11 +383,14 @@ router.get('/', protect, async (req, res) => {
             userId: u._id,
             supplierName: `${u.firstName} ${u.lastName}`,
             status: registrationStatus,
+            registrationReviewedAt: u.supplierApprovalReviewedAt || null,
             submittedBy: {
               _id: u._id,
               firstName: u.firstName,
               lastName: u.lastName,
-              email: u.email
+              email: u.email,
+              supplierApprovalStatus: u.supplierApprovalStatus,
+              supplierApprovalReviewedAt: u.supplierApprovalReviewedAt
             },
             createdAt: u.createdAt,
             updatedAt: u.updatedAt,

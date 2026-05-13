@@ -24,6 +24,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { keyframes } from '@mui/system';
+import DottedArrowIcon from '../../components/DottedArrowIcon';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
 
@@ -56,6 +58,11 @@ const getContractStatusChip = (contract) => {
   }
   return <Chip label={String(status || '-').replace(/_/g, ' ')} size="small" sx={{ bgcolor: '#f3f4f6', color: '#111827', fontWeight: 600, fontSize: '11px', height: 22 }} />;
 };
+
+const bounceRight = keyframes`
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(5px); }
+`;
 
 const DepartmentLeadDashboard = () => {
   const navigate = useNavigate();
@@ -191,8 +198,19 @@ const DepartmentLeadDashboard = () => {
                     <TableCell sx={{ fontSize: '14px', color: '#111827' }}>{formatDate(contract.updatedAt || contract.createdAt)}</TableCell>
                     <TableCell>{getContractStatusChip(contract)}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" sx={{ color: '#9ca3af' }}>
-                        <ChevronRightIcon fontSize="small" />
+                      <IconButton
+                        size="small"
+                        sx={{
+                          color: '#578A18',
+                          animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                          '&:hover': {
+                            color: '#467014',
+                            backgroundColor: 'transparent',
+                            animationDuration: '0.5s',
+                          },
+                        }}
+                      >
+                        <DottedArrowIcon size={18} />
                       </IconButton>
                     </TableCell>
                   </TableRow>

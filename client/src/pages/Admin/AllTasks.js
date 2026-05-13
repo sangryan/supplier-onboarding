@@ -23,8 +23,15 @@ import {
     Download as DownloadIcon,
     ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
+import { keyframes } from '@mui/system';
+import DottedArrowIcon from '../../components/DottedArrowIcon';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
+
+const bounceRight = keyframes`
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(5px); }
+`;
 
 const AllTasks = () => {
     const navigate = useNavigate();
@@ -267,9 +274,17 @@ const AllTasks = () => {
                                             <TableCell align="right" sx={{ py: 1.5 }}>
                                                 <IconButton
                                                     size="small"
-                                                    sx={{ color: '#6b7280' }}
+                                                    sx={{
+                                                        color: '#578A18',
+                                                        animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                                                        '&:hover': {
+                                                            color: '#467014',
+                                                            backgroundColor: 'transparent',
+                                                            animationDuration: '0.5s',
+                                                        },
+                                                    }}
                                                 >
-                                                    <ChevronRightIcon fontSize="small" />
+                                                    <DottedArrowIcon size={18} />
                                                 </IconButton>
                                             </TableCell>
                                         </TableRow>

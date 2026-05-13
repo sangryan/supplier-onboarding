@@ -16,6 +16,7 @@ const notificationSchema = new mongoose.Schema({
       'vendor_number_assigned',
       'contract_uploaded',
       'contract_expiring',
+      'contract_terminated',
       'profile_update_requested',
       'profile_update_approved',
       'new_task_assigned',
@@ -71,4 +72,3 @@ notificationSchema.methods.markAsRead = function() {
 };
 
 module.exports = mongoose.model('Notification', notificationSchema);
-

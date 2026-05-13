@@ -28,11 +28,18 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   Assignment as AssignmentIcon,
 } from '@mui/icons-material';
+import { keyframes } from '@mui/system';
+import DottedArrowIcon from '../../components/DottedArrowIcon';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '@mui/material/styles';
+
+const bounceRight = keyframes`
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(5px); }
+`;
 
 const ContractList = () => {
   const navigate = useNavigate();
@@ -505,8 +512,19 @@ const ContractList = () => {
                         {getContractStatusChip(contract)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 2, borderBottom: '1px solid #f3f4f6' }}>
-                        <IconButton size="small" sx={{ color: '#9ca3af' }}>
-                          <ChevronRightIcon fontSize="small" />
+                        <IconButton
+                          size="small"
+                          sx={{
+                            color: '#578A18',
+                            animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                            '&:hover': {
+                              color: '#467014',
+                              backgroundColor: 'transparent',
+                              animationDuration: '0.5s',
+                            },
+                          }}
+                        >
+                          <DottedArrowIcon size={18} />
                         </IconButton>
                       </TableCell>
                     </TableRow>

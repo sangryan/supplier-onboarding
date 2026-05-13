@@ -21,6 +21,8 @@ import {
     Download as DownloadIcon,
     ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
+import { keyframes } from '@mui/system';
+import DottedArrowIcon from '../../components/DottedArrowIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
@@ -41,6 +43,11 @@ const getDeptChipColors = (dept) => {
     for (let i = 0; i < dept.length; i++) hash = dept.charCodeAt(i) + ((hash << 5) - hash);
     return DEPT_COLORS[Math.abs(hash) % DEPT_COLORS.length];
 };
+
+const bounceRight = keyframes`
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(5px); }
+`;
 
 const LegalDashboard = () => {
     const { user } = useAuth();
@@ -384,8 +391,19 @@ const LegalDashboard = () => {
                                                 {getStatusChip(task.rawStatus || task.status)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-                                                <IconButton size="small" sx={{ color: '#9ca3af' }}>
-                                                    <ChevronRightIcon fontSize="small" />
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{
+                                                        color: '#578A18',
+                                                        animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                                                        '&:hover': {
+                                                            color: '#467014',
+                                                            backgroundColor: 'transparent',
+                                                            animationDuration: '0.5s',
+                                                        },
+                                                    }}
+                                                >
+                                                    <DottedArrowIcon size={18} />
                                                 </IconButton>
                                             </TableCell>
                                         </TableRow>

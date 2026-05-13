@@ -1,23 +1,5 @@
 const Notification = require('../models/Notification');
-const nodemailer = require('nodemailer');
-
-// Create email transporter
-let transporter = null;
-if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-  try {
-    transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      }
-    });
-  } catch (error) {
-    console.warn('Email transporter not configured');
-  }
-}
+const { sendNotificationEmail } = require('./email');
 
 /**
  * Create a notification
@@ -28,10 +10,7 @@ exports.createNotification = async (notificationData) => {
   try {
     const notification = await Notification.create(notificationData);
 
-    // Send email notification if configured
-    if (transporter) {
-      await sendEmailNotification(notification);
-    }
+    await sendEmailNotification(notification);
 
     return notification;
   } catch (error) {
@@ -45,11 +24,6 @@ exports.createNotification = async (notificationData) => {
  * @param {Notification} notification - Notification object
  */
 const sendEmailNotification = async (notification) => {
-  // Skip email if transporter is not configured
-  if (!transporter) {
-    return;
-  }
-
   try {
     const recipient = await notification.populate('recipient');
 
@@ -57,31 +31,12 @@ const sendEmailNotification = async (notification) => {
       return;
     }
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: recipient.recipient.email,
-      subject: notification.title,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">${notification.title}</h2>
-          <p style="color: #666; font-size: 16px;">${notification.message}</p>
-          ${notification.actionUrl ? `
-            <a href="${process.env.CLIENT_URL}${notification.actionUrl}" 
-               style="display: inline-block; padding: 12px 24px; background-color: #007bff; 
-                      color: white; text-decoration: none; border-radius: 4px; margin-top: 20px;">
-              View Details
-            </a>
-          ` : ''}
-          <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated message from ${process.env.COMPANY_NAME || 'Supplier Onboarding System'}. 
-            Please do not reply to this email.
-          </p>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
+    await sendNotificationEmail({
+      email: recipient.recipient.email,
+      title: notification.title,
+      message: notification.message,
+      actionUrl: notification.actionUrl
+    });
   } catch (error) {
     console.error('Send email notification error:', error);
     // Don't throw error - email failure shouldn't break the app
@@ -97,10 +52,7 @@ exports.createBulkNotifications = async (notificationsData) => {
   try {
     const notifications = await Notification.insertMany(notificationsData);
 
-    // Send emails in parallel
-    if (transporter) {
-      await Promise.all(notifications.map(n => sendEmailNotification(n)));
-    }
+    await Promise.all(notifications.map(n => sendEmailNotification(n)));
 
     return notifications;
   } catch (error) {
@@ -130,4 +82,3 @@ exports.cleanupOldNotifications = async (daysOld = 90) => {
     throw error;
   }
 };
-

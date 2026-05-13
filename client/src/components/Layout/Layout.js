@@ -356,33 +356,6 @@ const Layout = () => {
               {user?.role}
             </Typography>
           </Box>
-          <IconButton
-            onClick={handleLogout}
-            sx={{
-              color: '#dc2626',
-              borderRadius: '8px',
-              p: 0.75,
-              flexShrink: 0,
-              '&:hover': {
-                backgroundColor: '#fee2e2',
-              }
-            }}
-          >
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '4px',
-                backgroundColor: '#dc2626',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
-            >
-              <ExitIcon sx={{ fontSize: 16, color: '#fff' }} />
-            </Box>
-          </IconButton>
         </Box>
       </Box>
     </Box>

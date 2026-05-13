@@ -170,26 +170,29 @@ const SupplierList = () => {
     return statusMap[status] || status;
   };
 
-  const getContractStatusChip = (status) => {
-    const isApproved = status === 'approved' || status === 'completed';
-    const isRejected = status === 'rejected';
-    const isPendingLegal = status === 'pending_legal';
-    const isPendingRegistration = status === 'pending_registration_approval' || status === 'pending_verification' || status === 'registration_profile_incomplete';
-    const isRegistrationRejected = status === 'registration_rejected';
+  const getRegistrationStatusChip = (supplier) => {
+    const regStatus = supplier.submittedBy?.supplierApprovalStatus || supplier.status;
+    const isApproved = regStatus === 'approved' || regStatus === 'registration_approved';
+    const isRejected = regStatus === 'rejected' || regStatus === 'registration_rejected';
+    const isPending = regStatus === 'pending' || regStatus === 'pending_registration_approval';
+    const isIncomplete = regStatus === 'profile_incomplete' || regStatus === 'registration_profile_incomplete' || regStatus === 'pending_verification';
+
+    const label = isApproved ? 'Approved' : isRejected ? 'Rejected' : isPending ? 'Pending Approval' : isIncomplete ? 'Profile Incomplete' : regStatus;
+    const bg = isApproved ? '#dcfce7' : isRejected ? '#fef2f2' : isIncomplete ? '#f3f4f6' : '#fef9c3';
+    const color = isApproved ? '#166534' : isRejected ? '#991b1b' : isIncomplete ? '#6b7280' : '#854d0e';
+
     return (
       <Chip
-        label={getStatusLabel(status)}
+        label={label}
         size="small"
         sx={{
-          backgroundColor: isApproved ? '#dcfce7' : (isRejected || isRegistrationRejected) ? '#fef2f2' : isPendingLegal ? '#dbeafe' : '#fef9c3',
-          color: isApproved ? '#166534' : (isRejected || isRegistrationRejected) ? '#991b1b' : isPendingLegal ? '#1e40af' : (isPendingRegistration ? '#854d0e' : '#854d0e'),
+          backgroundColor: bg,
+          color,
           fontWeight: 500,
           fontSize: '13px',
           height: '24px',
           borderRadius: '12px',
-          '& .MuiChip-label': {
-            padding: '0 8px'
-          }
+          '& .MuiChip-label': { padding: '0 8px' }
         }}
       />
     );
@@ -454,11 +457,11 @@ const SupplierList = () => {
             <Table sx={{ minWidth: { xs: 580, md: 900 } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Vendor Number</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Supplier Name</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Contract Expiry Date</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Last Updated</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Contract Status</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Company Name</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Supplier Email</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Requested Date</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Approved Date</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Status</TableCell>
                   <TableCell align="right" sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}></TableCell>
                 </TableRow>
               </TableHead>
@@ -478,8 +481,6 @@ const SupplierList = () => {
                       hover
                       onClick={() => {
                         if (supplier.isPlaceholder) {
-                          // For users with no application, maybe show user profile or toast
-                          console.log('No application for this user');
                         } else {
                           navigate(`/suppliers/${supplier._id}`);
                         }
@@ -492,32 +493,31 @@ const SupplierList = () => {
                         }
                       }}
                     >
-                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400 }}>
-                        {supplier.vendorNumber ? (
-                          supplier.vendorNumber
-                        ) : (
-                          <Typography variant="body2" color="textSecondary">-</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 500, display: { xs: 'none', md: 'table-cell' } }}>
-                        {supplier.supplierName}
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 500 }}>
+                        {supplier.supplierName || '-'}
                       </TableCell>
                       <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
-                        {formatDate(supplier.contractExpiryDate || supplier.updatedAt)}
+                        {supplier.companyEmail || supplier.submittedBy?.email || '-'}
                       </TableCell>
                       <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
-                        {formatDate(supplier.updatedAt || supplier.createdAt)}
+                        {formatDate(supplier.submittedAt || supplier.createdAt)}
+                      </TableCell>
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
+                        {formatDate(supplier.registrationReviewedAt || supplier.submittedBy?.supplierApprovalReviewedAt)}
                       </TableCell>
                       <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400 }}>
-                        {getContractStatusChip(supplier.status)}
+                        {getRegistrationStatusChip(supplier)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 1.5 }}>
-                        {user?.role === 'procurement' && supplier.status === 'pending_registration_approval' && supplier.userId ? (
+                        {user?.role === 'procurement' &&
+                          (supplier.submittedBy?.supplierApprovalStatus === 'pending' ||
+                           supplier.status === 'pending_registration_approval') &&
+                          (supplier.userId || supplier.submittedBy?._id) ? (
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                             <Button
                               size="small"
                               variant="contained"
-                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId, 'approved', e)}
+                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId || supplier.submittedBy?._id, 'approved', e)}
                               sx={{
                                 textTransform: 'none',
                                 fontSize: '12px',
@@ -531,7 +531,7 @@ const SupplierList = () => {
                             <Button
                               size="small"
                               variant="outlined"
-                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId, 'rejected', e)}
+                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId || supplier.submittedBy?._id, 'rejected', e)}
                               sx={{
                                 textTransform: 'none',
                                 fontSize: '12px',

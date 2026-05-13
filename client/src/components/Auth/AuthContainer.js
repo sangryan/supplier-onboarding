@@ -183,7 +183,8 @@ const AuthContainer = ({ mode = 'login' }) => {
           } else {
             console.error('🔴 [AUTH] Login failed:', result?.message);
             setError(result?.message || 'Login failed');
-            setHasFailedLogin(true); // Mark that login has failed
+            setHasFailedLogin(true);
+            setLoading(false);
           }
         } catch (error) {
           // Handle any unexpected errors
