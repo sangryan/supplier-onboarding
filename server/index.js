@@ -152,6 +152,13 @@ app.use('/api/*', (req, res) => {
   });
 });
 
+// Serve React build in production (SPA catch-all)
+if (process.env.NODE_ENV === 'production') {
+  const clientBuild = path.join(__dirname, '..', 'client', 'build');
+  app.use(express.static(clientBuild));
+  app.get('*', (req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
