@@ -116,8 +116,18 @@ const ContractDetails = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error('Failed to download contract');
+      let message = 'Failed to download contract';
+      try {
+        // responseType blob means error body is also a Blob — parse it to get the real message
+        if (error.response?.data instanceof Blob) {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          if (json.message) message = json.message;
+        }
+      } catch {}
+      toast.error(message);
     }
   };
 
