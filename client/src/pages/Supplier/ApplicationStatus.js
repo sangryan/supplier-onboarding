@@ -30,7 +30,7 @@ import { format, parse, isValid } from 'date-fns';
 import api, { API_BASE_URL } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
-import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
+import { buildUploadUrl, fetchFileBlobUrl, fetchDocumentBlobUrl } from '../../utils/fileAccess';
 
 const ApplicationStatus = () => {
   const { id } = useParams();
@@ -255,6 +255,20 @@ const ApplicationStatus = () => {
     if (file instanceof File) {
       fileUrl = URL.createObjectURL(file);
       displayName = file.name;
+    } else if (file && typeof file === 'object' && file._id) {
+      // Populated Document object from DB — use authenticated download API
+      displayName = fileName || file.originalName || file.fileName || 'File';
+      try {
+        fileUrl = await fetchDocumentBlobUrl(file._id);
+      } catch (error) {
+        toast.error('Failed to load file');
+        return;
+      }
+      setFileViewerUrl(fileUrl);
+      setFileViewerName(displayName);
+      setImageLoadError(false);
+      setFileViewerOpen(true);
+      return;
     } else if (typeof file === 'string') {
       // Check if it's already a full URL
       if (file.startsWith('http://') || file.startsWith('https://')) {
@@ -305,7 +319,10 @@ const ApplicationStatus = () => {
 
   const renderDocumentCard = (fileName, documentName) => {
     if (!fileName) return null;
-    const displayName = typeof fileName === 'string' ? fileName : 'File selected';
+    const isDocObj = fileName && typeof fileName === 'object' && fileName._id;
+    const displayName = isDocObj
+      ? (fileName.originalName || fileName.fileName || 'Document')
+      : (typeof fileName === 'string' ? fileName.split('/').pop() : 'File selected');
     const fileExtension = displayName.split('.').pop()?.toUpperCase() || 'PDF';
 
     return (
@@ -338,7 +355,7 @@ const ApplicationStatus = () => {
               {documentName}
             </Typography>
             <Typography sx={{ fontSize: '12px', color: '#9ca3af' }}>
-              {fileExtension} • 2.3 MB
+              {fileExtension}{isDocObj && fileName.fileSize ? ` • ${(fileName.fileSize / (1024 * 1024)).toFixed(1)} MB` : ''}
             </Typography>
           </Box>
         </Box>
@@ -1140,7 +1157,7 @@ const ApplicationStatus = () => {
                     )}
                   </Grid>
                   {supplier.contract.signedContract && renderDocumentCard(
-                    supplier.contract.signedContract.filePath || supplier.contract.signedContract.fileName,
+                    supplier.contract.signedContract,
                     'Signed Contract - ' + (supplier.contract.contractNumber || '')
                   )}
                 </Box>
