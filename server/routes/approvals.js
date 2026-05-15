@@ -67,11 +67,6 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
         supplier.approvedAt = new Date();
         supplier.approvalHistory.push({
           approver: req.user.id,
-          action: 'approved',
-          comments: comments || 'Approved by procurement.',
-          timestamp: new Date()
-        }, {
-          approver: req.user.id,
           action: 'assigned_vendor_number',
           comments: `System automatically assigned new vendor number ${newVendorNumber}. Proceeding to legal review.`,
           timestamp: new Date()
