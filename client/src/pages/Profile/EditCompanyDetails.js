@@ -43,6 +43,8 @@ const countries = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
+const RESTRICTED_ROLES = ['procurement', 'legal', 'management'];
+
 const EditCompanyDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -66,6 +68,10 @@ const EditCompanyDetails = () => {
   const [countryAnchorEl, setCountryAnchorEl] = useState(null);
 
   useEffect(() => {
+    if (RESTRICTED_ROLES.includes(user?.role)) {
+      navigate('/profile', { replace: true });
+      return;
+    }
     fetchSupplierData();
   }, [user]);
 

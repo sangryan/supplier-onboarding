@@ -360,12 +360,12 @@ const Profile = () => {
                   mb: { xs: 0, md: 3 }
                 }}
               >
-                {['procurement', 'legal'].includes(user?.role)
+                {['procurement', 'legal', 'management'].includes(user?.role)
                   ? 'Your department and designation can only be updated by an administrator.'
                   : 'Changes to contact information require approval and supporting documentation'}
               </Typography>
             </Box>
-            {!['procurement', 'legal'].includes(user?.role) && (
+            {!['procurement', 'legal', 'management'].includes(user?.role) && (
               <Button
                 variant="outlined"
                 startIcon={
@@ -453,7 +453,7 @@ const Profile = () => {
           </Grid>
 
           {/* Additional Contacts — only for supplier users */}
-          {!['procurement', 'legal'].includes(user?.role) && (
+          {!['procurement', 'legal', 'management'].includes(user?.role) && (
             <Box sx={{ mt: { xs: 3, md: 4 } }}>
               <Typography
                 variant="h6"
@@ -688,8 +688,8 @@ const Profile = () => {
           </Paper>
         )}
 
-        {/* Delete Account Section */}
-        <Paper
+        {/* Delete Account Section — hidden for internal staff roles */}
+        {!['procurement', 'legal', 'management'].includes(user?.role) && <Paper
           elevation={0}
           sx={{
             pt: { xs: 2, md: 3 },
@@ -774,7 +774,7 @@ const Profile = () => {
               Delete account
             </Button>
           </Box>
-        </Paper>
+        </Paper>}
 
         {/* Add/Edit Contact Dialog */}
         <Dialog 

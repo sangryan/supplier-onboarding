@@ -25,6 +25,8 @@ import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
+const RESTRICTED_ROLES = ['procurement', 'legal', 'management'];
+
 const EditContactInfo = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,6 +51,10 @@ const EditContactInfo = () => {
   const [editingContactIndex, setEditingContactIndex] = useState(null);
 
   useEffect(() => {
+    if (RESTRICTED_ROLES.includes(user?.role)) {
+      navigate('/profile', { replace: true });
+      return;
+    }
     fetchSupplierData();
   }, [user]);
 
