@@ -19,6 +19,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   IconButton,
+  TextField,
 } from '@mui/material';
 import {
   ExpandMore,
@@ -43,6 +44,7 @@ const ContractDetails = () => {
   const [loading, setLoading] = useState(true);
   const [terminateDialog, setTerminateDialog] = useState(false);
   const [terminating, setTerminating] = useState(false);
+  const [terminateReason, setTerminateReason] = useState('');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileViewerOpen, setFileViewerOpen] = useState(false);
@@ -83,11 +85,16 @@ const ContractDetails = () => {
   };
 
   const handleTerminateContract = async () => {
+    if (!terminateReason.trim()) {
+      toast.error('Please provide a termination reason');
+      return;
+    }
     setTerminating(true);
     try {
-      await api.post(`/contracts/${id}/terminate`);
+      await api.post(`/contracts/${id}/terminate`, { reason: terminateReason.trim() });
       toast.success('Contract terminated successfully');
       setTerminateDialog(false);
+      setTerminateReason('');
       fetchContract();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to terminate contract');
@@ -728,14 +735,25 @@ const ContractDetails = () => {
       {/* Modals & Dialogs */}
       <UploadContractModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} onSave={handleSaveContract} uploading={uploading} />
 
-      <Dialog open={terminateDialog} onClose={() => setTerminateDialog(false)}>
+      <Dialog open={terminateDialog} onClose={() => { setTerminateDialog(false); setTerminateReason(''); }} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Termination</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to terminate this contract? This action is irreversible.</Typography>
+          <Typography sx={{ mb: 2 }}>Are you sure you want to terminate this contract? This action is irreversible.</Typography>
+          <TextField
+            label="Termination Reason"
+            multiline
+            rows={3}
+            fullWidth
+            required
+            value={terminateReason}
+            onChange={(e) => setTerminateReason(e.target.value)}
+            placeholder="Provide a reason for termination..."
+            sx={{ mt: 1 }}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTerminateDialog(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleTerminateContract} disabled={terminating}>
+          <Button onClick={() => { setTerminateDialog(false); setTerminateReason(''); }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleTerminateContract} disabled={terminating || !terminateReason.trim()}>
             {terminating ? 'Terminating...' : 'Terminate'}
           </Button>
         </DialogActions>

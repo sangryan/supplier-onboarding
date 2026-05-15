@@ -173,6 +173,10 @@ const contractSchema = new mongoose.Schema({
   terminatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  terminationReason: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

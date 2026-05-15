@@ -352,42 +352,46 @@ const Profile = () => {
               >
                 Contact Information
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: '#6b7280',
                   fontSize: { xs: '13px', md: '14px' },
                   mb: { xs: 0, md: 3 }
                 }}
               >
-                Changes to contact information require approval and supporting documentation
+                {['procurement', 'legal'].includes(user?.role)
+                  ? 'Your department and designation can only be updated by an administrator.'
+                  : 'Changes to contact information require approval and supporting documentation'}
               </Typography>
             </Box>
-            <Button
-              variant="outlined"
-              startIcon={
-                <Box
-                  component="img"
-                  src="/images/Pencil.svg"
-                  alt="Edit icon"
-                  sx={{ width: 20, height: 20 }}
-                />
-              }
-              sx={{
-                borderColor: '#d1d5db',
-                color: '#374151',
-                textTransform: 'none',
-                fontSize: { xs: '13px', md: '14px' },
-                width: { xs: '100%', md: 'auto' },
-                '&:hover': {
-                  borderColor: '#9ca3af',
-                  bgcolor: '#f9fafb',
-                },
-              }}
-              onClick={() => navigate('/profile/edit-contact')}
-            >
-              Edit Profile
-            </Button>
+            {!['procurement', 'legal'].includes(user?.role) && (
+              <Button
+                variant="outlined"
+                startIcon={
+                  <Box
+                    component="img"
+                    src="/images/Pencil.svg"
+                    alt="Edit icon"
+                    sx={{ width: 20, height: 20 }}
+                  />
+                }
+                sx={{
+                  borderColor: '#d1d5db',
+                  color: '#374151',
+                  textTransform: 'none',
+                  fontSize: { xs: '13px', md: '14px' },
+                  width: { xs: '100%', md: 'auto' },
+                  '&:hover': {
+                    borderColor: '#9ca3af',
+                    bgcolor: '#f9fafb',
+                  },
+                }}
+                onClick={() => navigate('/profile/edit-contact')}
+              >
+                Edit Profile
+              </Button>
+            )}
           </Box>
 
           <Grid container spacing={{ xs: 2, md: 2.5 }}>
@@ -448,97 +452,99 @@ const Profile = () => {
             </Grid>
           </Grid>
 
-          {/* Additional Contacts */}
-          <Box sx={{ mt: { xs: 3, md: 4 } }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
-                mb: 2,
-                fontSize: { xs: '16px', md: '18px' }
-              }}
-            >
-              Additional Contacts
-            </Typography>
-            {additionalContacts.length === 0 ? (
-              <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
-                No additional contacts added yet.
+          {/* Additional Contacts — only for supplier users */}
+          {!['procurement', 'legal'].includes(user?.role) && (
+            <Box sx={{ mt: { xs: 3, md: 4 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  mb: 2,
+                  fontSize: { xs: '16px', md: '18px' }
+                }}
+              >
+                Additional Contacts
               </Typography>
-            ) : (
-              additionalContacts.map((contact, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    p: 2,
-                    mb: 2,
-                    bgcolor: '#ffffff',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 1,
-                  }}
-                >
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
-                      {contact.name}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-                      {contact.email}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#666' }}>
-                      {contact.phone}
-                    </Typography>
+              {additionalContacts.length === 0 ? (
+                <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
+                  No additional contacts added yet.
+                </Typography>
+              ) : (
+                additionalContacts.map((contact, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      p: 2,
+                      mb: 2,
+                      bgcolor: '#ffffff',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
+                        {contact.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+                        {contact.email}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#666' }}>
+                        {contact.phone}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditContact(contact, index)}
+                        sx={{ mr: 1 }}
+                      >
+                        <Box
+                          component="img"
+                          src="/images/Pencil.svg"
+                          alt="Edit icon"
+                          sx={{ width: 20, height: 20 }}
+                        />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteContact(index)}
+                        sx={{ color: '#c62828' }}
+                      >
+                        <Box
+                          component="img"
+                          src="/images/Trash2.svg"
+                          alt="Delete icon"
+                          sx={{ width: 20, height: 20 }}
+                        />
+                      </IconButton>
+                    </Box>
                   </Box>
-                  <Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditContact(contact, index)}
-                      sx={{ mr: 1 }}
-                    >
-                      <Box
-                        component="img"
-                        src="/images/Pencil.svg"
-                        alt="Edit icon"
-                        sx={{ width: 20, height: 20 }}
-                      />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteContact(index)}
-                      sx={{ color: '#c62828' }}
-                    >
-                      <Box
-                        component="img"
-                        src="/images/Trash2.svg"
-                        alt="Delete icon"
-                        sx={{ width: 20, height: 20 }}
-                      />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))
-            )}
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={handleAddContact}
-              sx={{
-                borderColor: '#d1d5db',
-                color: '#374151',
-                textTransform: 'none',
-                fontSize: { xs: '13px', md: '14px' },
-                width: { xs: '100%', md: 'auto' },
-                mt: 1,
-                '&:hover': {
-                  borderColor: '#9ca3af',
-                  bgcolor: '#f9fafb',
-                },
-              }}
-            >
-              Add New Contact
-            </Button>
-          </Box>
+                ))
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={handleAddContact}
+                sx={{
+                  borderColor: '#d1d5db',
+                  color: '#374151',
+                  textTransform: 'none',
+                  fontSize: { xs: '13px', md: '14px' },
+                  width: { xs: '100%', md: 'auto' },
+                  mt: 1,
+                  '&:hover': {
+                    borderColor: '#9ca3af',
+                    bgcolor: '#f9fafb',
+                  },
+                }}
+              >
+                Add New Contact
+              </Button>
+            </Box>
+          )}
         </Paper>
 
         {/* Company Profile Section */}

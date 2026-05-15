@@ -1053,7 +1053,7 @@ const ApplicationStatus = () => {
           </Accordion>
 
           {/* Signed Contract Accordion */}
-          {supplier.status === 'completed' && supplier.contract && supplier.contract.signedContract && (
+          {(supplier.status === 'completed' || supplier.contract?.status === 'terminated') && supplier.contract && (supplier.contract.signedContract || supplier.contract.status === 'terminated') && (
             <Accordion
               expanded={expandedAccordion === 'contract'}
               onChange={(event, isExpanded) => {
@@ -1078,9 +1078,18 @@ const ApplicationStatus = () => {
                   }
                 }}
               >
-                <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
-                  Signed Contract
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#111827' }}>
+                    Contract
+                  </Typography>
+                  {supplier.contract?.status === 'terminated' && (
+                    <Box sx={{ px: 1, py: 0.25, bgcolor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 1 }}>
+                      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#dc2626', textTransform: 'uppercase' }}>
+                        Terminated
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </AccordionSummary>
               <AccordionDetails>
                 <Box>
@@ -1109,8 +1118,28 @@ const ApplicationStatus = () => {
                         {formatDate(supplier.contract.endDate)}
                       </Typography>
                     </Grid>
+                    {supplier.contract?.status === 'terminated' && supplier.contract.terminatedAt && (
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                          Terminated On
+                        </Typography>
+                        <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#dc2626' }}>
+                          {formatDate(supplier.contract.terminatedAt)}
+                        </Typography>
+                      </Grid>
+                    )}
+                    {supplier.contract?.terminationReason && (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                          Termination Reason
+                        </Typography>
+                        <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                          {supplier.contract.terminationReason}
+                        </Typography>
+                      </Grid>
+                    )}
                   </Grid>
-                  {renderDocumentCard(
+                  {supplier.contract.signedContract && renderDocumentCard(
                     supplier.contract.signedContract.filePath || supplier.contract.signedContract.fileName,
                     'Signed Contract - ' + (supplier.contract.contractNumber || '')
                   )}

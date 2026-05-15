@@ -713,6 +713,15 @@ router.get('/reports/expiring', protect, authorize('management', 'procurement', 
 // @access  Private (Legal)
 router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async (req, res) => {
   try {
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Termination reason is required'
+      });
+    }
+
     const contract = await Contract.findById(req.params.id)
       .populate('supplier');
 
@@ -733,6 +742,7 @@ router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async 
     contract.status = 'terminated';
     contract.terminatedAt = new Date();
     contract.terminatedBy = req.user.id;
+    contract.terminationReason = reason.trim();
     await contract.save();
 
     // Notify supplier
@@ -742,12 +752,12 @@ router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async 
         recipient: supplier.submittedBy._id,
         type: 'contract_terminated',
         title: `[${supplier.applicationNumber}] Contract Terminated`,
-        message: `Your contract ${contract.contractNumber} has been terminated.`,
+        message: `Your contract ${contract.contractNumber} has been terminated.\n\nReason: ${reason.trim()}`,
         relatedEntity: {
           entityType: 'contract',
           entityId: contract._id
         },
-        actionUrl: `/contracts/${contract._id}`,
+        actionUrl: `/application/${supplier._id}`,
         priority: 'high'
       });
     }
