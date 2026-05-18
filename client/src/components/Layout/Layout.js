@@ -153,9 +153,10 @@ const Layout = () => {
       ];
     } else if (user.role === 'super_admin') {
       return [
-        { text: 'All tasks', icon: <AssignmentIcon />, path: '/dashboard' },
-        { text: 'Dashboard', icon: <BusinessIcon />, path: '/suppliers' },
-        { text: 'Users', icon: <PeopleIcon />, path: '/users' },
+        { text: 'Users', icon: <PeopleIcon />, path: '/dashboard' },
+        { text: 'Suppliers', icon: <BusinessIcon />, path: '/suppliers' },
+        { text: 'All Tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
+        { text: 'Audit Logs', icon: <HistoryIcon />, path: '/audit-logs' },
         { text: 'Setups', icon: <AssessmentIcon />, path: '/reports' },
       ];
     } else if (user.role === 'management') {

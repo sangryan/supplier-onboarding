@@ -8,6 +8,7 @@ const AdHocVendor = require('../models/AdHocVendor');
 const Contract = require('../models/Contract');
 const { protect, authorize } = require('../middleware/auth');
 const { sendUserInviteEmail } = require('../utils/email');
+const { logAction } = require('../utils/auditLogger');
 
 // @route   GET /api/users
 // @desc    Get all users
@@ -202,6 +203,8 @@ router.post('/', protect, authorize('super_admin'), [
       console.error('Failed to send user invite email:', emailError.message);
     }
 
+    await logAction(req, 'USER_CREATED', 'User', user._id, `${user.firstName} ${user.lastName}`, { role, email: user.email });
+
     res.status(201).json({
       success: true,
       data: user.toPublicJSON(),
@@ -286,6 +289,17 @@ router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password');
 
+    // Determine the specific action for suspend/activate vs general update
+    let action = 'USER_UPDATED';
+    if (isActive !== undefined && Object.keys(updateFields).length === 1) {
+      action = isActive ? 'USER_ACTIVATED' : 'USER_SUSPENDED';
+    } else if (isActive === false) {
+      action = 'USER_SUSPENDED';
+    } else if (isActive === true) {
+      action = 'USER_ACTIVATED';
+    }
+    await logAction(req, action, 'User', user._id, `${user.firstName} ${user.lastName}`, { changes: updateFields });
+
     res.json({
       success: true,
       data: user
@@ -325,9 +339,11 @@ router.delete('/:id', protect, authorize('super_admin'), async (req, res) => {
       });
     }
 
+    await logAction(req, 'USER_DELETED', 'User', user._id, `${user.firstName} ${user.lastName}`, { email: user.email });
+
     res.json({
       success: true,
-      message: 'User deactivated successfully',
+      message: 'User deleted successfully',
       data: user
     });
   } catch (error) {

@@ -17,6 +17,7 @@ import Layout from './components/Layout/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import SupplierProfileGuard from './components/SupplierProfileGuard';
 import InternalPasswordGuard from './components/InternalPasswordGuard';
+import MaintenanceGuard from './components/MaintenanceGuard';
 
 // Pages
 import LandingPage from './pages/Landing/LandingPage';
@@ -42,6 +43,7 @@ import EditContactInfo from './pages/Profile/EditContactInfo';
 import EditCompanyDetails from './pages/Profile/EditCompanyDetails';
 import ChangePassword from './pages/Profile/ChangePassword';
 import NotFound from './pages/NotFound';
+import AuditLogs from './pages/Admin/AuditLogs';
 
 function App() {
   const { user, loading } = useAuth();
@@ -112,7 +114,7 @@ function App() {
         />
 
         {/* Protected Routes */}
-        <Route element={<PrivateRoute><InternalPasswordGuard><Layout /></InternalPasswordGuard></PrivateRoute>}>
+        <Route element={<PrivateRoute><InternalPasswordGuard><MaintenanceGuard><Layout /></MaintenanceGuard></InternalPasswordGuard></PrivateRoute>}>
           <Route path="/dashboard" element={<SupplierProfileGuard><Dashboard /></SupplierProfileGuard>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit-contact" element={<EditContactInfo />} />
@@ -140,6 +142,9 @@ function App() {
 
           {/* Reports */}
           <Route path="/reports" element={<Reports />} />
+
+          {/* Audit Logs */}
+          <Route path="/audit-logs" element={<AuditLogs />} />
         </Route>
 
         {/* 404 */}

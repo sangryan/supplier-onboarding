@@ -150,6 +150,8 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/adhoc-vendors', require('./routes/adhocVendors'));
+app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/settings', require('./routes/settings'));
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {

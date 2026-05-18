@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { logAction } = require('../utils/auditLogger');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -205,6 +206,11 @@ router.post('/login', [
     await user.save();
 
     const token = generateToken(user._id);
+
+    // Audit log — attach user to req temporarily for logger
+    req.user = user;
+    await logAction(req, 'USER_LOGIN', 'User', user._id, `${user.firstName} ${user.lastName}`, { role: user.role });
+    req.user = null;
 
     res.json({
       success: true,

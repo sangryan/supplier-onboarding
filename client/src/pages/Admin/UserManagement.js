@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   Container,
   Paper,
@@ -39,6 +40,7 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
+  Build as BuildIcon,
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon,
@@ -49,7 +51,11 @@ import { toast } from 'react-toastify';
 
 const UserManagement = () => {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('The system is currently under maintenance. Please check back later.');
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -73,7 +79,33 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
+    fetchMaintenance();
   }, []);
+
+  const fetchMaintenance = async () => {
+    try {
+      const res = await api.get('/settings/maintenance');
+      setMaintenance(res.data.data?.maintenanceMode || false);
+      setMaintenanceMessage(res.data.data?.maintenanceMessage || '');
+    } catch {}
+  };
+
+  const handleToggleMaintenance = async () => {
+    setMaintenanceLoading(true);
+    try {
+      const newState = !maintenance;
+      await api.put('/settings/maintenance', {
+        maintenanceMode: newState,
+        maintenanceMessage,
+      });
+      setMaintenance(newState);
+      toast.success(`Maintenance mode ${newState ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update maintenance mode');
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -315,6 +347,71 @@ const UserManagement = () => {
             Manage and configure users of the platform
           </Typography>
         </Box>
+
+        {/* Maintenance Mode Toggle */}
+        {currentUser?.role === 'super_admin' && (
+          <Paper
+            elevation={0}
+            sx={{
+              border: `1px solid ${maintenance ? '#fca5a5' : '#e5e7eb'}`,
+              borderRadius: '10px',
+              p: 2,
+              mb: 3,
+              backgroundColor: maintenance ? '#fff7f7' : '#fff',
+              display: 'flex',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: '8px', backgroundColor: maintenance ? '#fee2e2' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <BuildIcon sx={{ fontSize: 20, color: maintenance ? '#dc2626' : '#6b7280' }} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>
+                  Maintenance Mode
+                  {maintenance && (
+                    <Chip label="ON" size="small" sx={{ ml: 1, backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', height: '20px', fontWeight: 700 }} />
+                  )}
+                </Typography>
+                <Typography sx={{ fontSize: '13px', color: '#6b7280' }}>
+                  {maintenance ? 'All non-admin users see a maintenance page' : 'Platform is fully operational'}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+              <TextField
+                size="small"
+                placeholder="Maintenance message (optional)"
+                value={maintenanceMessage}
+                onChange={(e) => setMaintenanceMessage(e.target.value)}
+                sx={{ flex: 1, minWidth: { xs: 0, sm: 280 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
+              />
+              <Button
+                variant={maintenance ? 'outlined' : 'contained'}
+                onClick={handleToggleMaintenance}
+                disabled={maintenanceLoading}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px',
+                  boxShadow: 'none',
+                  whiteSpace: 'nowrap',
+                  ...(maintenance
+                    ? { borderColor: '#16a34a', color: '#16a34a', '&:hover': { borderColor: '#15803d', backgroundColor: '#f0fdf4' } }
+                    : { backgroundColor: '#dc2626', '&:hover': { backgroundColor: '#b91c1c', boxShadow: 'none' } }
+                  ),
+                }}
+              >
+                {maintenanceLoading ? 'Saving...' : maintenance ? 'Disable Maintenance' : 'Enable Maintenance'}
+              </Button>
+            </Box>
+          </Paper>
+        )}
 
         {/* Tabs */}
         <Box sx={{ borderBottom: '1px solid #e5e7eb', mb: 3 }}>
