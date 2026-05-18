@@ -51,7 +51,7 @@ import { toast } from 'react-toastify';
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: adminUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('The system is currently under maintenance. Please check back later.');
@@ -349,7 +349,7 @@ const UserManagement = () => {
         </Box>
 
         {/* Maintenance Mode Toggle */}
-        {currentUser?.role === 'super_admin' && (
+        {adminUser?.role === 'super_admin' && (
           <Paper
             elevation={0}
             sx={{
