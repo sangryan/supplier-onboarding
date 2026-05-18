@@ -19,4 +19,4 @@ echo "→ Container status:"
 docker compose ps
 
 echo ""
-echo "✅ Deployment complete — app running at http://41.191.225.34:2027"
+echo "✅ Deployment complete — app running at http://41.191.225.34:8080"
