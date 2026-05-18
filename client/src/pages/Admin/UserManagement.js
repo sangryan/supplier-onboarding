@@ -78,7 +78,7 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/users');
+      const response = await api.get('/users', { params: { limit: 1000 } });
       const normalizedUsers = (response.data.data || []).map((user) => ({
         ...user,
         id: user.id || user._id,
