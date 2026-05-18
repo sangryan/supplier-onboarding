@@ -21,7 +21,7 @@ import SupplierDashboard from './SupplierDashboard';
 import ProcurementDashboard from './ProcurementDashboard';
 import LegalDashboard from './LegalDashboard';
 import DepartmentLeadDashboard from './DepartmentLeadDashboard';
-import AllTasks from '../Admin/AllTasks';
+import UserManagement from '../Admin/UserManagement';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
 
@@ -86,7 +86,7 @@ const Dashboard = () => {
 
   // Super Admin Dashboard
   if (user.role === 'super_admin') {
-    return <AllTasks />;
+    return <UserManagement />;
   }
 
   // Department Lead Dashboard (Management role)

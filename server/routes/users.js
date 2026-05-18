@@ -40,7 +40,7 @@ router.get('/', protect, authorize('super_admin'), async (req, res) => {
     const users = await User.find(query)
       .select('-password')
       .populate('createdBy', 'firstName lastName')
-      .populate('supplier', 'authorizedPerson.phone')
+      .populate('supplier', 'authorizedPerson.phone supplierName')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -50,7 +50,7 @@ router.get('/', protect, authorize('super_admin'), async (req, res) => {
     const userIds = users.map((u) => u._id);
     const suppliers = await Supplier.find(
       { submittedBy: { $in: userIds } },
-      { submittedBy: 1, authorizedPerson: 1, updatedAt: 1, createdAt: 1 }
+      { submittedBy: 1, authorizedPerson: 1, supplierName: 1, updatedAt: 1, createdAt: 1 }
     )
       .sort({ updatedAt: -1, createdAt: -1 })
       .lean();
