@@ -55,6 +55,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('The system is currently under maintenance. Please check back later.');
+  const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
@@ -87,6 +88,8 @@ const UserManagement = () => {
       const res = await api.get('/settings/maintenance');
       setMaintenance(res.data.data?.maintenanceMode || false);
       setMaintenanceMessage(res.data.data?.maintenanceMessage || '');
+      const et = res.data.data?.maintenanceEndTime;
+      setMaintenanceEndTime(et ? new Date(et).toISOString().slice(0, 16) : '');
     } catch {}
   };
 
@@ -97,6 +100,7 @@ const UserManagement = () => {
       await api.put('/settings/maintenance', {
         maintenanceMode: newState,
         maintenanceMessage,
+        maintenanceEndTime: maintenanceEndTime || null,
       });
       setMaintenance(newState);
       toast.success(`Maintenance mode ${newState ? 'enabled' : 'disabled'}`);
@@ -380,13 +384,22 @@ const UserManagement = () => {
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
               <TextField
                 size="small"
                 placeholder="Maintenance message (optional)"
                 value={maintenanceMessage}
                 onChange={(e) => setMaintenanceMessage(e.target.value)}
-                sx={{ flex: 1, minWidth: { xs: 0, sm: 280 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
+                sx={{ flex: 1, minWidth: { xs: 0, sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
+              />
+              <TextField
+                size="small"
+                type="datetime-local"
+                label="Expected end time"
+                value={maintenanceEndTime}
+                onChange={(e) => setMaintenanceEndTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
               />
               <Button
                 variant={maintenance ? 'outlined' : 'contained'}

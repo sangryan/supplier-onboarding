@@ -13,6 +13,7 @@ router.get('/maintenance', async (req, res) => {
       data: {
         maintenanceMode: settings?.maintenanceMode || false,
         maintenanceMessage: settings?.maintenanceMessage || 'The system is currently under maintenance.',
+        maintenanceEndTime: settings?.maintenanceEndTime || null,
       }
     });
   } catch {
@@ -23,11 +24,11 @@ router.get('/maintenance', async (req, res) => {
 // Super admin only
 router.put('/maintenance', protect, authorize('super_admin'), async (req, res) => {
   try {
-    const { maintenanceMode, maintenanceMessage } = req.body;
+    const { maintenanceMode, maintenanceMessage, maintenanceEndTime } = req.body;
 
     const settings = await SystemSettings.findOneAndUpdate(
       {},
-      { maintenanceMode, maintenanceMessage, updatedBy: req.user.id, updatedAt: new Date() },
+      { maintenanceMode, maintenanceMessage, maintenanceEndTime: maintenanceEndTime || null, updatedBy: req.user.id, updatedAt: new Date() },
       { upsert: true, new: true }
     );
 

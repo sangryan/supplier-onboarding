@@ -6,6 +6,7 @@ const systemSettingsSchema = new mongoose.Schema({
     type: String,
     default: 'The system is currently under maintenance. Please check back later.'
   },
+  maintenanceEndTime: { type: Date, default: null },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedAt: { type: Date, default: Date.now }
 });
