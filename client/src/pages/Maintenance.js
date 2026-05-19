@@ -122,38 +122,40 @@ const Maintenance = ({ message }) => {
           animation: `${fadeIn} 0.8s ease-out`,
         }}
       >
-        {/* Logo + gear floating icon */}
+        {/* Logo floating / bouncing */}
         <Box sx={{ position: 'relative', display: 'inline-block', mb: 4, animation: `${float} 4s ease-in-out infinite` }}>
           <Box
             sx={{
-              width: 88,
-              height: 88,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #578A18 0%, #3d6310 100%)',
+              width: 110,
+              height: 110,
+              borderRadius: '28px',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               mx: 'auto',
-              boxShadow: '0 0 40px rgba(87,138,24,0.4)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(8px)',
             }}
           >
             <Box
               component="img"
               src="/images/Icon.svg"
-              alt="Logo"
-              sx={{ width: 44, height: 44, filter: 'brightness(10)' }}
+              alt="Betika Logo"
+              sx={{ width: 70, height: 70 }}
             />
           </Box>
           {/* Small spinning gear badge */}
           <Box
             sx={{
               position: 'absolute',
-              bottom: -4,
-              right: -4,
-              width: 28,
-              height: 28,
+              bottom: -6,
+              right: -6,
+              width: 30,
+              height: 30,
               borderRadius: '50%',
-              backgroundColor: '#1e293b',
+              backgroundColor: '#0f172a',
               border: '2px solid #578A18',
               display: 'flex',
               alignItems: 'center',
@@ -161,7 +163,7 @@ const Maintenance = ({ message }) => {
               animation: `${spin} 3s linear infinite`,
             }}
           >
-            <GearIcon size={14} color="#578A18" />
+            <GearIcon size={15} color="#578A18" />
           </Box>
         </Box>
 
