@@ -225,7 +225,7 @@ const Maintenance = ({ message }) => {
             </Typography>
           </Box>
 
-          <Typography sx={{ color: '#1e293b', fontSize: '12px' }}>
+          <Typography sx={{ color: '#94a3b8', fontSize: '12px' }}>
             For urgent assistance, contact your system administrator.
           </Typography>
 
