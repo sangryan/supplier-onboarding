@@ -384,13 +384,13 @@ const UserManagement = () => {
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap', flex: 1 }}>
               <TextField
                 size="small"
                 placeholder="Maintenance message (optional)"
                 value={maintenanceMessage}
                 onChange={(e) => setMaintenanceMessage(e.target.value)}
-                sx={{ flex: 1, minWidth: { xs: 0, sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
+                sx={{ flex: 1, minWidth: { xs: 0, sm: 380 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
               />
               <Button
                 variant={maintenance ? 'outlined' : 'contained'}
