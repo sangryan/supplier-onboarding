@@ -392,15 +392,6 @@ const UserManagement = () => {
                 onChange={(e) => setMaintenanceMessage(e.target.value)}
                 sx={{ flex: 1, minWidth: { xs: 0, sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
               />
-              <TextField
-                size="small"
-                type="datetime-local"
-                label="Expected end time"
-                value={maintenanceEndTime}
-                onChange={(e) => setMaintenanceEndTime(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
-              />
               <Button
                 variant={maintenance ? 'outlined' : 'contained'}
                 onClick={handleToggleMaintenance}
