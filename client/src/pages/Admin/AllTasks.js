@@ -264,7 +264,7 @@ const AllTasks = () => {
                             <TableHead>
                                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>ID</TableCell>
-                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Supplier Name</TableCell>
+                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Company Name</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Entity Type</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Submission Date</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5 }}>Status</TableCell>

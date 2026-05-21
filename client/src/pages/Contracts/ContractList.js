@@ -485,7 +485,7 @@ const ContractList = () => {
             <TableHead>
               <TableRow sx={{ backgroundColor: '#fff' }}>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Vendor Number</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Supplier Name</TableCell>
+                <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Company Name</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Supplier Type</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Last Updated</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', py: 2, borderBottom: '1px solid #e5e7eb' }}>Contract Status</TableCell>

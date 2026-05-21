@@ -1648,7 +1648,7 @@ const SupplierApplication = () => {
                     variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
-                    Supplier name
+                    Company name
                   </Typography>
                   <TextField
                     fullWidth
@@ -3103,7 +3103,7 @@ const SupplierApplication = () => {
                   <Grid container spacing={2.5}>
                     <Grid item xs={12} md={4}>
                       <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
-                        Supplier Name
+                        Company Name
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
                         {formData.supplierName || '-'}

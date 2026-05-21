@@ -4,7 +4,7 @@ const logAction = async (req, action, targetType, targetId, targetName, details 
   try {
     const performedBy = req.user?._id || req.user?.id;
     const performedByName = req.user
-      ? `${req.user.firstName} ${req.user.lastName}`
+      ? [req.user.firstName, req.user.lastName].filter(Boolean).join(' ')
       : 'System';
     const performedByEmail = req.user?.email;
     const forwarded = req.headers['x-forwarded-for'];

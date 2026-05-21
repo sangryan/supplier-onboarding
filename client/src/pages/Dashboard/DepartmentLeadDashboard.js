@@ -203,7 +203,7 @@ const DepartmentLeadDashboard = () => {
             <TableHead>
               <TableRow sx={{ backgroundColor: '#fff' }}>
                 <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Vendor Number</TableCell>
-                <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Supplier Name</TableCell>
+                <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Company Name</TableCell>
                 <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Contract Expiry Date</TableCell>
                 <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Last Updated</TableCell>
                 <TableCell sx={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Contract Status</TableCell>

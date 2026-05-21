@@ -248,7 +248,7 @@ const EditContactInfo = () => {
         // Create supplier profile (not an application) - use PUT with upsert-like behavior
         // First create a minimal supplier record, then update it
         const initialData = {
-          supplierName: formData.fullName || user?.firstName || 'Profile',
+          supplierName: '',
           legalNature: 'company', // Default required field
           serviceType: 'professional_services', // Default required field
           authorizedPerson: {

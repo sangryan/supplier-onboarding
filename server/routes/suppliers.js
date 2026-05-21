@@ -381,7 +381,7 @@ router.get('/', protect, async (req, res) => {
           allRecords.push({
             _id: `user-${u._id}`,
             userId: u._id,
-            supplierName: `${u.firstName} ${u.lastName}`,
+            supplierName: '',
             status: registrationStatus,
             registrationReviewedAt: u.supplierApprovalReviewedAt || null,
             submittedBy: {
@@ -543,7 +543,7 @@ router.get('/:id', protect, supplierAccess, async (req, res) => {
     // Get supplier document (not lean so we can populate)
     const supplier = await Supplier.findById(req.params.id)
       .populate('submittedBy', 'firstName lastName email')
-      .populate('approvalHistory.approver', 'firstName lastName role')
+      .populate('approvalHistory.approver', 'firstName lastName role department')
       .populate({
         path: 'contract',
         populate: { path: 'signedContract' }
@@ -556,9 +556,15 @@ router.get('/:id', protect, supplierAccess, async (req, res) => {
       });
     }
 
-    // Convert to plain object to include all fields (including those not in schema)
-    // This works because we set strict: false in the schema
     const supplierObj = supplier.toObject();
+
+    // Strip approver names for supplier role — expose department only
+    if (req.user.role === 'supplier' && supplierObj.approvalHistory) {
+      supplierObj.approvalHistory = supplierObj.approvalHistory.map(h => ({
+        ...h,
+        approver: h.approver ? { department: h.approver.department } : undefined,
+      }));
+    }
 
     // Get documents
     const documents = await Document.find({ supplier: supplier._id })

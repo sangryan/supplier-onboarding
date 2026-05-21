@@ -84,7 +84,7 @@ const AuthContainer = ({ mode = 'login' }) => {
         // Split name into firstName and lastName
         const nameParts = formData.name.trim().split(' ');
         const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || nameParts[0] || 'User';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
         const userData = {
           firstName,

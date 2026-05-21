@@ -161,7 +161,7 @@ router.post('/', protect, authorize('super_admin'), [
       });
     }
 
-    const { firstName, lastName, email, role, department, phone } = req.body;
+    const { firstName, lastName, email, role, department, phone, employeeNumber } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -185,6 +185,7 @@ router.post('/', protect, authorize('super_admin'), [
       role,
       department,
       phone,
+      employeeNumber,
       createdBy: req.user.id,
       isActive: true,
       isEmailVerified: true, // Internal users don't need email verification
@@ -196,14 +197,14 @@ router.post('/', protect, authorize('super_admin'), [
       await sendUserInviteEmail({
         email: user.email,
         tempPassword,
-        userName: `${user.firstName} ${user.lastName}`,
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" "),
         role: role.replace('_', ' ')
       });
     } catch (emailError) {
       console.error('Failed to send user invite email:', emailError.message);
     }
 
-    await logAction(req, 'USER_CREATED', 'User', user._id, `${user.firstName} ${user.lastName}`, { role, email: user.email });
+    await logAction(req, 'USER_CREATED', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { role, email: user.email });
 
     res.status(201).json({
       success: true,
@@ -253,7 +254,7 @@ router.get('/:id', protect, authorize('super_admin'), async (req, res) => {
 // @access  Private (Super Admin)
 router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
   try {
-    const { firstName, lastName, role, department, phone, isActive } = req.body;
+    const { firstName, lastName, role, department, phone, employeeNumber, isActive } = req.body;
 
     const existingUser = await User.findById(req.params.id).select('role department');
     if (!existingUser) {
@@ -269,6 +270,7 @@ router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
     if (role) updateFields.role = role;
     if (department !== undefined) updateFields.department = department;
     if (phone !== undefined) updateFields.phone = phone;
+    if (employeeNumber !== undefined) updateFields.employeeNumber = employeeNumber;
     if (isActive !== undefined) updateFields.isActive = isActive;
 
     const effectiveRole = updateFields.role || existingUser.role;
@@ -298,7 +300,7 @@ router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
     } else if (isActive === true) {
       action = 'USER_ACTIVATED';
     }
-    await logAction(req, action, 'User', user._id, `${user.firstName} ${user.lastName}`, { changes: updateFields });
+    await logAction(req, action, 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { changes: updateFields });
 
     res.json({
       success: true,
@@ -339,7 +341,7 @@ router.delete('/:id', protect, authorize('super_admin'), async (req, res) => {
       });
     }
 
-    await logAction(req, 'USER_DELETED', 'User', user._id, `${user.firstName} ${user.lastName}`, { email: user.email });
+    await logAction(req, 'USER_DELETED', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { email: user.email });
 
     res.json({
       success: true,

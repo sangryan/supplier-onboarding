@@ -499,7 +499,7 @@ const ProcurementDashboard = () => {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>ID</TableCell>
-                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>Supplier Name</TableCell>
+                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>Company Name</TableCell>
                     <TableCell
                       sx={{
                         fontSize: '13px',

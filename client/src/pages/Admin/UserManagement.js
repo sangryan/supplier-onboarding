@@ -73,7 +73,7 @@ const UserManagement = () => {
     email: '',
     role: '',
     department: '',
-    phone: '',
+    employeeNumber: '',
     isActive: true,
   });
 
@@ -148,13 +148,13 @@ const UserManagement = () => {
         email: user.email,
         role: user.role,
         department: user.department || '',
-        phone: user.phone || '',
+        employeeNumber: user.employeeNumber || '',
         isActive: user.isActive !== false,
       });
     } else {
       setEditMode(false);
       setCurrentUser(null);
-      setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', phone: '', isActive: true });
+      setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', employeeNumber: '', isActive: true });
     }
     setRoleSearch('');
     setDialogOpen(true);
@@ -164,7 +164,7 @@ const UserManagement = () => {
     setDialogOpen(false);
     setEditMode(false);
     setCurrentUser(null);
-    setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', phone: '', isActive: true });
+    setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', employeeNumber: '', isActive: true });
     setRoleSearch('');
   };
 
@@ -190,7 +190,7 @@ const UserManagement = () => {
           lastName: formData.lastName,
           role: formData.role,
           department: formData.department,
-          phone: formData.phone,
+          employeeNumber: formData.employeeNumber,
           isActive: formData.isActive,
         });
         toast.success('User updated successfully');
@@ -201,7 +201,7 @@ const UserManagement = () => {
           email: formData.email,
           role: formData.role,
           department: formData.department,
-          phone: formData.phone,
+          employeeNumber: formData.employeeNumber,
         });
         toast.success('User created successfully. Temporary password sent by email.');
       }
@@ -455,7 +455,7 @@ const UserManagement = () => {
                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Full Name</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Email Address</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Phone Number</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>SN Number</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Role</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Status</TableCell>
                   <TableCell align="right" sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}></TableCell>
@@ -471,7 +471,7 @@ const UserManagement = () => {
                         {user.firstName} {user.lastName}
                       </TableCell>
                       <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>{user.email}</TableCell>
-                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>{getDisplayPhone(user)}</TableCell>
+                      <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>{user.employeeNumber || '-'}</TableCell>
                       <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>
                         {user.role?.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                       </TableCell>
@@ -510,7 +510,7 @@ const UserManagement = () => {
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Contact Name</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', sm: 'table-cell' } }}>Company</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Email Address</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Phone Number</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>SN Number</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Status</TableCell>
                   <TableCell align="right" sx={{ fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}></TableCell>
                 </TableRow>
@@ -598,8 +598,8 @@ const UserManagement = () => {
               <TextField fullWidth type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} disabled={editMode} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
             </Grid>
             <Grid item xs={12}>
-              <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Work phone number</Typography>
-              <TextField fullWidth value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
+              <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>SN Number</Typography>
+              <TextField fullWidth value={formData.employeeNumber} onChange={(e) => handleChange('employeeNumber', e.target.value)} placeholder="e.g. EMP-001" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
             </Grid>
             <Grid item xs={12}>
               <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Department{formData.role === 'management' ? ' *' : ''}</Typography>

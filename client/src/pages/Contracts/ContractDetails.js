@@ -496,7 +496,7 @@ const ContractDetails = () => {
                 <Typography sx={valueStyle}>{applicationNumber}</Typography>
               </Grid>
               <Grid item xs={12} sm={4}>
-                <Typography sx={labelStyle}>Supplier Name</Typography>
+                <Typography sx={labelStyle}>Company Name</Typography>
                 <Typography sx={valueStyle}>{supplier.supplierName || '-'}</Typography>
               </Grid>
               <Grid item xs={12} sm={4}>

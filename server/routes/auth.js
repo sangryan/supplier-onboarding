@@ -18,7 +18,7 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
+  body('lastName').optional().trim(),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('phone').optional().trim()
@@ -80,7 +80,7 @@ router.post('/register', [
       await sendOTPEmail({
         email: user.email,
         otpCode: otpCode,
-        userName: `${user.firstName} ${user.lastName}`
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
       });
       console.log(`✅ OTP email sent to ${user.email}`);
     } catch (emailError) {
@@ -186,7 +186,7 @@ router.post('/login', [
         await sendOTPEmail({
           email: user.email,
           otpCode: otpCode,
-          userName: `${user.firstName} ${user.lastName}`
+          userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
         });
         console.log(`✅ OTP email sent to ${user.email} for login`);
       } catch (emailError) {
@@ -209,7 +209,7 @@ router.post('/login', [
 
     // Audit log — attach user to req temporarily for logger
     req.user = user;
-    await logAction(req, 'USER_LOGIN', 'User', user._id, `${user.firstName} ${user.lastName}`, { role: user.role });
+    await logAction(req, 'USER_LOGIN', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { role: user.role });
     req.user = null;
 
     res.json({
@@ -372,7 +372,7 @@ router.post('/forgot-password', [
       await sendPasswordResetEmail({
         email: user.email,
         resetToken: resetToken,
-        userName: `${user.firstName} ${user.lastName}`
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
       });
       emailSent = true;
       console.log(`✅ Password reset email sent successfully to ${user.email}`);
@@ -600,7 +600,7 @@ router.post('/resend-otp', [
       await sendOTPEmail({
         email: user.email,
         otpCode: otpCode,
-        userName: `${user.firstName} ${user.lastName}`
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
       });
       console.log(`✅ OTP email resent to ${user.email}`);
     } catch (emailError) {

@@ -105,7 +105,8 @@ const ApplicationStatus = () => {
       under_review: 'Under Review',
       approved: 'Approved',
       rejected: 'Rejected',
-      more_info_required: 'Requested More Info'
+      more_info_required: 'Requested More Info',
+      pending_contract_upload: 'Pending Contract Upload',
     };
     return statusMap[status] || status;
   };
@@ -581,7 +582,7 @@ const ApplicationStatus = () => {
               <Grid container spacing={2.5}>
                 <Grid item xs={12} md={4}>
                   <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
-                    Supplier Name
+                    Company Name
                   </Typography>
                   <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
                     {formData.supplierName || '-'}
@@ -1215,9 +1216,9 @@ const ApplicationStatus = () => {
                           {formatDate(history.timestamp || history.date)}
                         </Typography>
                       </Box>
-                      {history.approver && (
+                      {history.approver?.department && (
                         <Typography sx={{ fontSize: '13px', color: '#6b7280', mb: 1 }}>
-                          By: {history.approver?.firstName || ''} {history.approver?.lastName || ''} ({history.approver?.role || ''})
+                          Department: {history.approver.department}
                         </Typography>
                       )}
                       {history.comments && (

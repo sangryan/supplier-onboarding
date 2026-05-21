@@ -703,7 +703,7 @@ const SupplierDetails = () => {
                         letterSpacing: '0.5px',
                       }}
                     >
-                      Supplier Name
+                      Company Name
                     </Typography>
                     <Typography
                       sx={{

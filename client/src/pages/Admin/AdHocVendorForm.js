@@ -174,7 +174,7 @@ const AdHocVendorForm = () => {
 
     const handleSaveDraft = async () => {
         if (!form.supplierName.trim()) {
-            toast.error('Supplier name is required');
+            toast.error('Company name is required');
             return;
         }
         setLoading(true);
@@ -193,7 +193,7 @@ const AdHocVendorForm = () => {
 
     const handleSubmit = async () => {
         if (!form.supplierName.trim()) {
-            toast.error('Supplier name is required');
+            toast.error('Company name is required');
             return;
         }
         setLoading(true);
@@ -246,7 +246,7 @@ const AdHocVendorForm = () => {
                     <Grid container spacing={2.5} sx={{ mb: 2 }}>
                         <Grid item xs={12} sm={6}>
                             <Typography sx={{ fontSize: '13px', color: '#374151', mb: 0.75, fontWeight: 500 }}>
-                                Supplier name
+                                Company name
                             </Typography>
                             <TextField
                                 name="supplierName"

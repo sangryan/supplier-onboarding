@@ -623,7 +623,7 @@ const Profile = () => {
                   variant="body2" 
                   sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                 >
-                  Supplier Name
+                  Company Name
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 400, fontSize: '14px', color: '#111827' }}>
                   {companyInfo.supplierName || 'N/A'}

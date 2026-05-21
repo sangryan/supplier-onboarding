@@ -340,7 +340,7 @@ const LegalDashboard = () => {
                             <TableHead>
                                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>ID</TableCell>
-                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>Supplier Name</TableCell>
+                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>Company Name</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>{activeTab === 'Ad-hoc Vendors' ? 'Services Provided' : 'Last Approver'}</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>{activeTab === 'Ad-hoc Vendors' ? 'Department' : 'Submission Date'}</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>Status</TableCell>

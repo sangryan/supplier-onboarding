@@ -276,7 +276,7 @@ const EditCompanyDetails = () => {
                 variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
-                Supplier name
+                Company name
               </Typography>
               <TextField
                 fullWidth

@@ -139,9 +139,25 @@ const SupplierDashboard = () => {
       under_review: 'Under Review',
       approved: 'Approved',
       rejected: 'Rejected',
-      more_info_required: 'Requested More Info'
+      more_info_required: 'Requested More Info',
+      pending_contract_upload: 'Pending Contract Upload',
     };
     return statusMap[status] || status;
+  };
+
+  const getStatusColors = (status) => {
+    const map = {
+      draft:                { bg: '#f3f4f6', color: '#6b7280' },
+      submitted:            { bg: '#eff6ff', color: '#1d4ed8' },
+      pending_procurement:  { bg: '#eff6ff', color: '#1d4ed8' },
+      pending_legal:        { bg: '#faf5ff', color: '#7c3aed' },
+      under_review:         { bg: '#fff7ed', color: '#c2410c' },
+      approved:             { bg: '#f0fdf4', color: '#15803d' },
+      rejected:             { bg: '#fef2f2', color: '#b91c1c' },
+      more_info_required:   { bg: '#fffbeb', color: '#b45309' },
+      pending_contract_upload: { bg: '#f0f9ff', color: '#0369a1' },
+    };
+    return map[status] || { bg: '#f3f4f6', color: '#6b7280' };
   };
 
   const isCompleted = (app) => {
@@ -474,8 +490,8 @@ const SupplierDashboard = () => {
                           label={getStatusLabel(app.status)}
                           size="small"
                           sx={{
-                            backgroundColor: '#f3f4f6',
-                            color: '#111827',
+                            backgroundColor: getStatusColors(app.status).bg,
+                            color: getStatusColors(app.status).color,
                             fontSize: '12px',
                             height: '24px',
                             fontWeight: 600,
