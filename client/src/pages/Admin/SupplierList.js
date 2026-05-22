@@ -17,9 +17,6 @@ import {
   CircularProgress,
   Grid,
   InputAdornment,
-  Select,
-  MenuItem,
-  FormControl,
   Tooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -37,12 +34,7 @@ import {
 } from '@mui/icons-material';
 import api from '../../utils/api';
 import Footer from '../../components/Footer/Footer';
-import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
-
-
 const SupplierList = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -53,7 +45,6 @@ const SupplierList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
   const [stats, setStats] = useState({
     totalOnboarded: 0,
@@ -67,7 +58,7 @@ const SupplierList = () => {
   useEffect(() => {
     fetchSuppliers();
     fetchStats();
-  }, [page, rowsPerPage, statusFilter, sortOrder]);
+  }, [page, rowsPerPage, sortOrder]);
 
   const fetchSuppliers = async () => {
     try {
@@ -78,8 +69,7 @@ const SupplierList = () => {
         sortOrder,
       };
       if (search) params.search = search;
-      if (statusFilter) params.status = statusFilter;
-      params.source = 'users';
+      params.approvedRegistrationOnly = 'true';
 
       const response = await api.get('/suppliers', { params });
       setSuppliers(response.data.data);
@@ -93,7 +83,7 @@ const SupplierList = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await api.get('/suppliers', { params: { source: 'users', limit: 1000 } });
+      const response = await api.get('/suppliers', { params: { limit: 1000, approvedRegistrationOnly: 'true' } });
       const allSuppliers = response.data.data || [];
 
       const now = new Date();
@@ -147,65 +137,14 @@ const SupplierList = () => {
     fetchSuppliers();
   };
 
-  const handleSupplierRegistrationApproval = async (userId, status, event) => {
-    event.stopPropagation();
-    if (!userId) return;
-
-    try {
-      await api.put(`/users/${userId}/supplier-approval`, { status });
-      toast.success(`Registration ${status} successfully`);
-      await fetchSuppliers();
-      await fetchStats();
-    } catch (error) {
-      console.error('Failed to update supplier registration approval:', error);
-      toast.error(error.response?.data?.message || 'Failed to update registration approval');
+  const getRegistrationChip = (approvalStatus) => {
+    if (approvalStatus === 'approved') {
+      return <Chip label="Approved" size="small" sx={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: 500, fontSize: '13px', height: '24px', borderRadius: '12px', '& .MuiChip-label': { padding: '0 8px' } }} />;
     }
-  };
-
-  const getStatusLabel = (status) => {
-    const statusMap = {
-      approved: 'Approved',
-      pending_legal: 'Pending Legal Approval',
-      pending_contract_upload: 'Pending Contract Upload',
-      completed: 'Completed',
-      rejected: 'Rejected',
-      pending_verification: 'Pending Verification',
-      registration_profile_incomplete: 'Profile Incomplete',
-      pending_registration_approval: 'Pending Registration Approval',
-      registration_approved: 'Registration Approved',
-      registration_rejected: 'Registration Rejected',
-      not_approved: 'Not Approved',
-      more_info_required: 'Requested More Info'
-    };
-    return statusMap[status] || status;
-  };
-
-  const getRegistrationStatusChip = (supplier) => {
-    const regStatus = supplier.submittedBy?.supplierApprovalStatus || supplier.status;
-    const isApproved = regStatus === 'approved' || regStatus === 'registration_approved';
-    const isRejected = regStatus === 'rejected' || regStatus === 'registration_rejected';
-    const isPending = regStatus === 'pending' || regStatus === 'pending_registration_approval';
-    const isIncomplete = regStatus === 'profile_incomplete' || regStatus === 'registration_profile_incomplete' || regStatus === 'pending_verification';
-
-    const label = isApproved ? 'Approved' : isRejected ? 'Rejected' : isPending ? 'Pending Approval' : isIncomplete ? 'Profile Incomplete' : regStatus;
-    const bg = isApproved ? '#dcfce7' : isRejected ? '#fef2f2' : isIncomplete ? '#f3f4f6' : '#fef9c3';
-    const color = isApproved ? '#166534' : isRejected ? '#991b1b' : isIncomplete ? '#6b7280' : '#854d0e';
-
-    return (
-      <Chip
-        label={label}
-        size="small"
-        sx={{
-          backgroundColor: bg,
-          color,
-          fontWeight: 500,
-          fontSize: '13px',
-          height: '24px',
-          borderRadius: '12px',
-          '& .MuiChip-label': { padding: '0 8px' }
-        }}
-      />
-    );
+    if (approvalStatus === 'rejected') {
+      return <Chip label="Rejected" size="small" sx={{ backgroundColor: '#fef2f2', color: '#991b1b', fontWeight: 500, fontSize: '13px', height: '24px', borderRadius: '12px', '& .MuiChip-label': { padding: '0 8px' } }} />;
+    }
+    return <Chip label="Pending" size="small" sx={{ backgroundColor: '#fef9c3', color: '#854d0e', fontWeight: 500, fontSize: '13px', height: '24px', borderRadius: '12px', '& .MuiChip-label': { padding: '0 8px' } }} />;
   };
 
   const formatDate = (date) => {
@@ -418,26 +357,6 @@ const SupplierList = () => {
                 }
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <Select
-                value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-                displayEmpty
-                sx={{ borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
-              >
-                <MenuItem value="">All Statuses</MenuItem>
-                <MenuItem value="pending_registration_approval">Pending Registration</MenuItem>
-                <MenuItem value="registration_approved">Registration Approved</MenuItem>
-                <MenuItem value="registration_rejected">Registration Rejected</MenuItem>
-                <MenuItem value="pending_verification">Pending Verification</MenuItem>
-                <MenuItem value="submitted">Submitted</MenuItem>
-                <MenuItem value="pending_procurement">Pending Procurement</MenuItem>
-                <MenuItem value="pending_legal">Pending Legal</MenuItem>
-                <MenuItem value="approved">Approved</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-                <MenuItem value="rejected">Rejected</MenuItem>
-              </Select>
-            </FormControl>
             <Tooltip title={sortOrder === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
               <Button
                 variant="outlined"
@@ -496,14 +415,14 @@ const SupplierList = () => {
               backgroundColor: '#fff'
             }}
           >
-            <Table sx={{ minWidth: { xs: 580, md: 900 } }}>
+            <Table sx={{ minWidth: { xs: 580, md: 1020 } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                   <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Company Name</TableCell>
                   <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Supplier Email</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Requested Date</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Approved Date</TableCell>
-                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}>Status</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Submitted Date</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Registration</TableCell>
+                  <TableCell sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>Reg. Date</TableCell>
                   <TableCell align="right" sx={{ ...fontBase, fontSize: '13px', fontWeight: 500, color: '#4b5563', py: 1.5 }}></TableCell>
                 </TableRow>
               </TableHead>
@@ -521,18 +440,11 @@ const SupplierList = () => {
                     <TableRow
                       key={supplier._id}
                       hover
-                      onClick={() => {
-                        if (supplier.isPlaceholder) {
-                        } else {
-                          navigate(`/suppliers/${supplier._id}`);
-                        }
-                      }}
+                      onClick={() => navigate(`/suppliers/${supplier._id}`)}
                       sx={{
-                        cursor: supplier.isPlaceholder ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         '&:last-child td, &:last-child th': { border: 0 },
-                        '&:hover': {
-                          backgroundColor: '#f9fafb'
-                        }
+                        '&:hover': { backgroundColor: '#f9fafb' }
                       }}
                     >
                       <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 500 }}>
@@ -544,56 +456,14 @@ const SupplierList = () => {
                       <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
                         {formatDate(supplier.submittedAt || supplier.createdAt)}
                       </TableCell>
-                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
-                        {formatDate(supplier.registrationReviewedAt || supplier.submittedBy?.supplierApprovalReviewedAt)}
+                      <TableCell sx={{ py: 1.5, display: { xs: 'none', md: 'table-cell' } }}>
+                        {getRegistrationChip(supplier.submittedBy?.supplierApprovalStatus)}
                       </TableCell>
-                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400 }}>
-                        {getRegistrationStatusChip(supplier)}
+                      <TableCell sx={{ ...fontBase, fontSize: '14px', color: '#111827', py: 1.5, fontWeight: 400, display: { xs: 'none', md: 'table-cell' } }}>
+                        {formatDate(supplier.submittedBy?.supplierApprovalReviewedAt)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 1.5 }}>
-                        {user?.role === 'procurement' &&
-                          (supplier.submittedBy?.supplierApprovalStatus === 'pending' ||
-                           supplier.submittedBy?.supplierApprovalStatus === 'profile_incomplete' ||
-                           supplier.status === 'pending_registration_approval') &&
-                          (supplier.userId || supplier.submittedBy?._id) ? (
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId || supplier.submittedBy?._id, 'approved', e)}
-                              sx={{
-                                textTransform: 'none',
-                                fontSize: '12px',
-                                minWidth: '72px',
-                                bgcolor: '#578A18',
-                                '&:hover': { bgcolor: '#467014' }
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={(e) => handleSupplierRegistrationApproval(supplier.userId || supplier.submittedBy?._id, 'rejected', e)}
-                              sx={{
-                                textTransform: 'none',
-                                fontSize: '12px',
-                                minWidth: '62px',
-                                borderColor: '#dc2626',
-                                color: '#dc2626',
-                                '&:hover': {
-                                  borderColor: '#b91c1c',
-                                  color: '#b91c1c',
-                                  backgroundColor: '#fef2f2'
-                                }
-                              }}
-                            >
-                              Reject
-                            </Button>
-                          </Box>
-                        ) : (
-                          <VisibilityIcon sx={{ color: '#6b7280', fontSize: 20 }} />
-                        )}
+                        <VisibilityIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                       </TableCell>
                     </TableRow>
                   ))

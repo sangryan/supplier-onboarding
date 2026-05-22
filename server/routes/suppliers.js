@@ -297,7 +297,7 @@ router.post('/', protect, authorize('supplier'), [
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10, groupBy, source, sortOrder = 'desc' } = req.query;
+    const { status, search, page = 1, limit = 10, groupBy, source, sortOrder = 'desc', approvedRegistrationOnly } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
@@ -306,6 +306,15 @@ router.get('/', protect, async (req, res) => {
     // Role-based filtering
     if (req.user.role === 'supplier') {
       query.submittedBy = new mongoose.Types.ObjectId(req.user.id);
+    }
+
+    // Filter to only suppliers whose registration was approved or rejected
+    if (approvedRegistrationOnly === 'true' && req.user.role !== 'supplier') {
+      const approvedUserIds = await User.find(
+        { role: 'supplier', supplierApprovalStatus: { $in: ['approved', 'rejected'] } },
+        '_id'
+      ).lean().then(users => users.map(u => u._id));
+      query.submittedBy = { $in: approvedUserIds };
     }
 
     // Status filter
@@ -349,6 +358,17 @@ router.get('/', protect, async (req, res) => {
         .populate('submittedBy', 'firstName lastName email supplierApprovalStatus supplierApprovalReviewedAt')
         .lean();
 
+      // 2b. Fetch profile-only records to get company names for users without real applications
+      const profileOnlyRecords = await Supplier.find({
+        submittedBy: { $in: userIds },
+        isProfileOnly: true
+      }).select('submittedBy supplierName').lean();
+      const profileNameByUserId = new Map(
+        profileOnlyRecords
+          .filter(r => r.supplierName)
+          .map(r => [r.submittedBy?.toString(), r.supplierName])
+      );
+
       // 3. Get all ad-hoc applications (no specific user linkage via submittedBy in some cases, or procurement-created)
       let adHocQuery = { adHocVendorId: { $exists: true } };
       if (search) {
@@ -368,6 +388,9 @@ router.get('/', protect, async (req, res) => {
       supplierUsers.forEach(u => {
         const hasApp = userApplications.some(a => a.submittedBy?._id?.toString() === u._id.toString());
         if (!hasApp) {
+          // Only show users pending account approval — skip incomplete/unverified profiles
+          if (u.supplierApprovalStatus !== 'pending') return;
+
           const registrationStatus = u.isEmailVerified === false
             ? 'pending_verification'
             : (u.supplierApprovalStatus === 'approved'
@@ -381,7 +404,7 @@ router.get('/', protect, async (req, res) => {
           allRecords.push({
             _id: `user-${u._id}`,
             userId: u._id,
-            supplierName: '',
+            supplierName: profileNameByUserId.get(u._id.toString()) || '',
             status: registrationStatus,
             registrationReviewedAt: u.supplierApprovalReviewedAt || null,
             submittedBy: {
@@ -508,12 +531,12 @@ router.get('/', protect, async (req, res) => {
 
       // Manually populate since aggregate doesn't do it automatically
       suppliers = await Supplier.populate(suppliers, [
-        { path: 'submittedBy', select: 'firstName lastName email' },
+        { path: 'submittedBy', select: 'firstName lastName email supplierApprovalStatus supplierApprovalReviewedAt' },
         { path: 'approvalHistory.approver', select: 'firstName lastName' }
       ]);
     } else {
       suppliers = await Supplier.find(query)
-        .populate('submittedBy', 'firstName lastName email')
+        .populate('submittedBy', 'firstName lastName email supplierApprovalStatus supplierApprovalReviewedAt')
         .populate('approvalHistory.approver', 'firstName lastName')
         .sort({ createdAt: sortOrder === 'asc' ? 1 : -1 })
         .limit(limitNum)

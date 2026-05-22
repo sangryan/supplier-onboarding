@@ -136,6 +136,53 @@ router.get('/departments', protect, authorize('super_admin'), async (req, res) =
   }
 });
 
+// @route   GET /api/users/pending-registrations
+// @desc    Get pending supplier registration requests
+// @access  Private (Procurement, Super Admin)
+router.get('/pending-registrations', protect, authorize('procurement', 'super_admin'), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, countOnly } = req.query;
+
+    const query = { role: 'supplier', supplierApprovalStatus: 'pending' };
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (countOnly === 'true') {
+      const count = await User.countDocuments(query);
+      return res.json({ success: true, count });
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [users, total] = await Promise.all([
+      User.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      User.countDocuments(query)
+    ]);
+
+    // Enrich with company name from profile-only supplier doc
+    const userIds = users.map(u => u._id);
+    const profileDocs = await Supplier.find({ submittedBy: { $in: userIds }, isProfileOnly: true })
+      .select('submittedBy supplierName').lean();
+    const nameMap = new Map(
+      profileDocs.filter(d => d.supplierName).map(d => [d.submittedBy?.toString(), d.supplierName])
+    );
+
+    const data = users.map(u => ({
+      ...u,
+      companyName: nameMap.get(u._id.toString()) || ''
+    }));
+
+    res.json({ success: true, data, pagination: { total, page: parseInt(page), limit: parseInt(limit) } });
+  } catch (error) {
+    console.error('Pending registrations error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching pending registrations' });
+  }
+});
+
 // @route   POST /api/users
 // @desc    Create new internal user
 // @access  Private (Super Admin)

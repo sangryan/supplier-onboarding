@@ -35,6 +35,7 @@ import {
   History as HistoryIcon,
   ExitToApp as ExitIcon,
   Home as HomeIcon,
+  HowToReg as HowToRegIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
@@ -50,6 +51,7 @@ const Layout = () => {
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingRegistrationsCount, setPendingRegistrationsCount] = useState(0);
 
   // Suppliers don't need sidebar
   const isSupplier = user?.role === 'supplier';
@@ -68,10 +70,27 @@ const Layout = () => {
     }
   };
 
+  const fetchPendingRegistrationsCount = async () => {
+    try {
+      const response = await api.get('/users/pending-registrations', { params: { countOnly: 'true' } });
+      setPendingRegistrationsCount(response.data.count || 0);
+    } catch {
+      // silently ignore
+    }
+  };
+
   React.useEffect(() => {
     if (user) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000); // Poll every minute
+      const interval = setInterval(fetchNotifications, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  React.useEffect(() => {
+    if (user && (user.role === 'procurement' || user.role === 'super_admin')) {
+      fetchPendingRegistrationsCount();
+      const interval = setInterval(fetchPendingRegistrationsCount, 60000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -144,6 +163,7 @@ const Layout = () => {
       return [
         { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
         { text: 'All tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
+        { text: 'Registrations', icon: <HowToRegIcon />, path: '/registrations', badge: pendingRegistrationsCount },
         { text: 'Supplier List', icon: <BusinessIcon />, path: '/suppliers' },
       ];
     } else if (user.role === 'legal') {
@@ -154,6 +174,7 @@ const Layout = () => {
     } else if (user.role === 'super_admin') {
       return [
         { text: 'Users', icon: <PeopleIcon />, path: '/dashboard' },
+        { text: 'Registrations', icon: <HowToRegIcon />, path: '/registrations', badge: pendingRegistrationsCount },
         { text: 'Suppliers', icon: <BusinessIcon />, path: '/suppliers' },
         { text: 'All Tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
         { text: 'Audit Logs', icon: <HistoryIcon />, path: '/audit-logs' },
@@ -249,7 +270,11 @@ const Layout = () => {
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40, color: active ? '#111827' : '#6b7280' }}>
-                    {item.icon}
+                    {item.badge ? (
+                      <Badge badgeContent={item.badge} color="error" max={99}>
+                        {item.icon}
+                      </Badge>
+                    ) : item.icon}
                   </ListItemIcon>
                   <ListItemText
                     primary={item.text}

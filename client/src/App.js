@@ -44,6 +44,7 @@ import EditCompanyDetails from './pages/Profile/EditCompanyDetails';
 import ChangePassword from './pages/Profile/ChangePassword';
 import NotFound from './pages/NotFound';
 import AuditLogs from './pages/Admin/AuditLogs';
+import RegistrationApprovals from './pages/Admin/RegistrationApprovals';
 
 function App() {
   const { user, loading } = useAuth();
@@ -127,6 +128,7 @@ function App() {
           <Route path="/application/:id" element={<ApplicationStatus />} />
 
           {/* Admin/Procurement/Legal Routes */}
+          <Route path="/registrations" element={<RegistrationApprovals />} />
           <Route path="/suppliers" element={<SupplierList />} />
           <Route path="/suppliers/:id" element={<SupplierDetails />} />
           <Route path="/tasks" element={<TaskListWrapper />} />
