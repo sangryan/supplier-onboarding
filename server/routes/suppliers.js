@@ -427,8 +427,14 @@ router.get('/', protect, async (req, res) => {
         const vNum = record.vendorNumber;
         const sName = (record.supplierName || '').trim().toLowerCase();
 
+        // Placeholder records (users with no application yet) get a unique key by userId
+        if (record.isPlaceholder) {
+          groupedEntities.set(`USER_${record.userId}`, record);
+          return;
+        }
+
         // Find if we already have a group for this vendor or name
-        let key = vNum ? `VENDOR_${vNum}` : `NAME_${sName}`;
+        let key = vNum ? `VENDOR_${vNum}` : (sName ? `NAME_${sName}` : `ID_${record._id}`);
 
         // If it's a placeholder name match with a vendor record, we should merge them
         if (!vNum && sName) {
