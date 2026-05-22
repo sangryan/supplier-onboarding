@@ -32,6 +32,7 @@ import DottedArrowIcon from '../../components/DottedArrowIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 const DEPT_COLORS = [
     { bg: '#dbeafe', color: '#1d4ed8' },
@@ -62,7 +63,7 @@ const LegalDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
-    const [sortOrder, setSortOrder] = useState('asc');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
     const [selectedRows, setSelectedRows] = useState([]);
@@ -112,9 +113,21 @@ const LegalDashboard = () => {
         e.stopPropagation();
         try {
             await api.post(`/suppliers/${taskId}/assign`);
+            toast.success('Task picked up — moved to My Tasks');
             fetchTasks();
         } catch (err) {
-            console.error('Error picking up task:', err);
+            toast.error(err.response?.data?.message || 'Failed to pick up task');
+        }
+    };
+
+    const handleRelease = async (taskId, e) => {
+        e.stopPropagation();
+        try {
+            await api.post(`/suppliers/${taskId}/unassign`);
+            toast.success('Task released back to All Tasks');
+            fetchTasks();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to release task');
         }
     };
 
@@ -419,24 +432,24 @@ const LegalDashboard = () => {
                                             </TableCell>
                                             <TableCell align="right" sx={{ py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-                                                    {activeTab === 'All Tasks' && (
+                                                    {activeTab === 'My Tasks' && task.assignedTo?.toString() === user?.id?.toString() && (
                                                         <Button
                                                             size="small"
                                                             variant="outlined"
-                                                            onClick={(e) => handlePickUp(task._id, e)}
+                                                            onClick={(e) => handleRelease(task._id, e)}
                                                             sx={{
                                                                 textTransform: 'none',
                                                                 fontSize: '12px',
                                                                 fontWeight: 600,
-                                                                borderColor: '#578A18',
-                                                                color: '#578A18',
+                                                                borderColor: '#d1d5db',
+                                                                color: '#6b7280',
                                                                 px: 1.5,
                                                                 py: 0.5,
                                                                 minWidth: 0,
-                                                                '&:hover': { backgroundColor: '#f0fdf4', borderColor: '#467014' },
+                                                                '&:hover': { backgroundColor: '#f9fafb', borderColor: '#9ca3af' },
                                                             }}
                                                         >
-                                                            Pick Up
+                                                            Release
                                                         </Button>
                                                     )}
                                                     <IconButton

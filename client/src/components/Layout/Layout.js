@@ -168,7 +168,7 @@ const Layout = () => {
       ];
     } else if (user.role === 'legal') {
       return [
-        { text: 'My tasks', icon: <HomeIcon />, path: '/dashboard' },
+        { text: 'Tasks', icon: <HomeIcon />, path: '/dashboard' },
         { text: 'Contract Management', icon: <DescriptionIcon />, path: '/contracts' },
       ];
     } else if (user.role === 'super_admin') {

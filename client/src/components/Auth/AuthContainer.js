@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import { Box, Typography, TextField, Button } from '@mui/material';
+import { Box, Typography, TextField, Button, InputAdornment, IconButton } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import AuthLayout from './AuthLayout';
@@ -23,6 +24,8 @@ const AuthContainer = ({ mode = 'login' }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasFailedLogin, setHasFailedLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isRegister = activeTab === 1;
 
@@ -34,8 +37,7 @@ const AuthContainer = ({ mode = 'login' }) => {
   const handleTabChange = (tabIndex) => {
     setActiveTab(tabIndex);
     setError('');
-    setHasFailedLogin(false); // Reset failed login flag when switching tabs
-    // Navigate to the appropriate route
+    setHasFailedLogin(false);
     if (tabIndex === 0) {
       navigate('/login');
     } else {
@@ -62,7 +64,7 @@ const AuthContainer = ({ mode = 'login' }) => {
           setError('Full name is required');
           return;
         }
-        
+
         if (formData.password.length < 8) {
           setError('Password must be at least 8 characters');
           return;
@@ -74,14 +76,10 @@ const AuthContainer = ({ mode = 'login' }) => {
         }
 
         setLoading(true);
-        
-        // Clear any existing token/user before registration to prevent conflicts
+
         console.log('🟡 [AUTH] Clearing any existing auth state before registration');
         localStorage.removeItem('token');
-        // Note: We can't directly clear user from context here, but removing token
-        // will prevent checkAuth from setting user on next check
 
-        // Split name into firstName and lastName
         const nameParts = formData.name.trim().split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -98,36 +96,26 @@ const AuthContainer = ({ mode = 'login' }) => {
           console.log('🟢 [AUTH] Registration result:', JSON.stringify(result, null, 2));
 
           if (result && result.success) {
-            // Check if email verification is required
             if (result.requiresVerification) {
               console.log('🟡 [AUTH] Email verification required - navigating to 2FA');
-              console.log('🟡 [AUTH] Email:', formData.email);
-              // Clear any existing error
               setError('');
-              // IMPORTANT: Use setTimeout to ensure state updates complete before navigation
               setTimeout(() => {
-                console.log('🟡 [AUTH] Executing navigation to /2fa');
-                navigate('/2fa', { 
+                navigate('/2fa', {
                   replace: true,
-                  state: { email: formData.email || result.email, from: 'register' } 
+                  state: { email: formData.email || result.email, from: 'register' }
                 });
               }, 100);
               setLoading(false);
-              return; // Exit early to prevent setLoading(false) from running again
+              return;
             } else if (result.user?.role === 'supplier') {
-              // New suppliers should be directed to the application form first
-              console.log('🟢 [AUTH] Supplier registered, navigating to application form');
               navigate('/application/new');
             } else {
-              console.log('🟢 [AUTH] User registered, navigating to dashboard');
               navigate('/dashboard');
             }
           } else {
-            console.error('🔴 [AUTH] Registration failed:', result?.message);
             setError(result?.message || 'Registration failed');
           }
         } catch (error) {
-          console.error('🔴 [AUTH] Registration error in handleSubmit:', error);
           setError(error.message || 'Registration failed. Please try again.');
         } finally {
           setLoading(false);
@@ -140,29 +128,22 @@ const AuthContainer = ({ mode = 'login' }) => {
           const result = await login(formData.email, formData.password);
           console.log('🟢 [AUTH] Login result:', JSON.stringify(result, null, 2));
 
-          // Check for email verification requirement FIRST (before checking success)
           if (result && result.requiresVerification) {
-            // Email verification required - redirect to 2FA page
-            console.log('🟡 [AUTH] Email verification required for login - navigating to 2FA');
             setHasFailedLogin(false);
-            setError(''); // Clear any error messages
-            // Use setTimeout to ensure state updates complete before navigation
+            setError('');
             setTimeout(() => {
-              console.log('🟡 [AUTH] Executing navigation to /2fa for login');
-              navigate('/2fa', { 
+              navigate('/2fa', {
                 replace: true,
-                state: { email: formData.email || result.email, from: 'login' } 
+                state: { email: formData.email || result.email, from: 'login' }
               });
             }, 100);
             setLoading(false);
-            return; // Exit early to prevent further processing
+            return;
           }
 
           if (result && result.success) {
-            // Reset failed login flag on success
             setHasFailedLogin(false);
-            
-            // Check if supplier profile is complete
+
             if (result.user?.role === 'supplier') {
               const profileComplete = await checkSupplierProfileComplete(result.user);
               if (profileComplete) {
@@ -174,20 +155,17 @@ const AuthContainer = ({ mode = 'login' }) => {
               if (result.user.mustChangePassword) {
                 navigate('/change-password');
               } else {
-                // Procurement and Legal users go to dashboard (ProcurementDashboard)
                 navigate('/dashboard');
               }
             } else {
               navigate('/dashboard');
             }
           } else {
-            console.error('🔴 [AUTH] Login failed:', result?.message);
             setError(result?.message || 'Login failed');
             setHasFailedLogin(true);
             setLoading(false);
           }
         } catch (error) {
-          // Handle any unexpected errors
           console.error('Login error:', error);
           setError(error.message || 'An error occurred during login. Please try again.');
           setHasFailedLogin(true);
@@ -195,29 +173,30 @@ const AuthContainer = ({ mode = 'login' }) => {
         }
       }
     } else if (step === '2fa') {
-      // Handle 2FA verification (future implementation)
       setLoading(true);
-      // Verify 2FA code
-      // const result = await verify2FA(formData.email, formData.verificationCode);
-      // if (result.success) {
-      //   navigate('/dashboard');
-      // } else {
-      //   setError(result.message);
-      // }
       setLoading(false);
     }
+  };
+
+  const fieldSx = {
+    '& .MuiOutlinedInput-root': {
+      backgroundColor: '#fff',
+      '& fieldset': { borderColor: '#d1d5db', borderRadius: '8px' },
+      '&:hover fieldset': { borderColor: '#9ca3af' },
+      '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '1px' },
+    },
+    '& .MuiOutlinedInput-input': { padding: '12px 14px', fontSize: '15px' },
   };
 
   return (
     <AuthLayout>
       {step === 'auth' ? (
         <>
-          {/* Title */}
-          <Typography 
-            variant="h4" 
-            sx={{ 
-              fontWeight: 'bold', 
-              mb: 1, 
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 'bold',
+              mb: 1,
               color: '#000',
               fontSize: { xs: '24px', sm: '28px', md: '34px' },
               textAlign: { xs: 'center', sm: 'left' }
@@ -225,9 +204,9 @@ const AuthContainer = ({ mode = 'login' }) => {
           >
             {isRegister ? 'Supplier Registration' : 'Welcome back'}
           </Typography>
-          <Typography 
-            sx={{ 
-              color: '#666', 
+          <Typography
+            sx={{
+              color: '#666',
               mb: 4,
               fontSize: { xs: '14px', sm: '16px' },
               textAlign: { xs: 'center', sm: 'left' }
@@ -238,26 +217,14 @@ const AuthContainer = ({ mode = 'login' }) => {
               : 'Sign in to your account to continue.'}
           </Typography>
 
-          {/* Tabs */}
           <TabSwitcher activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
 
-          {/* Error Message */}
           {error && (
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                backgroundColor: '#ffebee',
-                borderRadius: 1,
-                color: '#c62828',
-                fontSize: '14px',
-              }}
-            >
+            <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#ffebee', borderRadius: 1, color: '#c62828', fontSize: '14px' }}>
               {error}
             </Box>
           )}
 
-          {/* Form */}
           <Box component="form" onSubmit={handleSubmit}>
             {isRegister && (
               <Box sx={{ mb: 2 }}>
@@ -271,26 +238,7 @@ const AuthContainer = ({ mode = 'login' }) => {
                   placeholder="Your name"
                   value={formData.name}
                   onChange={handleChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#fff',
-                      '& fieldset': {
-                        borderColor: '#d1d5db',
-                        borderRadius: '8px',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: '#9ca3af',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                        borderWidth: '1px',
-                      },
-                    },
-                    '& .MuiOutlinedInput-input': {
-                      padding: '12px 14px',
-                      fontSize: '15px',
-                    },
-                  }}
+                  sx={fieldSx}
                 />
               </Box>
             )}
@@ -307,26 +255,7 @@ const AuthContainer = ({ mode = 'login' }) => {
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                    '& fieldset': {
-                      borderColor: '#d1d5db',
-                      borderRadius: '8px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#9ca3af',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#1976d2',
-                      borderWidth: '1px',
-                    },
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    padding: '12px 14px',
-                    fontSize: '15px',
-                  },
-                }}
+                sx={fieldSx}
               />
             </Box>
 
@@ -337,35 +266,29 @@ const AuthContainer = ({ mode = 'login' }) => {
               <TextField
                 required
                 fullWidth
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 name="password"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                    '& fieldset': {
-                      borderColor: '#d1d5db',
-                      borderRadius: '8px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#9ca3af',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#1976d2',
-                      borderWidth: '1px',
-                    },
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    padding: '12px 14px',
-                    fontSize: '15px',
-                  },
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(v => !v)}
+                        edge="end"
+                        size="small"
+                        sx={{ color: '#9ca3af', mr: 0.5 }}
+                      >
+                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
+                sx={fieldSx}
               />
             </Box>
 
-            {/* Confirm Password - Only show for registration */}
             {isRegister && (
               <Box sx={{ mb: 3 }}>
                 <Typography sx={{ mb: 0.75, fontSize: '15px', fontWeight: 600, color: '#000' }}>
@@ -374,31 +297,26 @@ const AuthContainer = ({ mode = 'login' }) => {
                 <TextField
                   required
                   fullWidth
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   placeholder="Confirm Password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#fff',
-                      '& fieldset': {
-                        borderColor: '#d1d5db',
-                        borderRadius: '8px',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: '#9ca3af',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                        borderWidth: '1px',
-                      },
-                    },
-                    '& .MuiOutlinedInput-input': {
-                      padding: '12px 14px',
-                      fontSize: '15px',
-                    },
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowConfirmPassword(v => !v)}
+                          edge="end"
+                          size="small"
+                          sx={{ color: '#9ca3af', mr: 0.5 }}
+                        >
+                          {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
+                  sx={fieldSx}
                 />
               </Box>
             )}
@@ -418,10 +336,7 @@ const AuthContainer = ({ mode = 'login' }) => {
                 borderRadius: '8px',
                 boxShadow: 'none',
                 mb: hasFailedLogin && !isRegister ? 1.5 : 2.5,
-                '&:hover': {
-                  backgroundColor: theme.palette.green.hover,
-                  boxShadow: 'none',
-                },
+                '&:hover': { backgroundColor: theme.palette.green.hover, boxShadow: 'none' },
                 '&:disabled': {
                   backgroundColor: theme.palette.neutral.gray[300],
                   color: theme.palette.text.disabled,
@@ -429,15 +344,10 @@ const AuthContainer = ({ mode = 'login' }) => {
               }}
             >
               {loading
-                ? isRegister
-                  ? 'Creating account...'
-                  : 'Signing in...'
-                : isRegister
-                ? 'Create account'
-                : 'SIGN IN'}
+                ? isRegister ? 'Creating account...' : 'Signing in...'
+                : isRegister ? 'Create account' : 'SIGN IN'}
             </Button>
 
-            {/* Forgot Password Link - Only show on login and after failed attempt */}
             {!isRegister && hasFailedLogin && (
               <Typography sx={{ textAlign: 'center', mb: 2.5, fontSize: '13px' }}>
                 <Box
@@ -446,10 +356,7 @@ const AuthContainer = ({ mode = 'login' }) => {
                   sx={{
                     color: theme.palette.green.main || '#578A18',
                     cursor: 'pointer',
-                    '&:hover': {
-                      color: theme.palette.green.hover || '#467014',
-                      textDecoration: 'underline',
-                    },
+                    '&:hover': { color: theme.palette.green.hover || '#467014', textDecoration: 'underline' },
                   }}
                 >
                   Forgot Password?
@@ -457,16 +364,12 @@ const AuthContainer = ({ mode = 'login' }) => {
               </Typography>
             )}
 
-            {/* OR Divider */}
             <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
               <Box sx={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }} />
-              <Typography sx={{ px: 2, color: '#999', fontSize: '14px' }}>
-                OR
-              </Typography>
+              <Typography sx={{ px: 2, color: '#999', fontSize: '14px' }}>OR</Typography>
               <Box sx={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }} />
             </Box>
 
-            {/* Google Sign In */}
             <Button
               fullWidth
               variant="outlined"
@@ -480,27 +383,16 @@ const AuthContainer = ({ mode = 'login' }) => {
                 borderRadius: '8px',
                 border: '1px solid #d1d5db',
                 boxShadow: 'none',
-                '&:hover': {
-                  backgroundColor: '#f9fafb',
-                  border: '1px solid #d1d5db',
-                  boxShadow: 'none',
-                },
+                '&:hover': { backgroundColor: '#f9fafb', border: '1px solid #d1d5db', boxShadow: 'none' },
               }}
             >
-              <Box
-                component="img"
-                src="https://www.google.com/favicon.ico"
-                alt="Google"
-                sx={{ width: 18, height: 18, mr: 1.5 }}
-              />
+              <Box component="img" src="https://www.google.com/favicon.ico" alt="Google" sx={{ width: 18, height: 18, mr: 1.5 }} />
               Sign in with Google
             </Button>
-
           </Box>
         </>
       ) : (
         <>
-          {/* 2FA Step */}
           <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: '#000' }}>
             Two-Factor Authentication
           </Typography>
@@ -508,23 +400,12 @@ const AuthContainer = ({ mode = 'login' }) => {
             Enter the verification code sent to your email.
           </Typography>
 
-          {/* Error Message */}
           {error && (
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                backgroundColor: '#ffebee',
-                borderRadius: 1,
-                color: '#c62828',
-                fontSize: '14px',
-              }}
-            >
+            <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#ffebee', borderRadius: 1, color: '#c62828', fontSize: '14px' }}>
               {error}
             </Box>
           )}
 
-          {/* 2FA Form */}
           <Box component="form" onSubmit={handleSubmit}>
             <Box sx={{ mb: 3 }}>
               <Typography sx={{ mb: 0.75, fontSize: '15px', fontWeight: 600, color: '#000' }}>
@@ -541,17 +422,9 @@ const AuthContainer = ({ mode = 'login' }) => {
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    '& fieldset': {
-                      borderColor: '#d1d5db',
-                      borderRadius: '8px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#9ca3af',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#1976d2',
-                      borderWidth: '1px',
-                    },
+                    '& fieldset': { borderColor: '#d1d5db', borderRadius: '8px' },
+                    '&:hover fieldset': { borderColor: '#9ca3af' },
+                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: '1px' },
                   },
                   '& .MuiOutlinedInput-input': {
                     padding: '12px 14px',
@@ -578,14 +451,8 @@ const AuthContainer = ({ mode = 'login' }) => {
                 borderRadius: '8px',
                 boxShadow: 'none',
                 mb: 2,
-                '&:hover': {
-                  backgroundColor: '#4a8f4e',
-                  boxShadow: 'none',
-                },
-                '&:disabled': {
-                  backgroundColor: '#e0e0e0',
-                  color: '#9e9e9e',
-                },
+                '&:hover': { backgroundColor: '#4a8f4e', boxShadow: 'none' },
+                '&:disabled': { backgroundColor: '#e0e0e0', color: '#9e9e9e' },
               }}
             >
               {loading ? 'Verifying...' : 'Verify'}
@@ -595,15 +462,7 @@ const AuthContainer = ({ mode = 'login' }) => {
               fullWidth
               variant="text"
               onClick={() => setStep('auth')}
-              sx={{
-                color: '#666',
-                textTransform: 'none',
-                fontSize: '14px',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: '#1976d2',
-                },
-              }}
+              sx={{ color: '#666', textTransform: 'none', fontSize: '14px', '&:hover': { backgroundColor: 'transparent', color: '#1976d2' } }}
             >
               Back to login
             </Button>

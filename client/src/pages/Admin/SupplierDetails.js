@@ -369,15 +369,53 @@ const SupplierDetails = () => {
 
 
 
+  const procurementStatuses = ['submitted', 'pending_procurement', 'more_info_required'];
+  const legalStatuses = ['pending_legal'];
+
+  const isMyTask = () => {
+    if (!supplier) return false;
+    if (!supplier.assignedTo) return false;
+    const assignedId = supplier.assignedTo?._id || supplier.assignedTo;
+    return String(assignedId) === String(user.id || user._id);
+  };
+
+  const canPickUp = () => {
+    if (!supplier) return false;
+    if (supplier.assignedTo) return false; // already picked up
+    if (user.role === 'procurement') return procurementStatuses.includes(supplier.status);
+    if (user.role === 'legal') return legalStatuses.includes(supplier.status);
+    return false;
+  };
+
   const canApprove = () => {
     if (!supplier) return false;
     if (user.role === 'procurement') {
-      return ['submitted', 'pending_procurement', 'more_info_required'].includes(supplier.status);
+      return procurementStatuses.includes(supplier.status) && isMyTask();
     }
     if (user.role === 'legal') {
-      return supplier.status === 'pending_legal';
+      return legalStatuses.includes(supplier.status) && isMyTask();
     }
     return false;
+  };
+
+  const handlePickUp = async () => {
+    try {
+      await api.post(`/suppliers/${supplier._id}/assign`);
+      toast.success('Task picked up — you now own this application');
+      fetchSupplier();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to pick up task');
+    }
+  };
+
+  const handleRelease = async () => {
+    try {
+      await api.post(`/suppliers/${supplier._id}/unassign`);
+      toast.success('Task released back to the pool');
+      fetchSupplier();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to release task');
+    }
   };
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
@@ -506,6 +544,48 @@ const SupplierDetails = () => {
           </Box>
 
           {/* Right side - Action Buttons (Desktop only) */}
+          {canPickUp() && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
+              <Button
+                variant="outlined"
+                onClick={handlePickUp}
+                sx={{
+                  borderColor: '#578A18',
+                  color: '#578A18',
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  borderRadius: '6px',
+                  '&:hover': { backgroundColor: '#f0fdf4', borderColor: '#467014' },
+                }}
+              >
+                Pick Up Task
+              </Button>
+            </Box>
+          )}
+          {isMyTask() && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
+              <Button
+                variant="outlined"
+                onClick={handleRelease}
+                sx={{
+                  borderColor: '#d1d5db',
+                  color: '#6b7280',
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  px: 3,
+                  py: 1,
+                  borderRadius: '6px',
+                  '&:hover': { backgroundColor: '#f9fafb', borderColor: '#9ca3af' },
+                }}
+              >
+                Release Task
+              </Button>
+            </Box>
+          )}
           {showActions && (
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1.5, flexWrap: 'wrap' }}>
               <Button
@@ -1838,6 +1918,27 @@ const SupplierDetails = () => {
 
 
       {/* Mobile Action Buttons - Part of form layout */}
+      {canPickUp() && (
+        <Box sx={{ display: { xs: 'flex', sm: 'none' }, px: 2, pt: 3 }}>
+          <Button
+            variant="outlined"
+            onClick={handlePickUp}
+            fullWidth
+            sx={{
+              borderColor: '#578A18',
+              color: '#578A18',
+              textTransform: 'none',
+              fontSize: '14px',
+              fontWeight: 600,
+              py: 1.5,
+              borderRadius: '6px',
+              '&:hover': { backgroundColor: '#f0fdf4', borderColor: '#467014' },
+            }}
+          >
+            Pick Up Task
+          </Button>
+        </Box>
+      )}
       {showActions && (
         <Box
           sx={{

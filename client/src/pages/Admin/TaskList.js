@@ -41,6 +41,7 @@ import DottedArrowIcon from '../../components/DottedArrowIcon';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import Footer from '../../components/Footer/Footer';
+import { toast } from 'react-toastify';
 
 const bounceRight = keyframes`
   0%, 100% { transform: translateX(0px); }
@@ -66,7 +67,7 @@ const TaskList = () => {
   const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
   const [selectedRows, setSelectedRows] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [view, setView] = useState('all');
 
   useEffect(() => {
@@ -111,9 +112,21 @@ const TaskList = () => {
     e.stopPropagation();
     try {
       await api.post(`/suppliers/${taskId}/assign`);
+      toast.success('Task picked up — moved to My Tasks');
       fetchTasks();
     } catch (err) {
-      console.error('Error picking up task:', err);
+      toast.error(err.response?.data?.message || 'Failed to pick up task');
+    }
+  };
+
+  const handleRelease = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/suppliers/${taskId}/unassign`);
+      toast.success('Task released back to All Tasks');
+      fetchTasks();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to release task');
     }
   };
 
@@ -614,6 +627,26 @@ const TaskList = () => {
                               }}
                             >
                               Pick Up
+                            </Button>
+                          )}
+                          {view === 'mine' && task.assignedTo?.toString() === user?.id?.toString() && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={(e) => handleRelease(task._id, e)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                borderColor: '#d1d5db',
+                                color: '#6b7280',
+                                px: 1.5,
+                                py: 0.5,
+                                minWidth: 0,
+                                '&:hover': { backgroundColor: '#f9fafb', borderColor: '#9ca3af' },
+                              }}
+                            >
+                              Release
                             </Button>
                           )}
                           <IconButton

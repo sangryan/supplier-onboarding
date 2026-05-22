@@ -67,7 +67,7 @@ router.post('/draft', protect, authorize('supplier'), async (req, res) => {
     // Map frontend field names to model structure
     const draftData = {
       // Basic Information (required fields with defaults)
-      supplierName: req.body.supplierName || 'Draft Application',
+      supplierName: req.body.supplierName || (isProfileOnlyDraft ? '' : 'Draft Application'),
       legalNature: req.body.legalNature || 'company',
       serviceType: req.body.serviceTypes || req.body.serviceType || 'professional_services',
 
@@ -1001,6 +1001,40 @@ router.post('/:id/assign', protect, authorize('procurement', 'legal', 'super_adm
   } catch (err) {
     console.error('Assign task error:', err);
     res.status(500).json({ success: false, message: 'Error assigning task' });
+  }
+});
+
+// @route   POST /api/suppliers/:id/unassign
+// @desc    Release a picked-up task back to the pool
+// @access  Private (Procurement, Legal)
+router.post('/:id/unassign', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
+  try {
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    const assignedId = supplier.assignedTo ? supplier.assignedTo.toString() : null;
+    if (assignedId && assignedId !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only release tasks assigned to you' });
+    }
+
+    const procurementStatuses = ['submitted', 'pending_procurement', 'more_info_required'];
+    const legalStatuses = ['pending_legal'];
+
+    supplier.assignedTo = null;
+    supplier.assignedAt = null;
+    if (procurementStatuses.includes(supplier.status)) {
+      supplier.procurementOfficer = null;
+    } else if (legalStatuses.includes(supplier.status)) {
+      supplier.legalOfficer = null;
+    }
+    await supplier.save();
+
+    res.json({ success: true, message: 'Task released back to the pool' });
+  } catch (err) {
+    console.error('Unassign task error:', err);
+    res.status(500).json({ success: false, message: 'Error releasing task' });
   }
 });
 

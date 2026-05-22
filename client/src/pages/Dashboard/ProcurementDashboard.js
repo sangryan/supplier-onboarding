@@ -38,6 +38,7 @@ import DottedArrowIcon from '../../components/DottedArrowIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 const bounceRight = keyframes`
   0%, 100% { transform: translateX(0px); }
@@ -61,7 +62,7 @@ const ProcurementDashboard = () => {
   const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
   const [selectedRows, setSelectedRows] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     fetchTasks();
@@ -77,6 +78,7 @@ const ProcurementDashboard = () => {
           search,
           status: statusFilter,
           sortOrder,
+          view: 'mine',
         }
       });
 
@@ -143,6 +145,17 @@ const ProcurementDashboard = () => {
   const handleRowClick = (task) => {
     if (task.supplier?._id) {
       navigate(`/suppliers/${task.supplier._id}`);
+    }
+  };
+
+  const handleRelease = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/suppliers/${taskId}/unassign`);
+      toast.success('Task released back to All Tasks');
+      fetchTasks();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to release task');
     }
   };
 
@@ -542,9 +555,9 @@ const ProcurementDashboard = () => {
                 <TableBody>
                   {tasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} align="center" sx={{ py: 4, borderBottom: '1px solid #e0e0e0' }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4, borderBottom: '1px solid #e0e0e0' }}>
                         <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px' }}>
-                          No pending tasks
+                          No tasks assigned to you yet. Pick up tasks from All Tasks.
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -602,6 +615,27 @@ const ProcurementDashboard = () => {
                           {getStatusChip(task.status)}
                         </TableCell>
                         <TableCell align="right" sx={{ py: 1.5, borderBottom: '1px solid #e0e0e0' }} onClick={(e) => e.stopPropagation()}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                          {task.assignedTo?.toString() === user?.id?.toString() && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={(e) => handleRelease(task._id, e)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                borderColor: '#d1d5db',
+                                color: '#6b7280',
+                                px: 1.5,
+                                py: 0.5,
+                                minWidth: 0,
+                                '&:hover': { backgroundColor: '#f9fafb', borderColor: '#9ca3af' },
+                              }}
+                            >
+                              Release
+                            </Button>
+                          )}
                           <IconButton
                             size="small"
                             onClick={(e) => {
@@ -624,6 +658,7 @@ const ProcurementDashboard = () => {
                               <DottedArrowIcon size={18} />
                             )}
                           </IconButton>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))

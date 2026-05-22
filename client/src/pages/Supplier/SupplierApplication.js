@@ -237,11 +237,34 @@ const SupplierApplication = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [expandedAccordion, setExpandedAccordion] = useState('basicInformation');
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const phoneRegex = /^\+?[\d\s\-().]{7,20}$/;
+
+  const validateInputField = (field, value) => {
+    if (field === 'companyEmail' || field === 'contactEmail') {
+      if (value && !emailRegex.test(value.trim())) return 'Please enter a valid email address';
+    }
+    if (field === 'contactPhone') {
+      if (value && !phoneRegex.test(value.trim())) return 'Please enter a valid phone number (e.g. +254712345678)';
+    }
+    return '';
+  };
+
+  const handleFieldBlur = (field) => {
+    const err = validateInputField(field, formData[field]);
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
+    }
     // Debug file uploads
     if (value instanceof File || (Array.isArray(value) && value[0] instanceof File)) {
       console.log(`File uploaded for ${field}:`, value instanceof File ? value.name : value.map(f => f.name));
@@ -425,40 +448,35 @@ const SupplierApplication = () => {
   const renderMultiFileUpload = (fieldKey, label, maxFiles = 10) => {
     const currentValue = formData[fieldKey];
     const count = Array.isArray(currentValue) ? currentValue.length : 0;
-    const hasAny = count > 0;
+    const displayValue = count > 0 ? `${count} file${count > 1 ? 's' : ''} selected` : 'Choose files';
 
     return (
-      <Grid item xs={12}>
+      <Box sx={{ mb: 2.5 }}>
         <Typography
           variant="body2"
           sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
         >
           {label}
         </Typography>
-        <Typography
-          variant="caption"
-          sx={{ mb: 1.5, fontSize: '12px', color: '#9ca3af', display: 'block' }}
-        >
-          Please select up to {maxFiles} files
-        </Typography>
-        <Box
+        <Button
           component="label"
+          variant="outlined"
+          fullWidth
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '2px dashed #d1d5db',
-            borderRadius: '8px',
-            p: 4,
-            cursor: 'pointer',
-            backgroundColor: '#fafafa',
+            justifyContent: 'flex-start',
+            textTransform: 'none',
+            borderColor: '#d1d5db',
+            color: count > 0 ? theme.palette.green.main : '#6b7280',
+            fontSize: '14px',
+            py: 0.75,
+            fontWeight: count > 0 ? 500 : 400,
             '&:hover': {
               borderColor: '#9ca3af',
               backgroundColor: '#f9fafb'
             }
           }}
         >
+          {displayValue}
           <input
             type="file"
             multiple
@@ -480,28 +498,22 @@ const SupplierApplication = () => {
               e.target.value = '';
             }}
           />
-          <Box
-            component="img"
-            src="/images/upload.svg"
-            alt="Upload icon"
-            sx={{ width: 40, height: 40, mb: 1.5 }}
-          />
-          <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 0.5 }}>
-            Upload files
+        </Button>
+        <Typography
+          variant="caption"
+          sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}
+        >
+          Accepted: PDF, Word, Excel, Images · Up to {maxFiles} files (Max 20MB each)
+        </Typography>
+        {count === 0 && (
+          <Typography
+            variant="caption"
+            sx={{ color: '#9ca3af', fontSize: '12px', mt: 0.5, display: 'block' }}
+          >
+            No file chosen
           </Typography>
-          <Typography sx={{ fontSize: '12px', color: '#6b7280' }}>
-            Click here or drag and drop to upload
-          </Typography>
-          {hasAny && (
-            <Typography sx={{ fontSize: '12px', color: theme.palette.green.main, mt: 1, fontWeight: 500 }}>
-              {count} file(s) selected
-              {currentValue[0] instanceof File === false && currentValue[0] && (
-                <span> ({typeof currentValue[0] === 'string' ? 'Previously saved' : ''})</span>
-              )}
-            </Typography>
-          )}
-        </Box>
-      </Grid>
+        )}
+      </Box>
     );
   };
 
@@ -1357,7 +1369,69 @@ const SupplierApplication = () => {
     return true;
   };
 
+  const validateStep = (step) => {
+    const missing = [];
+
+    if (step === 0) {
+      if (!formData.supplierName?.trim()) missing.push('Company Name');
+      if (!formData.registeredCountry?.trim()) missing.push('Registered Country');
+      if (!formData.companyRegistrationNumber?.trim()) missing.push('Company Registration Number');
+      if (!formData.companyEmail?.trim()) missing.push('Company Email Address');
+      if (!formData.companyWebsite?.trim()) missing.push('Company Website');
+      if (!formData.physicalAddress?.trim()) missing.push('Physical Address');
+      if (!formData.contactFullName?.trim()) missing.push('Contact Person Full Name');
+      if (!formData.contactRelationship?.trim()) missing.push('Contact Person Relationship');
+      if (!formData.contactIdPassport?.trim()) missing.push('Contact Person ID/Passport Number');
+      if (!formData.contactPhone?.trim()) missing.push('Contact Person Phone Number');
+      if (!formData.contactEmail?.trim()) missing.push('Contact Person Email');
+      if (!formData.bankName?.trim()) missing.push('Bank Name');
+      if (!formData.accountNumber?.trim()) missing.push('Account Number');
+      if (!formData.branch?.trim()) missing.push('Branch');
+      if (!formData.currency?.trim()) missing.push('Currency');
+      if (!formData.creditPeriod) missing.push('Credit Period');
+    }
+
+    if (step === 1) {
+      if (!formData.entityType?.trim()) missing.push('Entity Type');
+      if (!formData.serviceTypes?.trim()) missing.push('Service Type');
+      if (!formData.servicesDescription?.trim()) missing.push('Services Description');
+    }
+
+    if (step === 2) {
+      if (!formData.sourceOfWealth?.trim()) missing.push('Source of Wealth/Funds');
+      if (formData.sourceOfWealth === 'other' && !formData.sourceOfWealthOther?.trim()) missing.push('Please specify source of wealth/funds');
+      if (!formData.declarantFullName?.trim()) missing.push('Full Name of Declarant');
+      if (!formData.declarantCapacity?.trim()) missing.push('Declarant Capacity');
+      if (!formData.declarantIdPassport?.trim()) missing.push('Declarant ID/Passport Number');
+      if (!formData.declarationDate) missing.push('Declaration Date');
+      if (!formData.consentToProcessing) missing.push('Consent to Processing of Personal Information');
+      if (!formData.confirmInformationAccurate) missing.push('Confirmation that Information is Accurate');
+    }
+
+    return missing;
+  };
+
   const handleSaveAndContinue = async () => {
+    // Validate all required fields for the current step
+    const missingFields = validateStep(activeStep);
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`, { autoClose: 6000 });
+      return;
+    }
+
+    // Validate email and phone format
+    const fieldsToCheck = ['companyEmail', 'contactPhone', 'contactEmail'];
+    const newErrors = {};
+    fieldsToCheck.forEach(f => {
+      const err = validateInputField(f, formData[f]);
+      if (err) newErrors[f] = err;
+    });
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...newErrors }));
+      toast.error('Please fix the highlighted fields before continuing');
+      return;
+    }
+
     setLoading(true);
     try {
       if (activeStep === 1 || activeStep === steps.length - 1) {
@@ -1888,6 +1962,9 @@ const SupplierApplication = () => {
                         handleChange('companyEmail', e.target.value);
                       }
                     }}
+                    onBlur={() => !prefilledFields.includes('companyEmail') && handleFieldBlur('companyEmail')}
+                    error={!!fieldErrors.companyEmail}
+                    helperText={fieldErrors.companyEmail}
                     disabled={prefilledFields.includes('companyEmail')}
                     InputProps={{
                       readOnly: prefilledFields.includes('companyEmail')
@@ -1898,9 +1975,7 @@ const SupplierApplication = () => {
                         backgroundColor: '#fff',
                         ...(prefilledFields.includes('companyEmail') && {
                           cursor: 'not-allowed',
-                          '& .MuiInputBase-input': {
-                            cursor: 'not-allowed',
-                          }
+                          '& .MuiInputBase-input': { cursor: 'not-allowed' }
                         })
                       }
                     }}
@@ -2132,6 +2207,9 @@ const SupplierApplication = () => {
                         handleChange('contactPhone', e.target.value);
                       }
                     }}
+                    onBlur={() => !prefilledFields.includes('contactPhone') && handleFieldBlur('contactPhone')}
+                    error={!!fieldErrors.contactPhone}
+                    helperText={fieldErrors.contactPhone}
                     placeholder="e.g +254712345678"
                     disabled={prefilledFields.includes('contactPhone')}
                     InputProps={{
@@ -2143,9 +2221,7 @@ const SupplierApplication = () => {
                         backgroundColor: '#fff',
                         ...(prefilledFields.includes('contactPhone') && {
                           cursor: 'not-allowed',
-                          '& .MuiInputBase-input': {
-                            cursor: 'not-allowed',
-                          }
+                          '& .MuiInputBase-input': { cursor: 'not-allowed' }
                         })
                       }
                     }}
@@ -2168,6 +2244,9 @@ const SupplierApplication = () => {
                         handleChange('contactEmail', e.target.value);
                       }
                     }}
+                    onBlur={() => !prefilledFields.includes('contactEmail') && handleFieldBlur('contactEmail')}
+                    error={!!fieldErrors.contactEmail}
+                    helperText={fieldErrors.contactEmail}
                     disabled={prefilledFields.includes('contactEmail')}
                     InputProps={{
                       readOnly: prefilledFields.includes('contactEmail')
@@ -2178,9 +2257,7 @@ const SupplierApplication = () => {
                         backgroundColor: '#fff',
                         ...(prefilledFields.includes('contactEmail') && {
                           cursor: 'not-allowed',
-                          '& .MuiInputBase-input': {
-                            cursor: 'not-allowed',
-                          }
+                          '& .MuiInputBase-input': { cursor: 'not-allowed' }
                         })
                       }
                     }}
