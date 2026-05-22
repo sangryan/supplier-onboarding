@@ -431,13 +431,6 @@ router.put('/:id/supplier-approval', protect, authorize('procurement', 'super_ad
       });
     }
 
-    if (user.supplierApprovalStatus === 'profile_incomplete') {
-      return res.status(400).json({
-        success: false,
-        message: 'Supplier profile is incomplete. Approval can only be done after profile details are completed.'
-      });
-    }
-
     user.supplierApprovalStatus = status;
     user.supplierApprovalReviewedBy = req.user.id;
     user.supplierApprovalReviewedAt = new Date();

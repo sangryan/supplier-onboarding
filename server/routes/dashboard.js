@@ -89,15 +89,17 @@ router.get('/stats', protect, async (req, res) => {
 
       // Role-specific stats
       if (role === 'procurement') {
-        const myTasks = await Supplier.countDocuments({
-          status: { $in: ['submitted', 'pending_procurement', 'more_info_required'] }
+        stats.myTasks = await Supplier.countDocuments({ procurementOfficer: req.user._id });
+        stats.allTasks = await Supplier.countDocuments({
+          status: { $in: ['submitted', 'pending_procurement', 'more_info_required'] },
+          $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }]
         });
-        stats.myTasks = myTasks;
       } else if (role === 'legal') {
-        const myTasks = await Supplier.countDocuments({
-          status: 'pending_legal'
+        stats.myTasks = await Supplier.countDocuments({ legalOfficer: req.user._id });
+        stats.allTasks = await Supplier.countDocuments({
+          status: 'pending_legal',
+          $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }]
         });
-        stats.myTasks = myTasks;
       }
     }
 
@@ -173,21 +175,40 @@ router.get('/recent-activities', protect, async (req, res) => {
 // @access  Private (Procurement, Legal)
 router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', requestType = '', status = '', sortOrder = 'asc' } = req.query;
+    const { page = 1, limit = 10, search = '', requestType = '', status = '', sortOrder = 'asc', view = 'all' } = req.query;
     let query = {};
     let allTasks = [];
 
-    if (req.user.role === 'procurement') {
-      // Get all suppliers that need procurement attention
-      query = {
-        $or: [
-          { status: { $in: ['submitted', 'pending_procurement', 'more_info_required', 'rejected'] }, isProfileOnly: { $ne: true } },
-          { 'profileUpdateRequests.status': 'pending' },
-          { status: 'approved', vendorNumber: { $exists: false } }
-        ]
-      };
-    } else if (req.user.role === 'legal') {
-      query = { status: { $in: ['pending_legal', 'approved', 'pending_contract_upload', 'rejected'] }, isProfileOnly: { $ne: true } };
+    if (view === 'mine') {
+      // "My Tasks": applications this user permanently owns — no status restriction so they
+      // can follow progress across all stages after handing off
+      if (req.user.role === 'procurement') {
+        query = { procurementOfficer: req.user._id };
+      } else if (req.user.role === 'legal') {
+        query = { legalOfficer: req.user._id };
+      }
+    } else {
+      // "All Tasks": unassigned applications at this role's current stage
+      if (req.user.role === 'procurement') {
+        query = {
+          $and: [
+            {
+              $or: [
+                { status: { $in: ['submitted', 'pending_procurement', 'more_info_required', 'rejected'] }, isProfileOnly: { $ne: true } },
+                { 'profileUpdateRequests.status': 'pending' },
+                { status: 'approved', vendorNumber: { $exists: false } }
+              ]
+            },
+            { $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }] }
+          ]
+        };
+      } else if (req.user.role === 'legal') {
+        query = {
+          status: { $in: ['pending_legal', 'approved', 'pending_contract_upload', 'rejected'] },
+          isProfileOnly: { $ne: true },
+          $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }]
+        };
+      }
     }
 
     // Fetch all tasks (we'll process them to categorize)

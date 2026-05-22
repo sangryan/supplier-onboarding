@@ -8,6 +8,8 @@ import {
   TableBody,
   TableCell,
   TableContainer,
+  Tabs,
+  Tab,
   TableHead,
   TableRow,
   Box,
@@ -51,6 +53,8 @@ const TaskList = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [counts, setCounts] = useState({
+    allTasks: 0,
+    myTasks: 0,
     pendingApplications: 0,
     pendingVendorAssignment: 0,
     pendingProfileUpdate: 0,
@@ -63,10 +67,11 @@ const TaskList = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [view, setView] = useState('all');
 
   useEffect(() => {
     fetchTasks();
-  }, [page, search, statusFilter, sortOrder]);
+  }, [page, search, statusFilter, sortOrder, view]);
 
   const fetchTasks = async () => {
     try {
@@ -78,16 +83,20 @@ const TaskList = () => {
           search,
           status: statusFilter,
           sortOrder,
+          view,
         }
       });
 
       if (response.data.success) {
         setTasks(response.data.data || []);
-        setCounts(response.data.counts || {
-          pendingApplications: 0,
-          pendingVendorAssignment: 0,
-          pendingProfileUpdate: 0,
-          pendingContactUpdate: 0
+        const c = response.data.counts || {};
+        setCounts({
+          allTasks: c.allTasks ?? 0,
+          myTasks: c.myTasks ?? 0,
+          pendingApplications: c.pendingApplications ?? 0,
+          pendingVendorAssignment: c.pendingVendorAssignment ?? 0,
+          pendingProfileUpdate: c.pendingProfileUpdate ?? 0,
+          pendingContactUpdate: c.pendingContactUpdate ?? 0,
         });
         setPagination(response.data.pagination || { total: 0, pages: 1, limit: 10 });
       }
@@ -95,6 +104,16 @@ const TaskList = () => {
       console.error('Error fetching tasks:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePickUp = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/suppliers/${taskId}/assign`);
+      fetchTasks();
+    } catch (err) {
+      console.error('Error picking up task:', err);
     }
   };
 
@@ -242,6 +261,22 @@ const TaskList = () => {
             >
               Add New On-Demand Vendor
             </Button>
+          </Box>
+
+          {/* All Tasks / My Tasks tabs */}
+          <Box sx={{ borderBottom: '1px solid #e5e7eb', mb: 3 }}>
+            <Tabs
+              value={view}
+              onChange={(_, val) => { setView(val); setPage(1); }}
+              sx={{
+                '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '14px', minWidth: 120 },
+                '& .Mui-selected': { color: '#578A18' },
+                '& .MuiTabs-indicator': { backgroundColor: '#578A18' },
+              }}
+            >
+              <Tab label={`All Tasks${counts.allTasks > 0 ? ` (${counts.allTasks})` : ''}`} value="all" />
+              <Tab label={`My Tasks${counts.myTasks > 0 ? ` (${counts.myTasks})` : ''}`} value="mine" />
+            </Tabs>
           </Box>
 
           {/* Summary Cards */}
@@ -560,28 +595,50 @@ const TaskList = () => {
                         {getStatusChip(task.status)}
                       </TableCell>
                       <TableCell align="right" sx={{ py: 1.5 }} onClick={(e) => e.stopPropagation()}>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRowClick(task);
-                          }}
-                          sx={{
-                            color: '#578A18',
-                            animation: `${bounceRight} 1.2s ease-in-out infinite`,
-                            '&:hover': {
-                              color: '#467014',
-                              backgroundColor: 'transparent',
-                              animationDuration: '0.5s',
-                            },
-                          }}
-                        >
-                          {task.requestType === 'Ad-hoc Vendor Application' ? (
-                            <VisibilityIcon fontSize="small" />
-                          ) : (
-                            <DottedArrowIcon size={18} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                          {view === 'all' && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={(e) => handlePickUp(task._id, e)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                borderColor: '#578A18',
+                                color: '#578A18',
+                                px: 1.5,
+                                py: 0.5,
+                                minWidth: 0,
+                                '&:hover': { backgroundColor: '#f0fdf4', borderColor: '#467014' },
+                              }}
+                            >
+                              Pick Up
+                            </Button>
                           )}
-                        </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(task);
+                            }}
+                            sx={{
+                              color: '#578A18',
+                              animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                              '&:hover': {
+                                color: '#467014',
+                                backgroundColor: 'transparent',
+                                animationDuration: '0.5s',
+                              },
+                            }}
+                          >
+                            {task.requestType === 'Ad-hoc Vendor Application' ? (
+                              <VisibilityIcon fontSize="small" />
+                            ) : (
+                              <DottedArrowIcon size={18} />
+                            )}
+                          </IconButton>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))

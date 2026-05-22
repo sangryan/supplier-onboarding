@@ -209,6 +209,7 @@ const SupplierApplication = () => {
 
     // Declarations
     sourceOfWealth: '',
+    sourceOfWealthOther: '',
     declarantFullName: '',
     declarantCapacity: '',
     declarantIdPassport: '',
@@ -894,6 +895,7 @@ const SupplierApplication = () => {
 
               // Declarations (map from sourceOfFunds if direct fields don't exist)
               sourceOfWealth: app.sourceOfWealth || app.sourceOfFunds?.source || '',
+              sourceOfWealthOther: app.sourceOfWealthOther || '',
               declarantFullName: app.declarantFullName || app.sourceOfFunds?.declarantName || '',
               declarantCapacity: app.declarantCapacity || app.sourceOfFunds?.declarantCapacity || '',
               declarantIdPassport: app.declarantIdPassport || app.sourceOfFunds?.declarantIdPassport || '',
@@ -2785,6 +2787,25 @@ const SupplierApplication = () => {
                   </FormControl>
                 </Grid>
 
+                {formData.sourceOfWealth === 'other' && (
+                  <Grid item xs={12}>
+                    <Typography
+                      variant="body2"
+                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                    >
+                      Please specify source of wealth/funds
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Describe your source of wealth/funds"
+                      value={formData.sourceOfWealthOther}
+                      onChange={(e) => handleChange('sourceOfWealthOther', e.target.value)}
+                      sx={{ backgroundColor: '#fff' }}
+                    />
+                  </Grid>
+                )}
+
                 <Grid item xs={12} md={6}>
                   <Typography
                     variant="body2"
@@ -3765,7 +3786,9 @@ const SupplierApplication = () => {
                         Source of wealth/Funds
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                        {formData.sourceOfWealth || '-'}
+                        {formData.sourceOfWealth === 'other'
+                          ? (formData.sourceOfWealthOther || 'Other')
+                          : (formData.sourceOfWealth || '-')}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} md={4}>

@@ -166,6 +166,28 @@ const supplierSchema = new mongoose.Schema({
     ref: 'Contract'
   },
 
+  // Task assignment (current stage owner — cleared on stage advance)
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  assignedAt: {
+    type: Date,
+    default: null
+  },
+  // Permanent officer records (survive stage transitions)
+  procurementOfficer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  legalOfficer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+
   // Metadata
   submittedBy: {
     type: mongoose.Schema.Types.ObjectId,

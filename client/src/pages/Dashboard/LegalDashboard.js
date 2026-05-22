@@ -66,7 +66,9 @@ const LegalDashboard = () => {
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
     const [selectedRows, setSelectedRows] = useState([]);
-    const [activeTab, setActiveTab] = useState('My tasks');
+    const [activeTab, setActiveTab] = useState('All Tasks');
+    const [allTasksCount, setAllTasksCount] = useState(0);
+    const [myTasksCount, setMyTasksCount] = useState(0);
 
     useEffect(() => {
         fetchTasks();
@@ -76,25 +78,43 @@ const LegalDashboard = () => {
         try {
             setLoading(true);
             let endpoint = '/dashboard/tasks';
+            let params = { page, limit: 10, search, status: statusFilter, sortOrder };
 
-            if (activeTab === 'All Applications') {
+            if (activeTab === 'All Tasks') {
+                params.view = 'all';
+            } else if (activeTab === 'My Tasks') {
+                params.view = 'mine';
+            } else if (activeTab === 'All Applications') {
                 endpoint = '/dashboard/all-tasks';
             } else if (activeTab === 'Ad-hoc Vendors') {
                 endpoint = '/adhoc-vendors';
             }
 
-            const response = await api.get(endpoint, {
-                params: { page, limit: 10, search, status: statusFilter, sortOrder }
-            });
+            const response = await api.get(endpoint, { params });
 
             if (response.data.success) {
                 setTasks(response.data.data || []);
                 setPagination(response.data.pagination || { total: 0, pages: 1, limit: 10 });
+                if (activeTab === 'All Tasks' || activeTab === 'My Tasks') {
+                    const c = response.data.counts || {};
+                    setAllTasksCount(c.allTasks ?? 0);
+                    setMyTasksCount(c.myTasks ?? 0);
+                }
             }
         } catch (err) {
             console.error('Error fetching tasks:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePickUp = async (taskId, e) => {
+        e.stopPropagation();
+        try {
+            await api.post(`/suppliers/${taskId}/assign`);
+            fetchTasks();
+        } catch (err) {
+            console.error('Error picking up task:', err);
         }
     };
 
@@ -196,7 +216,7 @@ const LegalDashboard = () => {
         setPage(1);
     };
 
-    const tabs = ['My tasks', 'All Applications', 'Ad-hoc Vendors'];
+    const tabs = ['All Tasks', 'My Tasks', 'All Applications', 'Ad-hoc Vendors'];
 
     return (
         <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
@@ -254,7 +274,8 @@ const LegalDashboard = () => {
                                     }
                                 }}
                             >
-                                {tab}
+                                {tab === 'All Tasks' && allTasksCount > 0 ? `All Tasks (${allTasksCount})` :
+                                 tab === 'My Tasks' && myTasksCount > 0 ? `My Tasks (${myTasksCount})` : tab}
                             </Button>
                         ))}
                     </Box>
@@ -397,20 +418,42 @@ const LegalDashboard = () => {
                                                 {getStatusChip(task.rawStatus || task.status)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-                                                <IconButton
-                                                    size="small"
-                                                    sx={{
-                                                        color: '#578A18',
-                                                        animation: `${bounceRight} 1.2s ease-in-out infinite`,
-                                                        '&:hover': {
-                                                            color: '#467014',
-                                                            backgroundColor: 'transparent',
-                                                            animationDuration: '0.5s',
-                                                        },
-                                                    }}
-                                                >
-                                                    <DottedArrowIcon size={18} />
-                                                </IconButton>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                                                    {activeTab === 'All Tasks' && (
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={(e) => handlePickUp(task._id, e)}
+                                                            sx={{
+                                                                textTransform: 'none',
+                                                                fontSize: '12px',
+                                                                fontWeight: 600,
+                                                                borderColor: '#578A18',
+                                                                color: '#578A18',
+                                                                px: 1.5,
+                                                                py: 0.5,
+                                                                minWidth: 0,
+                                                                '&:hover': { backgroundColor: '#f0fdf4', borderColor: '#467014' },
+                                                            }}
+                                                        >
+                                                            Pick Up
+                                                        </Button>
+                                                    )}
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{
+                                                            color: '#578A18',
+                                                            animation: `${bounceRight} 1.2s ease-in-out infinite`,
+                                                            '&:hover': {
+                                                                color: '#467014',
+                                                                backgroundColor: 'transparent',
+                                                                animationDuration: '0.5s',
+                                                            },
+                                                        }}
+                                                    >
+                                                        <DottedArrowIcon size={18} />
+                                                    </IconButton>
+                                                </Box>
                                             </TableCell>
                                         </TableRow>
                                     ))

@@ -51,6 +51,8 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
         supplier.vendorNumber = existingVendorNumber;
         supplier.status = 'pending_legal';
         supplier.currentApprovalStage = 'legal';
+        supplier.assignedTo = null;
+        supplier.assignedAt = null;
         supplier.approvedAt = new Date();
         supplier.approvalHistory.push({
           approver: req.user.id,
@@ -64,6 +66,8 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
         supplier.vendorNumber = newVendorNumber;
         supplier.status = 'pending_legal';
         supplier.currentApprovalStage = 'legal';
+        supplier.assignedTo = null;
+        supplier.assignedAt = null;
         supplier.approvedAt = new Date();
         supplier.approvalHistory.push({
           approver: req.user.id,
@@ -88,6 +92,8 @@ router.post('/:supplierId/approve', protect, authorize('procurement', 'legal'), 
     } else if (req.user.role === 'legal' && supplier.currentApprovalStage === 'legal') {
       supplier.currentApprovalStage = 'contract_upload';
       supplier.status = 'pending_contract_upload';
+      supplier.assignedTo = null;
+      supplier.assignedAt = null;
 
       // Create or relink a draft contract record if it doesn't exist
       const Contract = require('../models/Contract');
@@ -354,6 +360,8 @@ router.post('/:supplierId/assign-vendor-number', protect, authorize('procurement
     supplier.vendorNumber = vendorNumber;
     supplier.status = 'pending_legal';
     supplier.currentApprovalStage = 'legal';
+    supplier.assignedTo = null;
+    supplier.assignedAt = null;
     supplier.approvalHistory.push({
       approver: req.user.id,
       action: 'assigned_vendor_number',

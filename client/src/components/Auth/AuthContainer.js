@@ -496,23 +496,6 @@ const AuthContainer = ({ mode = 'login' }) => {
               Sign in with Google
             </Button>
 
-            {/* Test 2FA Link - Remove in production */}
-            <Typography sx={{ textAlign: 'center', mt: 3, fontSize: '13px' }}>
-              <Box
-                component="span"
-                onClick={() => navigate('/2fa')}
-                sx={{
-                  color: '#999',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    color: '#1976d2',
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Test 2FA Page →
-              </Box>
-            </Typography>
           </Box>
         </>
       ) : (

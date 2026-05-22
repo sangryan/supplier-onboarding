@@ -5,6 +5,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { logAction } = require('../utils/auditLogger');
+const { createNotification } = require('../utils/notifications');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -530,7 +531,30 @@ router.post('/verify-otp', [
     user.isEmailVerified = true;
     user.otpCode = undefined;
     user.otpExpire = undefined;
+    if (user.role === 'supplier') {
+      user.supplierApprovalStatus = 'pending';
+    }
     await user.save();
+
+    // Notify procurement of new supplier registration (non-blocking)
+    if (user.role === 'supplier') {
+      try {
+        const procurementUsers = await User.find({ role: 'procurement', isActive: true });
+        const supplierName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        for (const pu of procurementUsers) {
+          await createNotification({
+            recipient: pu._id,
+            type: 'new_task_assigned',
+            title: 'New Supplier Registration',
+            message: `${supplierName} (${user.email}) has registered and is pending review.`,
+            relatedEntity: { entityType: 'user', entityId: user._id },
+            actionUrl: '/dashboard'
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to notify procurement of new supplier:', notifErr.message);
+      }
+    }
 
     // Generate token now that email is verified
     const token = generateToken(user._id);

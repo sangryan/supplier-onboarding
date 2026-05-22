@@ -553,6 +553,7 @@ const SupplierList = () => {
                       <TableCell align="right" sx={{ py: 1.5 }}>
                         {user?.role === 'procurement' &&
                           (supplier.submittedBy?.supplierApprovalStatus === 'pending' ||
+                           supplier.submittedBy?.supplierApprovalStatus === 'profile_incomplete' ||
                            supplier.status === 'pending_registration_approval') &&
                           (supplier.userId || supplier.submittedBy?._id) ? (
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>

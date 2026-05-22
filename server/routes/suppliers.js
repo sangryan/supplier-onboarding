@@ -941,6 +941,40 @@ router.delete('/:id', protect, authorize('supplier'), supplierAccess, async (req
   }
 });
 
+// @route   POST /api/suppliers/:id/assign
+// @desc    Assign a task to the current procurement/legal user
+// @access  Private (Procurement, Legal, Super Admin)
+router.post('/:id/assign', protect, authorize('procurement', 'legal', 'super_admin'), async (req, res) => {
+  try {
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    // Validate the task is at the right stage for the user's role
+    const procurementStatuses = ['submitted', 'pending_procurement', 'more_info_required'];
+    const legalStatuses = ['pending_legal'];
+    if (req.user.role === 'procurement' && !procurementStatuses.includes(supplier.status)) {
+      return res.status(400).json({ success: false, message: 'This application is not at the procurement stage' });
+    }
+    if (req.user.role === 'legal' && !legalStatuses.includes(supplier.status)) {
+      return res.status(400).json({ success: false, message: 'This application is not at the legal stage' });
+    }
+
+    supplier.assignedTo = req.user.id;
+    supplier.assignedAt = new Date();
+    // Permanently record which officer owns this stage
+    if (req.user.role === 'procurement') supplier.procurementOfficer = req.user.id;
+    if (req.user.role === 'legal') supplier.legalOfficer = req.user.id;
+    await supplier.save();
+
+    res.json({ success: true, message: 'Task assigned successfully', data: { assignedTo: req.user.id } });
+  } catch (err) {
+    console.error('Assign task error:', err);
+    res.status(500).json({ success: false, message: 'Error assigning task' });
+  }
+});
+
 // @route   POST /api/suppliers/:id/submit
 // @desc    Submit supplier application for review
 // @access  Private (Supplier)
