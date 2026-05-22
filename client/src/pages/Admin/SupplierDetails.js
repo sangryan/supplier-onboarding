@@ -47,7 +47,6 @@ const SupplierDetails = () => {
   const [fileViewerUrl, setFileViewerUrl] = useState(null);
   const [fileViewerName, setFileViewerName] = useState('');
 
-
   useEffect(() => {
     fetchSupplier();
   }, [id]);
@@ -176,7 +175,7 @@ const SupplierDetails = () => {
 
   const handleViewFile = async (document) => {
     let url;
-    let fileName = document.originalName || document.fileName || 'Document';
+    const fileName = document.originalName || document.fileName || 'Document';
 
     if (isFallbackDocument(document)) {
       const filePath = document.fileName || document.originalName;
@@ -200,6 +199,15 @@ const SupplierDetails = () => {
     setFileViewerOpen(true);
   };
 
+  const handleCloseFileViewer = () => {
+    if (fileViewerUrl?.startsWith('blob:')) {
+      window.URL.revokeObjectURL(fileViewerUrl);
+    }
+    setFileViewerOpen(false);
+    setFileViewerUrl(null);
+    setFileViewerName('');
+  };
+
   const handleDownloadFile = async (document) => {
     let url;
 
@@ -214,15 +222,6 @@ const SupplierDetails = () => {
         toast.error(error.response?.data?.message || 'Failed to download document');
       }
     }
-  };
-
-  const handleCloseFileViewer = () => {
-    if (fileViewerUrl?.startsWith('blob:')) {
-      window.URL.revokeObjectURL(fileViewerUrl);
-    }
-    setFileViewerOpen(false);
-    setFileViewerUrl(null);
-    setFileViewerName('');
   };
 
   const getEntityDocuments = () => {
@@ -2032,37 +2031,28 @@ const SupplierDetails = () => {
         onClose={handleCloseFileViewer}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '8px',
-            maxHeight: '90vh',
-          },
-        }}
+        PaperProps={{ sx: { borderRadius: '8px', maxHeight: '90vh' } }}
       >
-        <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, color: '#111827' }}>
+        <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, color: '#111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {fileViewerName}
+          <IconButton onClick={handleCloseFileViewer} size="small">
+            <Close />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ p: 0, backgroundColor: '#f5f5f5' }}>
           {fileViewerUrl && (
             <Box sx={{ width: '100%', height: '70vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <iframe
-                src={fileViewerUrl}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                title={fileViewerName}
-              />
+              {fileViewerName.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                <img src={fileViewerUrl} alt={fileViewerName} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+              ) : (
+                <iframe src={fileViewerUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={fileViewerName} />
+              )}
             </Box>
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            onClick={handleCloseFileViewer}
-            sx={{
-              textTransform: 'none',
-              color: '#6b7280',
-            }}
-          >
-            Close
-          </Button>
+          <Button onClick={handleCloseFileViewer} sx={{ textTransform: 'none', color: '#6b7280' }}>Close</Button>
+          <Button variant="contained" onClick={() => window.open(fileViewerUrl, '_blank')} sx={{ textTransform: 'none' }}>Open in New Tab</Button>
         </DialogActions>
       </Dialog>
 

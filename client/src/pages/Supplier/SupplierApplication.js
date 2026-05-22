@@ -226,7 +226,6 @@ const SupplierApplication = () => {
   const [fileViewerOpen, setFileViewerOpen] = useState(false);
   const [fileViewerUrl, setFileViewerUrl] = useState(null);
   const [fileViewerName, setFileViewerName] = useState('');
-  const [imageLoadError, setImageLoadError] = useState(false);
 
   const filteredCountries = countries.filter(country =>
     country.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
@@ -277,17 +276,14 @@ const SupplierApplication = () => {
     let fileUrl = null;
     let displayName = fileName || 'File';
 
-    // If it's a File object (newly uploaded), create object URL
     if (file instanceof File) {
       fileUrl = URL.createObjectURL(file);
       displayName = file.name;
     } else if (typeof file === 'string') {
-      // Check if it's already a full URL
       if (file.startsWith('http://') || file.startsWith('https://')) {
         try {
           const parsed = new URL(file);
           const frontendOrigin = window.location.origin;
-          // If legacy data points to frontend host for uploads, rewrite to API host
           if (parsed.origin === frontendOrigin && parsed.pathname.startsWith('/uploads/')) {
             fileUrl = `${API_BASE_URL}${parsed.pathname}`;
           } else {
@@ -313,20 +309,17 @@ const SupplierApplication = () => {
       }
       setFileViewerUrl(fileUrl);
       setFileViewerName(displayName);
-      setImageLoadError(false);
       setFileViewerOpen(true);
     }
   };
 
   const handleCloseFileViewer = () => {
-    // Clean up object URL if it was created from a File object
     if (fileViewerUrl && fileViewerUrl.startsWith('blob:')) {
       URL.revokeObjectURL(fileViewerUrl);
     }
     setFileViewerOpen(false);
     setFileViewerUrl(null);
     setFileViewerName('');
-    setImageLoadError(false);
   };
 
   // Map form field names to document types for upload
@@ -4224,73 +4217,36 @@ const SupplierApplication = () => {
         onClose={handleCloseFileViewer}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          sx: {
-            maxHeight: '90vh',
-            borderRadius: '8px',
-          }
-        }}
+        PaperProps={{ sx: { maxHeight: '90vh', borderRadius: '8px' } }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">{fileViewerName}</Typography>
+          <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 600 }}>{fileViewerName}</Typography>
           <IconButton onClick={handleCloseFileViewer} size="small">
             <Close />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', backgroundColor: '#f5f5f5' }}>
+        <DialogContent sx={{ p: 0, backgroundColor: '#f5f5f5', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           {fileViewerUrl && (
-            <Box sx={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-              {fileViewerUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                imageLoadError ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>Image could not be loaded</Typography>
-                    <Button
-                      variant="contained"
-                      onClick={() => window.open(fileViewerUrl, '_blank')}
-                      sx={{ mt: 2 }}
-                    >
-                      Open in New Tab
-                    </Button>
-                  </Box>
-                ) : (
-                  <img
-                    src={fileViewerUrl}
-                    alt={fileViewerName}
-                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-                    onError={() => setImageLoadError(true)}
-                  />
-                )
-              ) : fileViewerUrl.match(/\.(pdf)$/i) ? (
-                <iframe
-                  src={fileViewerUrl}
-                  title={fileViewerName}
-                  style={{ width: '100%', height: '70vh', border: 'none' }}
-                />
-              ) : (
-                <Box sx={{ textAlign: 'center', p: 4 }}>
-                  <Typography variant="h6" sx={{ mb: 2 }}>File Preview Not Available</Typography>
-                  <Button
-                    variant="contained"
-                    onClick={() => window.open(fileViewerUrl, '_blank')}
-                    sx={{ mt: 2 }}
-                  >
-                    Open in New Tab
-                  </Button>
-                </Box>
-              )}
-            </Box>
+            fileViewerName.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+              <img
+                src={fileViewerUrl}
+                alt={fileViewerName}
+                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+              />
+            ) : (
+              <iframe
+                src={fileViewerUrl}
+                title={fileViewerName}
+                style={{ width: '100%', height: '70vh', border: 'none' }}
+              />
+            )
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseFileViewer}>Close</Button>
-          {fileViewerUrl && (
-            <Button
-              variant="contained"
-              onClick={() => window.open(fileViewerUrl, '_blank')}
-            >
-              Open in New Tab
-            </Button>
-          )}
+          <Button variant="contained" onClick={() => window.open(fileViewerUrl, '_blank')}>
+            Open in New Tab
+          </Button>
         </DialogActions>
       </Dialog>
 
