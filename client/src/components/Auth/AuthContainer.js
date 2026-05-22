@@ -364,7 +364,7 @@ const AuthContainer = ({ mode = 'login' }) => {
               </Typography>
             )}
 
-            <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
+            {/* <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
               <Box sx={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }} />
               <Typography sx={{ px: 2, color: '#999', fontSize: '14px' }}>OR</Typography>
               <Box sx={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }} />
@@ -388,7 +388,7 @@ const AuthContainer = ({ mode = 'login' }) => {
             >
               <Box component="img" src="https://www.google.com/favicon.ico" alt="Google" sx={{ width: 18, height: 18, mr: 1.5 }} />
               Sign in with Google
-            </Button>
+            </Button> */}
           </Box>
         </>
       ) : (
