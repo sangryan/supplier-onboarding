@@ -9,6 +9,9 @@ import {
   Grid,
   ClickAwayListener,
   InputAdornment,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -43,6 +46,32 @@ const countries = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
+const entityTypes = [
+  'Private/Public Company',
+  'Partnerships',
+  'Foreign Company',
+  'Individual/Sole Proprietor',
+  'Trust',
+];
+
+const mapEntityTypeToDisplay = (value) => {
+  const mapping = {
+    private_company: 'Private/Public Company',
+    public_company: 'Private/Public Company',
+    partnership: 'Partnerships',
+    foreign_company: 'Foreign Company',
+    individual: 'Individual/Sole Proprietor',
+    trust: 'Trust',
+    other: 'Private/Public Company',
+    'Public/Private Company': 'Private/Public Company',
+    'Limited Company': 'Private/Public Company',
+    'Public Limited Company': 'Private/Public Company',
+    'Partnership': 'Partnerships',
+    'Sole Proprietorship': 'Individual/Sole Proprietor',
+  };
+  return mapping[value] || value || '';
+};
+
 const RESTRICTED_ROLES = ['procurement', 'legal', 'management'];
 
 const EditCompanyDetails = () => {
@@ -54,6 +83,7 @@ const EditCompanyDetails = () => {
   // Form state
   const [formData, setFormData] = useState({
     supplierName: '',
+    entityType: '',
     registeredCountry: '',
     companyRegistrationNumber: '',
     companyEmail: '',
@@ -91,6 +121,7 @@ const EditCompanyDetails = () => {
 
           setFormData({
             supplierName: supplierData.supplierName || '',
+            entityType: mapEntityTypeToDisplay(supplierData.entityType) || '',
             registeredCountry: supplierData.registeredCountry || address?.country || '',
             companyRegistrationNumber: supplierData.companyRegistrationNumber || '',
             companyEmail: supplierData.companyEmail || '',
@@ -133,6 +164,7 @@ const EditCompanyDetails = () => {
 
       const updateData = {
         supplierName: formData.supplierName,
+        entityType: formData.entityType,
         registeredCountry: formData.registeredCountry,
         companyRegistrationNumber: formData.companyRegistrationNumber,
         companyEmail: formData.companyEmail,
@@ -295,7 +327,28 @@ const EditCompanyDetails = () => {
                 variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
-                Registered Country
+                Entity Type
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={formData.entityType}
+                  onChange={(e) => handleChange('entityType', e.target.value)}
+                  displayEmpty
+                  sx={{ backgroundColor: '#fff' }}
+                >
+                  <MenuItem value="" disabled>Select entity type</MenuItem>
+                  {entityTypes.map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
+              >
+                Country of Incorporation
               </Typography>
               <ClickAwayListener onClickAway={() => setCountrySearchOpen(false)}>
                 <Box>

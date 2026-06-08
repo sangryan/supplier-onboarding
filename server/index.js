@@ -153,6 +153,14 @@ app.use('/api/adhoc-vendors', require('./routes/adhocVendors'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/settings', require('./routes/settings'));
 
+// NDA template download – serves the standard NDA PDF
+app.get('/api/nda-template', (req, res) => {
+  const templatePath = path.join(__dirname, 'templates', 'nda-template.pdf');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="SHADE-Mutual-NDA.pdf"');
+  res.sendFile(templatePath);
+});
+
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({

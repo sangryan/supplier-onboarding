@@ -33,7 +33,6 @@ import SupplierList from './pages/Admin/SupplierList';
 import SupplierDetails from './pages/Admin/SupplierDetails';
 import TaskListWrapper from './pages/Admin/TaskListWrapper';
 import AllTasks from './pages/Admin/AllTasks';
-import AdHocVendorForm from './pages/Admin/AdHocVendorForm';
 import ContractList from './pages/Contracts/ContractList';
 import ContractDetails from './pages/Contracts/ContractDetails';
 import UserManagement from './pages/Admin/UserManagement';
@@ -133,7 +132,6 @@ function App() {
           <Route path="/suppliers/:id" element={<SupplierDetails />} />
           <Route path="/tasks" element={<TaskListWrapper />} />
           <Route path="/tasks/all" element={<AllTasks />} />
-          <Route path="/vendors/new" element={<AdHocVendorForm />} />
 
           {/* Contract Routes */}
           <Route path="/contracts" element={<ContractList />} />

@@ -26,7 +26,6 @@ import {
 import {
   Search as SearchIcon,
   Download as DownloadIcon,
-  Add as AddIcon,
   ArrowForward as ArrowForwardIcon,
   Visibility as VisibilityIcon,
   ArrowUpward as ArrowUpwardIcon,
@@ -163,10 +162,6 @@ const ProcurementDashboard = () => {
     console.log('Download all tasks');
   };
 
-  const handleAddVendor = () => {
-    navigate('/vendors/new');
-  };
-
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setPage(1);
@@ -226,32 +221,6 @@ const ProcurementDashboard = () => {
             </Typography>
           </Box>
 
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddVendor}
-            sx={{
-              backgroundColor: theme.palette.green.main,
-              color: '#fff',
-              textTransform: 'none',
-              fontSize: '14px',
-              fontWeight: 500,
-              px: 2.5,
-              py: 1,
-              borderRadius: '6px',
-              boxShadow: 'none',
-              width: { xs: '100%', sm: 'auto' },
-              flexShrink: 0,
-              alignSelf: { xs: 'stretch', sm: 'flex-start' },
-              mt: { xs: 0, sm: 0 },
-              '&:hover': {
-                backgroundColor: theme.palette.green.hover,
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Add New On-Demand Vendor
-          </Button>
         </Box>
 
         {/* Summary Cards Section */}

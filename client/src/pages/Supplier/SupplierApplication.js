@@ -92,6 +92,19 @@ const entityTypes = [
   'Trust'
 ];
 
+const contactRelationships = [
+  'CEO',
+  'CFO',
+  'Director',
+  'Managing Director',
+  'Manager',
+  'Company Secretary',
+  'Owner',
+  'Partner',
+  'Authorized Representative',
+  'Other',
+];
+
 const mapEntityTypeToDisplay = (value) => {
   const mapping = {
     private_company: 'Private/Public Company',
@@ -216,6 +229,7 @@ const SupplierApplication = () => {
     declarationDate: '',
     consentToProcessing: false,
     confirmInformationAccurate: false,
+    ndaDocument: null,
   });
   const [loading, setLoading] = useState(false);
   const [countrySearchOpen, setCountrySearchOpen] = useState(false);
@@ -360,7 +374,10 @@ const SupplierApplication = () => {
       'trustDeed': 'trust_deed',
       'founderPin': 'founder_pin',
       'foundersIds': 'founder_id',
-      'beneficiariesIds': 'beneficiary_id'
+      'beneficiariesIds': 'beneficiary_id',
+
+      // NDA
+      'ndaDocument': 'nda'
     };
     return fieldToDocType[fieldName] || 'other';
   };
@@ -755,7 +772,10 @@ const SupplierApplication = () => {
       'nationalId', 'passportDocument', 'workPermit', 'policeClearance', 'resume',
 
       // Trust
-      'trustDeed', 'founderPin'
+      'trustDeed', 'founderPin',
+
+      // Declarations
+      'ndaDocument'
     ];
 
     for (const field of singleFileFields) {
@@ -947,6 +967,9 @@ const SupplierApplication = () => {
               directorsIds: Array.isArray(app.directorsIds) && app.directorsIds.length > 0 ? app.directorsIds.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               practicingCertificates: Array.isArray(app.practicingCertificates) && app.practicingCertificates.length > 0 ? app.practicingCertificates.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
               keyMembersResumes: Array.isArray(app.keyMembersResumes) && app.keyMembersResumes.length > 0 ? app.keyMembersResumes.filter(f => f && typeof f === 'string' && f.trim() !== '') : [],
+
+              // NDA
+              ndaDocument: (app.ndaDocument && typeof app.ndaDocument === 'string' && app.ndaDocument.trim() !== '') ? app.ndaDocument : null,
             };
 
             // Set form data - update all mapped fields
@@ -1007,6 +1030,7 @@ const SupplierApplication = () => {
                   if (mappedData.companyEmail === (supplierData.companyEmail || '')) prefilled.push('companyEmail');
                   if (mappedData.companyWebsite === (supplierData.companyWebsite || '')) prefilled.push('companyWebsite');
                   if (mappedData.physicalAddress === fullAddress) prefilled.push('physicalAddress');
+                  if (supplierData.entityType && mappedData.entityType === mapEntityTypeToDisplay(supplierData.entityType)) prefilled.push('entityType');
 
                   console.log('🟡 [PREFILL] Existing application - marking matching fields as prefilled:', prefilled);
                   setPrefilledFields(prefilled);
@@ -1073,6 +1097,7 @@ const SupplierApplication = () => {
               if (supplierData.companyEmail) prefilled.push('companyEmail');
               if (supplierData.companyWebsite) prefilled.push('companyWebsite');
               if (fullAddress) prefilled.push('physicalAddress');
+              if (supplierData.entityType) prefilled.push('entityType');
 
               console.log('🟡 [PREFILL] Marking fields as prefilled:', prefilled);
 
@@ -1091,6 +1116,7 @@ const SupplierApplication = () => {
                 companyEmail: supplierData.companyEmail || '',
                 companyWebsite: supplierData.companyWebsite || '',
                 physicalAddress: fullAddress,
+                entityType: mapEntityTypeToDisplay(supplierData.entityType) || '',
               }));
 
               // Store prefilled fields for read-only check - use array for React state
@@ -1367,7 +1393,7 @@ const SupplierApplication = () => {
 
     if (step === 0) {
       if (!formData.supplierName?.trim()) missing.push('Company Name');
-      if (!formData.registeredCountry?.trim()) missing.push('Registered Country');
+      if (!formData.registeredCountry?.trim()) missing.push('Country of Incorporation');
       if (!formData.companyRegistrationNumber?.trim()) missing.push('Company Registration Number');
       if (!formData.companyEmail?.trim()) missing.push('Company Email Address');
       if (!formData.companyWebsite?.trim()) missing.push('Company Website');
@@ -1397,6 +1423,7 @@ const SupplierApplication = () => {
       if (!formData.declarantCapacity?.trim()) missing.push('Declarant Capacity');
       if (!formData.declarantIdPassport?.trim()) missing.push('Declarant ID/Passport Number');
       if (!formData.declarationDate) missing.push('Declaration Date');
+      if (!formData.ndaDocument) missing.push('Executed NDA');
       if (!formData.consentToProcessing) missing.push('Consent to Processing of Personal Information');
       if (!formData.confirmInformationAccurate) missing.push('Confirmation that Information is Accurate');
     }
@@ -1751,7 +1778,7 @@ const SupplierApplication = () => {
                     variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
-                    Registered Country
+                    Country of Incorporation
                   </Typography>
                   <ClickAwayListener onClickAway={() => setCountrySearchOpen(false)}>
                     <Box>
@@ -2085,9 +2112,15 @@ const SupplierApplication = () => {
                 <Grid item xs={12} md={6}>
                   <Typography
                     variant="body2"
-                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                    sx={{ mb: 0.5, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
-                    Full name
+                    Contact Person's Full Name
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ mb: 1, display: 'block', fontSize: '12px', color: '#6b7280' }}
+                  >
+                    Enter the full name of the individual contact person, not the company name
                   </Typography>
                   <TextField
                     fullWidth
@@ -2121,34 +2154,34 @@ const SupplierApplication = () => {
                     variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
-                    Relationship to Entity
+                    Position / Role in Entity
                   </Typography>
-                  <TextField
-                    fullWidth
-                    value={formData.contactRelationship}
-                    onChange={(e) => {
-                      if (!prefilledFields.includes('contactRelationship')) {
-                        handleChange('contactRelationship', e.target.value);
-                      }
-                    }}
-                    placeholder="e.g. CEO, CFO"
-                    disabled={prefilledFields.includes('contactRelationship')}
-                    InputProps={{
-                      readOnly: prefilledFields.includes('contactRelationship')
-                    }}
-                    size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
+                  <FormControl fullWidth size="small" disabled={prefilledFields.includes('contactRelationship')}>
+                    <Select
+                      value={formData.contactRelationship}
+                      onChange={(e) => {
+                        if (!prefilledFields.includes('contactRelationship')) {
+                          handleChange('contactRelationship', e.target.value);
+                        }
+                      }}
+                      displayEmpty
+                      IconComponent={KeyboardArrowDown}
+                      sx={{
                         backgroundColor: '#fff',
+                        '& .MuiSelect-icon': { color: '#6b7280' },
                         ...(prefilledFields.includes('contactRelationship') && {
                           cursor: 'not-allowed',
-                          '& .MuiInputBase-input': {
-                            cursor: 'not-allowed',
-                          }
                         })
-                      }
-                    }}
-                  />
+                      }}
+                    >
+                      <MenuItem value="" disabled>
+                        Select position
+                      </MenuItem>
+                      {contactRelationships.map((role) => (
+                        <MenuItem key={role} value={role}>{role}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
@@ -2472,29 +2505,81 @@ const SupplierApplication = () => {
                   >
                     Entity type
                   </Typography>
-                  <FormControl fullWidth size="small">
+                  <FormControl fullWidth size="small" disabled={prefilledFields.includes('entityType')}>
                     <Select
                       value={formData.entityType}
-                      onChange={(e) => handleChange('entityType', e.target.value)}
+                      onChange={(e) => {
+                        if (!prefilledFields.includes('entityType')) {
+                          handleChange('entityType', e.target.value);
+                        }
+                      }}
                       displayEmpty
                       IconComponent={KeyboardArrowDown}
                       sx={{
-                        backgroundColor: '#fff',
-                        '& .MuiSelect-icon': {
-                          color: '#6b7280'
-                        }
+                        backgroundColor: prefilledFields.includes('entityType') ? '#f9fafb' : '#fff',
+                        '& .MuiSelect-icon': { color: '#6b7280' },
+                        ...(prefilledFields.includes('entityType') && { cursor: 'not-allowed' })
                       }}
                     >
-                      <MenuItem value="" disabled>
-                        Select
-                      </MenuItem>
+                      <MenuItem value="" disabled>Select</MenuItem>
                       {entityTypes.map((type) => (
-                        <MenuItem key={type} value={type}>
-                          {type}
-                        </MenuItem>
+                        <MenuItem key={type} value={type}>{type}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
+                  {prefilledFields.includes('entityType') && (
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Pre-filled from your company profile
+                    </Typography>
+                  )}
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Typography
+                    variant="body2"
+                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                  >
+                    Registered Company Name
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    value={formData.supplierName}
+                    size="small"
+                    disabled
+                    InputProps={{ readOnly: true }}
+                    helperText="As captured in your company registration documents"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#f9fafb',
+                        cursor: 'not-allowed',
+                        '& .MuiInputBase-input': { cursor: 'not-allowed' }
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Typography
+                    variant="body2"
+                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                  >
+                    Company Registration Number
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    value={formData.companyRegistrationNumber}
+                    size="small"
+                    disabled
+                    InputProps={{ readOnly: true }}
+                    helperText="As captured in your certificate of incorporation"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#f9fafb',
+                        cursor: 'not-allowed',
+                        '& .MuiInputBase-input': { cursor: 'not-allowed' }
+                      }
+                    }}
+                  />
                 </Grid>
 
                 <Grid item xs={12}>
@@ -3073,6 +3158,86 @@ const SupplierApplication = () => {
                   </ClickAwayListener>
                 </Grid>
 
+                {/* NDA Section */}
+                <Grid item xs={12}>
+                  <Box
+                    sx={{
+                      mt: 1,
+                      p: 2.5,
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 600, fontSize: '15px', color: '#111827', mb: 1 }}>
+                      Non-Disclosure Agreement (NDA)
+                    </Typography>
+                    <Typography sx={{ fontSize: '13px', color: '#6b7280', mb: 2, lineHeight: 1.6 }}>
+                      Please download our standard NDA template, sign it, and upload the executed copy below. Both parties are required to execute the NDA before onboarding is complete.
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      href={`${API_BASE_URL}/api/nda-template`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        mb: 2,
+                        textTransform: 'none',
+                        borderColor: '#578A18',
+                        color: '#578A18',
+                        fontSize: '13px',
+                        '&:hover': { borderColor: '#4a7514', backgroundColor: '#f0f7e6' }
+                      }}
+                    >
+                      Download NDA Template
+                    </Button>
+                    <Typography
+                      variant="body2"
+                      sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                    >
+                      Upload Executed NDA <span style={{ color: '#ef4444' }}>*</span>
+                    </Typography>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      fullWidth
+                      sx={{
+                        justifyContent: 'flex-start',
+                        textTransform: 'none',
+                        borderColor: formData.ndaDocument ? '#578A18' : '#d1d5db',
+                        color: formData.ndaDocument ? '#578A18' : '#6b7280',
+                        fontSize: '14px',
+                        py: 0.75,
+                        '&:hover': { borderColor: '#9ca3af', backgroundColor: '#f9fafb' }
+                      }}
+                    >
+                      {formData.ndaDocument
+                        ? (formData.ndaDocument instanceof File ? formData.ndaDocument.name : formData.ndaDocument)
+                        : 'Choose executed NDA file'}
+                      <input
+                        type="file"
+                        hidden
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={async (e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            try {
+                              const file = await processFileForUpload(e.target.files[0]);
+                              handleChange('ndaDocument', file);
+                            } catch (err) {
+                              toast.error(err.message);
+                            }
+                          }
+                        }}
+                        onClick={(e) => { e.target.value = ''; }}
+                      />
+                    </Button>
+                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '11px', mt: 0.5, display: 'block' }}>
+                      Accepted: PDF, Word, Images (Max 20MB)
+                    </Typography>
+                  </Box>
+                </Grid>
+
                 {/* Checkboxes */}
                 <Grid item xs={12}>
                   <FormControlLabel
@@ -3202,7 +3367,7 @@ const SupplierApplication = () => {
                     </Grid>
                     <Grid item xs={12} md={4}>
                       <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
-                        Registered Country
+                        Country of Incorporation
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
                         {formData.registeredCountry || '-'}
@@ -3901,6 +4066,16 @@ const SupplierApplication = () => {
                             return formatDateForDisplay(formData.declarationDate) || '-';
                           }
                         })() : '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2" sx={{ mb: 0.5, color: '#6b7280', fontSize: '12px' }}>
+                        Executed NDA
+                      </Typography>
+                      <Typography sx={{ fontWeight: 500, fontSize: '14px', color: formData.ndaDocument ? '#578A18' : '#ef4444' }}>
+                        {formData.ndaDocument
+                          ? (formData.ndaDocument instanceof File ? formData.ndaDocument.name : formData.ndaDocument)
+                          : 'Not uploaded'}
                       </Typography>
                     </Grid>
                   </Grid>

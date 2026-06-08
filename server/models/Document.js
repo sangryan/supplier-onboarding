@@ -51,7 +51,10 @@ const documentSchema = new mongoose.Schema({
       // Source of Funds
       'source_funds_declaration',
       'data_processing_consent',
-      
+
+      // NDA
+      'nda',
+
       // Other
       'other'
     ]

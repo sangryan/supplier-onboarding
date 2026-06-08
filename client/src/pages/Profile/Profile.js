@@ -24,6 +24,17 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
 
+const mapEntityTypeToDisplay = (value) => {
+  const map = {
+    private_company: 'Private/Public Company',
+    partnerships: 'Partnerships',
+    foreign_company: 'Foreign Company',
+    individual: 'Individual/Sole Proprietor',
+    trust: 'Trust',
+  };
+  return map[value] || value || '';
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -218,6 +229,7 @@ const Profile = () => {
       
       return {
         supplierName: supplier.supplierName || '',
+        entityType: mapEntityTypeToDisplay(supplier.entityType) || '',
         registeredCountry: supplier.registeredCountry || address?.country || '',
         companyRegistrationNumber: supplier.companyRegistrationNumber || '',
         companyEmail: supplier.companyEmail || '',
@@ -227,6 +239,7 @@ const Profile = () => {
     }
     return {
       supplierName: '',
+      entityType: '',
       registeredCountry: '',
       companyRegistrationNumber: '',
       companyEmail: '',
@@ -619,8 +632,8 @@ const Profile = () => {
 
             <Grid container spacing={{ xs: 2, md: 2.5 }}>
               <Grid item xs={12} md={4}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                 >
                   Company Name
@@ -630,11 +643,22 @@ const Profile = () => {
                 </Typography>
               </Grid>
               <Grid item xs={12} md={4}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                 >
-                  Registered Country
+                  Entity Type
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 400, fontSize: '14px', color: '#111827' }}>
+                  {companyInfo.entityType || 'N/A'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography
+                  variant="body2"
+                  sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                >
+                  Country of Incorporation
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 400, fontSize: '14px', color: '#111827' }}>
                   {companyInfo.registeredCountry || 'N/A'}

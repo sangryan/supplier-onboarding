@@ -169,8 +169,32 @@ const SupplierDetails = () => {
       'member_resume': 'Resume',
       'directors_id': 'Directors ID',
       'audited_financials': 'Audited Financial Statements',
+      'nda': 'Executed Non-Disclosure Agreement',
     };
     return map[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const getNdaDocument = () => {
+    if (!supplier) return null;
+
+    // Check documents array first
+    if (supplier.documents && Array.isArray(supplier.documents)) {
+      const ndaDoc = supplier.documents.find(doc => doc.documentType === 'nda');
+      if (ndaDoc) return ndaDoc;
+    }
+
+    // Fallback: check ndaDocument field directly on supplier object
+    if (supplier.ndaDocument && typeof supplier.ndaDocument === 'string') {
+      return {
+        _id: 'doc-nda',
+        documentType: 'nda',
+        originalName: 'Executed Non-Disclosure Agreement',
+        fileSize: 0,
+        fileName: supplier.ndaDocument,
+      };
+    }
+
+    return null;
   };
 
   const handleViewFile = async (document) => {
@@ -1736,6 +1760,96 @@ const SupplierDetails = () => {
                 </Grid>
               </AccordionDetails>
             </Accordion>
+
+            {/* Non-Disclosure Agreement */}
+            {getNdaDocument() && (
+              <Accordion
+                expanded={expanded.includes('nda')}
+                onChange={handleAccordionChange('nda')}
+                sx={{
+                  boxShadow: 'none',
+                  border: 'none',
+                  borderRadius: '0 !important',
+                  mb: 0,
+                  '&:before': { display: 'none' },
+                  '&.Mui-expanded': { margin: 0 },
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={
+                    expanded.includes('nda') ? (
+                      <ExpandMore sx={{ color: '#6b7280' }} />
+                    ) : (
+                      <ChevronRight sx={{ color: '#6b7280' }} />
+                    )
+                  }
+                  sx={{
+                    px: { xs: 2, sm: 3 },
+                    py: 2,
+                    minHeight: '56px',
+                    '&.Mui-expanded': { minHeight: '56px', borderBottom: 'none', pb: 2 },
+                    '& .MuiAccordionSummary-content': { my: 0 },
+                    position: 'relative',
+                    '&.Mui-expanded::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: { xs: '16px', sm: '24px' },
+                      right: { xs: '16px', sm: '24px' },
+                      height: '1px',
+                      backgroundColor: '#e5e7eb',
+                      zIndex: 1,
+                    },
+                  }}
+                >
+                  <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
+                    Non-Disclosure Agreement
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
+                  {(() => {
+                    const doc = getNdaDocument();
+                    return (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          p: 1.5,
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          bgcolor: '#fff',
+                        }}
+                      >
+                        <Box component="img" src="/images/File.svg" alt="File icon" sx={{ width: 24, height: 24 }} />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400, mb: 0.5 }}>
+                            Executed Non-Disclosure Agreement
+                          </Typography>
+                          <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>
+                            {doc.fileSize ? `PDF • ${formatFileSize(doc.fileSize)}` : 'Signed NDA'}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleViewFile(doc)}
+                          sx={{ color: '#6b7280', '&:hover': { backgroundColor: 'transparent', color: '#374151' } }}
+                        >
+                          <Box component="img" src="/images/eye.svg" alt="View icon" sx={{ width: 20, height: 20 }} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDownloadFile(doc)}
+                          sx={{ color: '#6b7280', '&:hover': { backgroundColor: 'transparent', color: '#374151' } }}
+                        >
+                          <Box component="img" src="/images/Download.svg" alt="Download icon" sx={{ width: 20, height: 20 }} />
+                        </IconButton>
+                      </Box>
+                    );
+                  })()}
+                </AccordionDetails>
+              </Accordion>
+            )}
 
             {/* Approval History */}
             {supplier.approvalHistory && supplier.approvalHistory.length > 0 && (

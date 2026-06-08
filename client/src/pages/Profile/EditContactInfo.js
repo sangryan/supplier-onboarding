@@ -12,6 +12,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -24,6 +27,19 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
 import Footer from '../../components/Footer/Footer';
+
+const contactRelationships = [
+  'CEO',
+  'CFO',
+  'Director',
+  'Managing Director',
+  'Manager',
+  'Company Secretary',
+  'Owner',
+  'Partner',
+  'Authorized Representative',
+  'Other',
+];
 
 const RESTRICTED_ROLES = ['procurement', 'legal', 'management'];
 
@@ -358,20 +374,19 @@ const EditContactInfo = () => {
             <Grid item xs={12} md={6}>
               <Typography
                 variant="body2"
-                sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
+                sx={{ mb: 0.5, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
-                Full name
+                Contact Person's Full Name
+              </Typography>
+              <Typography variant="caption" sx={{ mb: 1, display: 'block', fontSize: '12px', color: '#6b7280' }}>
+                Enter the individual's name, not the company name
               </Typography>
               <TextField
                 fullWidth
                 value={formData.fullName}
                 onChange={(e) => handleChange('fullName', e.target.value)}
                 size="small"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                  }
-                }}
+                sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#fff' } }}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -379,19 +394,21 @@ const EditContactInfo = () => {
                 variant="body2"
                 sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
               >
-                Relationship to Entity
+                Position / Role in Entity
               </Typography>
-              <TextField
-                fullWidth
-                value={formData.relationship}
-                onChange={(e) => handleChange('relationship', e.target.value)}
-                size="small"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                  }
-                }}
-              />
+              <FormControl fullWidth size="small">
+                <Select
+                  value={formData.relationship}
+                  onChange={(e) => handleChange('relationship', e.target.value)}
+                  displayEmpty
+                  sx={{ backgroundColor: '#fff' }}
+                >
+                  <MenuItem value="" disabled>Select position</MenuItem>
+                  {contactRelationships.map((role) => (
+                    <MenuItem key={role} value={role}>{role}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography
@@ -698,20 +715,19 @@ const EditContactInfo = () => {
               <Grid item xs={12} md={6}>
                 <Typography
                   variant="body2"
-                  sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
+                  sx={{ mb: 0.5, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
-                  Full name
+                  Contact Person's Full Name
+                </Typography>
+                <Typography variant="caption" sx={{ mb: 1, display: 'block', fontSize: '12px', color: '#6b7280' }}>
+                  Enter the individual's name, not the company name
                 </Typography>
                 <TextField
                   fullWidth
                   value={newContact.name}
                   onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
                   size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#fff',
-                    }
-                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#fff' } }}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -719,19 +735,21 @@ const EditContactInfo = () => {
                   variant="body2"
                   sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '13px', md: '14px' }, color: '#374151' }}
                 >
-                  Relationship to Entity
+                  Position / Role in Entity
                 </Typography>
-                <TextField
-                  fullWidth
-                  value={newContact.relationship}
-                  onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
-                  size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#fff',
-                    }
-                  }}
-                />
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={newContact.relationship}
+                    onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
+                    displayEmpty
+                    sx={{ backgroundColor: '#fff' }}
+                  >
+                    <MenuItem value="" disabled>Select position</MenuItem>
+                    {contactRelationships.map((role) => (
+                      <MenuItem key={role} value={role}>{role}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography
