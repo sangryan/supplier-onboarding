@@ -213,8 +213,20 @@ const SupplierDetails = () => {
       try {
         url = await fetchDocumentBlobUrl(document._id);
       } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to open document');
-        return;
+        // Fallback: try serving directly from static uploads path
+        if (document.fileName) {
+          const supplierId = document.supplier?._id || document.supplier || id;
+          const directUrl = buildUploadUrl(document.fileName, supplierId);
+          try {
+            url = await fetchFileBlobUrl(directUrl);
+          } catch {
+            toast.error(error.response?.data?.message || 'Document file is not available on the server.');
+            return;
+          }
+        } else {
+          toast.error(error.response?.data?.message || 'Failed to open document');
+          return;
+        }
       }
     }
 

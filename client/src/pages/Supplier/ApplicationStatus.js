@@ -259,8 +259,20 @@ const ApplicationStatus = () => {
       try {
         fileUrl = await fetchDocumentBlobUrl(file._id);
       } catch (error) {
-        toast.error('Failed to load file');
-        return;
+        // Fallback: try serving directly from static uploads path
+        if (file.fileName) {
+          const supplierId = file.supplier?._id || file.supplier || id;
+          const directUrl = buildUploadUrl(file.fileName, supplierId);
+          try {
+            fileUrl = await fetchFileBlobUrl(directUrl);
+          } catch {
+            toast.error('Document is not available. Please contact the administrator to re-upload it.');
+            return;
+          }
+        } else {
+          toast.error('Document is not available. Please contact the administrator to re-upload it.');
+          return;
+        }
       }
       setFileViewerUrl(fileUrl);
       setFileViewerName(displayName);
