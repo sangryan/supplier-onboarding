@@ -26,6 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
+import { isValidKenyaIdOrPassport, KENYA_ID_HELPER } from '../../utils/kenyaValidators';
 import Footer from '../../components/Footer/Footer';
 
 const contactRelationships = [
@@ -160,6 +161,10 @@ const EditContactInfo = () => {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (newContact.idPassport && !isValidKenyaIdOrPassport(newContact.idPassport)) {
+      toast.error('ID/Passport Number format is invalid. ' + KENYA_ID_HELPER);
+      return;
+    }
 
     try {
       let updatedContacts;
@@ -234,6 +239,10 @@ const EditContactInfo = () => {
   };
 
   const handleSubmit = async () => {
+    if (formData.idPassport && !isValidKenyaIdOrPassport(formData.idPassport)) {
+      toast.error('ID/Passport Number format is invalid. ' + KENYA_ID_HELPER);
+      return;
+    }
     try {
       // Create profile update request
       const updateData = {
@@ -422,6 +431,12 @@ const EditContactInfo = () => {
                 value={formData.idPassport}
                 onChange={(e) => handleChange('idPassport', e.target.value)}
                 size="small"
+                error={!!formData.idPassport && !isValidKenyaIdOrPassport(formData.idPassport)}
+                helperText={
+                  formData.idPassport && !isValidKenyaIdOrPassport(formData.idPassport)
+                    ? KENYA_ID_HELPER
+                    : 'National ID (7–8 digits) or passport number'
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
@@ -763,6 +778,12 @@ const EditContactInfo = () => {
                   value={newContact.idPassport}
                   onChange={(e) => setNewContact({ ...newContact, idPassport: e.target.value })}
                   size="small"
+                  error={!!newContact.idPassport && !isValidKenyaIdOrPassport(newContact.idPassport)}
+                  helperText={
+                    newContact.idPassport && !isValidKenyaIdOrPassport(newContact.idPassport)
+                      ? KENYA_ID_HELPER
+                      : 'National ID (7–8 digits) or passport number'
+                  }
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#fff',

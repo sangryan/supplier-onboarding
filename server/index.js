@@ -21,6 +21,9 @@ app.use(helmet({
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       'upgrade-insecure-requests': null,
+      'frame-src': ["'self'", "blob:", "data:"],
+      'object-src': ["'self'", "blob:", "data:"],
+      'img-src': ["'self'", "data:", "blob:"],
     }
   },
   hsts: false

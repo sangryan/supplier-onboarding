@@ -34,6 +34,7 @@ import { toast } from 'react-toastify';
 import Footer from '../../components/Footer/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
+import { isValidKenyaIdOrPassport, isValidKenyaCompanyReg, KENYA_ID_HELPER, KENYA_REG_HELPER } from '../../utils/kenyaValidators';
 import { processFileForUpload, processFilesForUpload } from '../../utils/compressImage';
 import { format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
@@ -1394,13 +1395,21 @@ const SupplierApplication = () => {
     if (step === 0) {
       if (!formData.supplierName?.trim()) missing.push('Company Name');
       if (!formData.registeredCountry?.trim()) missing.push('Country of Incorporation');
-      if (!formData.companyRegistrationNumber?.trim()) missing.push('Company Registration Number');
+      if (!formData.companyRegistrationNumber?.trim()) {
+        missing.push('Company Registration Number');
+      } else if (!isValidKenyaCompanyReg(formData.companyRegistrationNumber)) {
+        missing.push('Company Registration Number (invalid format — ' + KENYA_REG_HELPER + ')');
+      }
       if (!formData.companyEmail?.trim()) missing.push('Company Email Address');
       if (!formData.companyWebsite?.trim()) missing.push('Company Website');
       if (!formData.physicalAddress?.trim()) missing.push('Physical Address');
       if (!formData.contactFullName?.trim()) missing.push('Contact Person Full Name');
       if (!formData.contactRelationship?.trim()) missing.push('Contact Person Relationship');
-      if (!formData.contactIdPassport?.trim()) missing.push('Contact Person ID/Passport Number');
+      if (!formData.contactIdPassport?.trim()) {
+        missing.push('Contact Person ID/Passport Number');
+      } else if (!isValidKenyaIdOrPassport(formData.contactIdPassport)) {
+        missing.push('Contact Person ID/Passport Number (invalid format — ' + KENYA_ID_HELPER + ')');
+      }
       if (!formData.contactPhone?.trim()) missing.push('Contact Person Phone Number');
       if (!formData.contactEmail?.trim()) missing.push('Contact Person Email');
       if (!formData.bankName?.trim()) missing.push('Bank Name');
@@ -1421,7 +1430,11 @@ const SupplierApplication = () => {
       if (formData.sourceOfWealth === 'other' && !formData.sourceOfWealthOther?.trim()) missing.push('Please specify source of wealth/funds');
       if (!formData.declarantFullName?.trim()) missing.push('Full Name of Declarant');
       if (!formData.declarantCapacity?.trim()) missing.push('Declarant Capacity');
-      if (!formData.declarantIdPassport?.trim()) missing.push('Declarant ID/Passport Number');
+      if (!formData.declarantIdPassport?.trim()) {
+        missing.push('Declarant ID/Passport Number');
+      } else if (!isValidKenyaIdOrPassport(formData.declarantIdPassport)) {
+        missing.push('Declarant ID/Passport Number (invalid format — ' + KENYA_ID_HELPER + ')');
+      }
       if (!formData.declarationDate) missing.push('Declaration Date');
       if (!formData.ndaDocument) missing.push('Executed NDA');
       if (!formData.consentToProcessing) missing.push('Consent to Processing of Personal Information');
@@ -1952,6 +1965,12 @@ const SupplierApplication = () => {
                       readOnly: prefilledFields.includes('companyRegistrationNumber')
                     }}
                     size="small"
+                    error={!!formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)}
+                    helperText={
+                      formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)
+                        ? KENYA_REG_HELPER
+                        : 'e.g. CPR/2022/123456, PVT/2021/123456, BN-123456'
+                    }
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
@@ -2204,6 +2223,12 @@ const SupplierApplication = () => {
                       readOnly: prefilledFields.includes('contactIdPassport')
                     }}
                     size="small"
+                    error={!!formData.contactIdPassport && !isValidKenyaIdOrPassport(formData.contactIdPassport)}
+                    helperText={
+                      formData.contactIdPassport && !isValidKenyaIdOrPassport(formData.contactIdPassport)
+                        ? KENYA_ID_HELPER
+                        : 'National ID (7–8 digits) or passport number'
+                    }
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',
@@ -3014,6 +3039,12 @@ const SupplierApplication = () => {
                     value={formData.declarantIdPassport}
                     onChange={(e) => handleChange('declarantIdPassport', e.target.value)}
                     size="small"
+                    error={!!formData.declarantIdPassport && !isValidKenyaIdOrPassport(formData.declarantIdPassport)}
+                    helperText={
+                      formData.declarantIdPassport && !isValidKenyaIdOrPassport(formData.declarantIdPassport)
+                        ? KENYA_ID_HELPER
+                        : 'National ID (7–8 digits) or passport number'
+                    }
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: '#fff',

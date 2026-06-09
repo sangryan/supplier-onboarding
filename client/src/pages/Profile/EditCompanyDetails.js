@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
+import { isValidKenyaCompanyReg, KENYA_REG_HELPER } from '../../utils/kenyaValidators';
 import Footer from '../../components/Footer/Footer';
 
 const countries = [
@@ -146,6 +147,10 @@ const EditCompanyDetails = () => {
   );
 
   const handleSubmit = async () => {
+    if (formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)) {
+      toast.error('Company Registration Number format is invalid. ' + KENYA_REG_HELPER);
+      return;
+    }
     try {
       // Parse physical address - if it's a string, try to structure it
       // Otherwise, keep it as is if it's already structured
@@ -500,6 +505,12 @@ const EditCompanyDetails = () => {
                 value={formData.companyRegistrationNumber}
                 onChange={(e) => handleChange('companyRegistrationNumber', e.target.value)}
                 size="small"
+                error={!!formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)}
+                helperText={
+                  formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)
+                    ? KENYA_REG_HELPER
+                    : 'e.g. CPR/2022/123456, PVT/2021/123456, BN-123456'
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
