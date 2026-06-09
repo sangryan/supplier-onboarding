@@ -2989,9 +2989,12 @@ const SupplierApplication = () => {
                 <Grid item xs={12} md={6}>
                   <Typography
                     variant="body2"
-                    sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
+                    sx={{ mb: 0.5, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
                     Full Name of Declarant
+                  </Typography>
+                  <Typography variant="caption" sx={{ mb: 1, display: 'block', fontSize: '12px', color: '#6b7280' }}>
+                    Enter the individual's name, not the company name
                   </Typography>
                   <TextField
                     fullWidth
@@ -3011,20 +3014,21 @@ const SupplierApplication = () => {
                     variant="body2"
                     sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}
                   >
-                    Capacity
+                    Capacity / Position in Entity
                   </Typography>
-                  <TextField
-                    fullWidth
-                    value={formData.declarantCapacity}
-                    onChange={(e) => handleChange('declarantCapacity', e.target.value)}
-                    placeholder="e.g. CEO, CFO"
-                    size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fff',
-                      }
-                    }}
-                  />
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={formData.declarantCapacity}
+                      onChange={(e) => handleChange('declarantCapacity', e.target.value)}
+                      displayEmpty
+                      sx={{ backgroundColor: '#fff' }}
+                    >
+                      <MenuItem value="" disabled>Select position</MenuItem>
+                      {contactRelationships.map((role) => (
+                        <MenuItem key={role} value={role}>{role}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
