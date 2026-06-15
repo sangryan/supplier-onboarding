@@ -9,8 +9,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8000
+      UPLOAD_PATH: /app/uploads
     volumes:
-      - uploads_data:/app/uploads
+      - /opt/betika/uploads:/app/uploads
     networks:
       - betika_net
     healthcheck:
@@ -33,10 +34,6 @@ services:
         condition: service_healthy
     networks:
       - betika_net
-
-volumes:
-  uploads_data:
-    name: betika_uploads
 
 networks:
   betika_net:
