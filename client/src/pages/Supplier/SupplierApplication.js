@@ -83,7 +83,7 @@ const countries = [
 
 const currencies = ['KES', 'USD', 'EUR', 'GBP'];
 
-const creditPeriods = ['7 Days', '14 Days', '30 Days', '60 Days', '90 Days'];
+const creditPeriods = ['30 Days', '45 Days', '60 Days', '90 Days', '120 Days'];
 
 const entityTypes = [
   'Private/Public Company',
@@ -188,6 +188,7 @@ const SupplierApplication = () => {
     serviceTypes: '',
     servicesDescription: '',
     // File uploads
+    businessPermit: null,
     certificateOfIncorporation: null,
     kraPinCertificate: null,
     etimsProof: null,
@@ -340,6 +341,7 @@ const SupplierApplication = () => {
   // Map form field names to document types for upload
   const getDocumentType = (fieldName) => {
     const fieldToDocType = {
+      'businessPermit': 'business_permit',
       'certificateOfIncorporation': 'certificate_of_incorporation',
       'kraPinCertificate': 'pin_certificate',
       'etimsProof': 'etims_registration',
@@ -682,6 +684,11 @@ const SupplierApplication = () => {
     // Universal documents
     docs.push({
       type: 'single',
+      field: 'businessPermit',
+      label: 'Business Permit / Trading Licence'
+    });
+    docs.push({
+      type: 'single',
       field: 'bankReferenceLetter',
       label: 'Bank reference letter'
     });
@@ -760,6 +767,7 @@ const SupplierApplication = () => {
 
     // Upload single file fields
     const singleFileFields = [
+      'businessPermit',
       'certificateOfIncorporation', 'kraPinCertificate', 'etimsProof',
       'financialStatements', 'cr12', 'companyProfile', 'bankReferenceLetter',
 
@@ -903,13 +911,15 @@ const SupplierApplication = () => {
               branch: app.branch || '',
               currency: app.currency || '',
               creditPeriod: app.creditPeriod ? (() => {
-                // Map number to string format (e.g., 7 -> "7 Days", 30 -> "30 Days")
                 const periodMap = {
-                  7: '7 Days',
-                  14: '14 Days',
                   30: '30 Days',
+                  45: '45 Days',
                   60: '60 Days',
-                  90: '90 Days'
+                  90: '90 Days',
+                  120: '120 Days',
+                  // legacy values — map up to the minimum
+                  7: '30 Days',
+                  14: '30 Days',
                 };
                 return periodMap[app.creditPeriod] || `${app.creditPeriod} Days`;
               })() : '',
@@ -932,6 +942,7 @@ const SupplierApplication = () => {
               // File uploads - stored as filenames (strings) in database
               // Keep as strings so UI can display them, but they won't be File objects
               // Preserve filenames if they exist (non-empty strings), otherwise use null
+              businessPermit: (app.businessPermit && typeof app.businessPermit === 'string' && app.businessPermit.trim() !== '') ? app.businessPermit : null,
               certificateOfIncorporation: (app.certificateOfIncorporation && typeof app.certificateOfIncorporation === 'string' && app.certificateOfIncorporation.trim() !== '') ? app.certificateOfIncorporation : null,
               kraPinCertificate: (app.kraPinCertificate && typeof app.kraPinCertificate === 'string' && app.kraPinCertificate.trim() !== '') ? app.kraPinCertificate : null,
               etimsProof: (app.etimsProof && typeof app.etimsProof === 'string' && app.etimsProof.trim() !== '') ? app.etimsProof : null,
@@ -1317,6 +1328,9 @@ const SupplierApplication = () => {
     const requireArray = (presentValue, label) => {
       if (!presentValue) missing.push(label);
     };
+
+    // Business permit is mandatory for all entity types
+    requireSingle(isSinglePresent(formData.businessPermit), 'Business Permit / Trading Licence');
 
     if (isCompanyLike) {
       requireSingle(isSinglePresent(formData.certificateOfIncorporation), 'Certificate of incorporation or registration');
@@ -3770,6 +3784,8 @@ const SupplierApplication = () => {
 
                         return (
                           <Grid item xs={12}>
+                            {renderDocumentCard(formData.businessPermit, 'Business Permit / Trading Licence')}
+
                             {isCompanyLike && (
                               <>
                                 {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}

@@ -44,6 +44,9 @@ const documentSchema = new mongoose.Schema({
       'founder_id',
       'beneficiary_id',
       
+      // Business Permit / Trading Licence
+      'business_permit',
+
       // Professional Services
       'practicing_certificate',
       'member_resume',

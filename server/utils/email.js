@@ -200,8 +200,7 @@ exports.generateResetToken = () => {
  * @returns {String} - OTP code (6 characters, mix of numbers and letters)
  */
 exports.generateOTP = () => {
-  // Temporary: Set default OTP to 000000 for demo purposes
-  return '000000';
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 /**
