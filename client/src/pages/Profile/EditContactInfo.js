@@ -26,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
-import { isValidKenyaIdOrPassport, KENYA_ID_HELPER } from '../../utils/kenyaValidators';
+import { isValidKenyaIdOrPassport, KENYA_ID_HELPER, isValidKenyaPhone, KENYA_PHONE_HELPER } from '../../utils/kenyaValidators';
 import Footer from '../../components/Footer/Footer';
 
 const contactRelationships = [
@@ -165,6 +165,10 @@ const EditContactInfo = () => {
       toast.error('ID/Passport Number format is invalid. ' + KENYA_ID_HELPER);
       return;
     }
+    if (newContact.phone && !isValidKenyaPhone(newContact.phone)) {
+      toast.error('Phone number format is invalid. ' + KENYA_PHONE_HELPER);
+      return;
+    }
 
     try {
       let updatedContacts;
@@ -241,6 +245,10 @@ const EditContactInfo = () => {
   const handleSubmit = async () => {
     if (formData.idPassport && !isValidKenyaIdOrPassport(formData.idPassport)) {
       toast.error('ID/Passport Number format is invalid. ' + KENYA_ID_HELPER);
+      return;
+    }
+    if (formData.phone && !isValidKenyaPhone(formData.phone)) {
+      toast.error('Phone number format is invalid. ' + KENYA_PHONE_HELPER);
       return;
     }
     try {
@@ -456,6 +464,12 @@ const EditContactInfo = () => {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 size="small"
+                error={!!formData.phone && !isValidKenyaPhone(formData.phone)}
+                helperText={
+                  formData.phone && !isValidKenyaPhone(formData.phone)
+                    ? KENYA_PHONE_HELPER
+                    : KENYA_PHONE_HELPER
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
@@ -803,6 +817,12 @@ const EditContactInfo = () => {
                   value={newContact.phone}
                   onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
                   size="small"
+                  error={!!newContact.phone && !isValidKenyaPhone(newContact.phone)}
+                  helperText={
+                    newContact.phone && !isValidKenyaPhone(newContact.phone)
+                      ? KENYA_PHONE_HELPER
+                      : KENYA_PHONE_HELPER
+                  }
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#fff',
