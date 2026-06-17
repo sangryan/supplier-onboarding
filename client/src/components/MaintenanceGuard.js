@@ -8,9 +8,10 @@ const MaintenanceGuard = ({ children }) => {
   const [maintenance, setMaintenance] = useState(false);
   const [message, setMessage] = useState('');
   const [endTime, setEndTime] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const check = async () => {
+    const check = async (isFirst = false) => {
       try {
         const res = await api.get('/settings/maintenance');
         setMaintenance(res.data.data?.maintenanceMode || false);
@@ -18,12 +19,16 @@ const MaintenanceGuard = ({ children }) => {
         setEndTime(res.data.data?.maintenanceEndTime || null);
       } catch {
         // On error, don't block access
+      } finally {
+        if (isFirst) setLoading(false);
       }
     };
-    check();
-    const interval = setInterval(check, 60000);
+    check(true);
+    const interval = setInterval(() => check(false), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  if (loading) return null;
 
   if (maintenance && user?.role !== 'super_admin') {
     return <Maintenance message={message} endTime={endTime} />;

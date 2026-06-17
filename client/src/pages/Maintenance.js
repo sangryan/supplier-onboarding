@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
 import { keyframes } from '@mui/system';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 /* ── Keyframes ───────────────────────────────────────────── */
 const spin      = keyframes`from{transform:rotate(0deg)}  to{transform:rotate(360deg)}`;
@@ -61,7 +63,14 @@ const Particle = ({ left, top, size, dur, delay, green }) => (
 
 /* ── Main ─────────────────────────────────────────────────── */
 const Maintenance = ({ message }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+
+  const handleLogoClick = () => {
+    logout();
+    navigate('/login');
+  };
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
   const particles = useMemo(() => Array.from({ length: 30 }, (_, i) => ({
@@ -155,7 +164,7 @@ const Maintenance = ({ message }) => {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 12px 40px rgba(0,0,0,.6)',
             }}>
-              <Box component="img" src="/images/Icon.svg" alt="Logo" sx={{ width: 62, height: 62 }} />
+              <Box component="img" src="/images/Icon.svg" alt="Logo" onClick={handleLogoClick} sx={{ width: 62, height: 62, cursor: 'pointer' }} />
             </Box>
             {/* Tiny gear badge */}
             <Box sx={{
