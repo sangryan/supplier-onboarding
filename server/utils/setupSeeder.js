@@ -108,6 +108,15 @@ const SEED_DATA = {
     { name: 'Maintenance & Repair', description: '' },
     { name: 'Other',                description: '' },
   ],
+  departments: [
+    { name: 'Procurement',      description: '' },
+    { name: 'Legal',            description: '' },
+    { name: 'Finance',          description: '' },
+    { name: 'Operations',       description: '' },
+    { name: 'IT',               description: '' },
+    { name: 'Human Resources',  description: '' },
+    { name: 'Marketing',        description: '' },
+  ],
   bank_names: [
     { name: 'Equity Bank',                    description: '' },
     { name: 'KCB Bank',                       description: '' },

@@ -30,7 +30,6 @@ import {
   Description as DescriptionIcon,
   Warning as WarningIcon,
   ErrorOutline as ErrorOutlineIcon,
-  Assignment as AssignmentIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material';
@@ -67,7 +66,6 @@ const ContractList = () => {
     active: 25,
     expiringSoon: 10,
     expired: 5,
-    adHoc: 20
   });
 
   useEffect(() => {
@@ -97,7 +95,6 @@ const ContractList = () => {
       };
 
       if (activeTab === 'Registered Suppliers') params.supplierType = 'registered';
-      if (activeTab === 'Ad-hoc Vendors') params.supplierType = 'adhoc';
       if (statusFilter) params.status = statusFilter;
 
       const response = await api.get('/contracts', { params });
@@ -197,7 +194,7 @@ const ContractList = () => {
     );
   };
 
-  const tabs = ['All', 'Registered Suppliers', 'Ad-hoc Vendors'];
+  const tabs = ['All', 'Registered Suppliers'];
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
@@ -336,31 +333,6 @@ const ContractList = () => {
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '28px', color: '#111827' }}>
                 {stats.expired}
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 2, sm: 2.5 },
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                backgroundColor: '#fff',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                <Typography sx={{ color: '#111827', fontSize: '14px', fontWeight: 500 }}>
-                  Ad-hoc Vendors
-                </Typography>
-                <AssignmentIcon sx={{ color: '#6b7280', fontSize: 20 }} />
-              </Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '28px', color: '#111827' }}>
-                {stats.adHoc}
               </Typography>
             </Paper>
           </Grid>
@@ -511,8 +483,6 @@ const ContractList = () => {
                 contracts.map((contract) => {
                   const vendorNumber = contract.supplier?.vendorNumber || contract.vendorNumber || '-';
                   const supplierName = contract.supplier?.supplierName || contract.supplierName || '-';
-                  const isAdhoc = contract.isAdhoc || vendorNumber.startsWith('AD-');
-                  const supplierType = isAdhoc ? 'Ad-hoc Vendor' : 'Registered Supplier';
 
                   return (
                     <TableRow
@@ -539,7 +509,7 @@ const ContractList = () => {
                         {supplierName}
                       </TableCell>
                       <TableCell sx={{ fontSize: '14px', color: '#111827', py: 2, borderBottom: '1px solid #f3f4f6' }}>
-                        {supplierType}
+                        Registered Supplier
                       </TableCell>
                       <TableCell sx={{ fontSize: '14px', color: '#111827', py: 2, borderBottom: '1px solid #f3f4f6' }}>
                         {formatDate(getApplicationUpdatedAt(contract))}

@@ -49,6 +49,7 @@ import { FormControl, Select } from '@mui/material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { isValidEmail, EMAIL_HELPER } from '../../utils/kenyaValidators';
+import useSetupConfig from '../../hooks/useSetupConfig';
 
 const UserManagement = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const UserManagement = () => {
   const [roleSearch, setRoleSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [departments, setDepartments] = useState([]);
+  const { names: departments } = useSetupConfig('departments');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -80,7 +81,6 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers();
-    fetchDepartments();
     fetchMaintenance();
   }, []);
 
@@ -125,17 +125,6 @@ const UserManagement = () => {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const response = await api.get('/users/departments');
-      if (response.data?.success) {
-        setDepartments(response.data.data || []);
-      }
-    } catch {
-      setDepartments([]);
     }
   };
 

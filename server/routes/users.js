@@ -4,8 +4,6 @@ const { body, validationResult } = require('express-validator');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Supplier = require('../models/Supplier');
-const AdHocVendor = require('../models/AdHocVendor');
-const Contract = require('../models/Contract');
 const { protect, authorize } = require('../middleware/auth');
 const { sendUserInviteEmail } = require('../utils/email');
 const { logAction } = require('../utils/auditLogger');
@@ -97,44 +95,6 @@ router.get('/', protect, authorize('super_admin'), async (req, res) => {
   }
 });
 
-// @route   GET /api/users/departments
-// @desc    Get distinct departments from supplier applications
-// @access  Private (Super Admin)
-router.get('/departments', protect, authorize('super_admin'), async (req, res) => {
-  try {
-    // Management users filter contracts by `contract.department`.
-    // So the dropdown must reflect departments already used on contracts.
-    const contractDepartments = await Contract.distinct('department', {
-      department: { $exists: true, $ne: null, $ne: '' }
-    });
-
-    // Also include any departments coming from ad-hoc vendor intake.
-    const adHocDepartments = await AdHocVendor.distinct('department', {
-      department: { $exists: true, $ne: null, $ne: '' }
-    });
-
-    const departmentsSet = new Set([
-      ...(contractDepartments || []),
-      ...(adHocDepartments || []),
-    ]);
-
-    const departments = Array.from(departmentsSet)
-      .map((dept) => String(dept || '').trim())
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-
-    res.json({
-      success: true,
-      data: departments
-    });
-  } catch (error) {
-    console.error('Get departments error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching departments'
-    });
-  }
-});
 
 // @route   GET /api/users/pending-registrations
 // @desc    Get pending supplier registration requests

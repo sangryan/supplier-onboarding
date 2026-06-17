@@ -287,16 +287,10 @@ supplierSchema.methods.isOnboarded = function () {
 };
 
 // Centralized Vendor Number Generation
-supplierSchema.statics.generateVendorNumber = async function (type = 'standard') {
-  let prefix = 'VND-B';
-  let regex = /^VND-B(\d+)/;
-  let startNum = 100;
-
-  if (type === 'adhoc') {
-    prefix = 'VND-ADHOC-';
-    regex = /^VND-ADHOC-(\d+)/;
-    startNum = 1;
-  }
+supplierSchema.statics.generateVendorNumber = async function () {
+  const prefix = 'VND-B';
+  const regex = /^VND-B(\d+)/;
+  const startNum = 100;
 
   const lastSupplier = await this.findOne({
     vendorNumber: regex

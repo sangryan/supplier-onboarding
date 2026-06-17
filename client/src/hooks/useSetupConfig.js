@@ -35,8 +35,14 @@ const useSetupConfig = (category) => {
     return () => { cancelled = true; };
   }, [category]);
 
-  // Convenience: array of name strings (what most selects need)
-  const names = items.map((i) => i.name);
+  // Convenience: array of name strings (what most selects need), "Other" always last
+  const names = items
+    .map((i) => i.name)
+    .sort((a, b) => {
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      return 0;
+    });
 
   // True if "Other" is one of the configured options
   const hasOther = names.includes('Other');

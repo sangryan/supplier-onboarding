@@ -17,6 +17,7 @@ const notificationSchema = new mongoose.Schema({
       'contract_uploaded',
       'contract_expiring',
       'contract_terminated',
+      'termination_recommended',
       'profile_update_requested',
       'profile_update_approved',
       'new_task_assigned',

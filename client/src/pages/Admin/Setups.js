@@ -42,7 +42,8 @@ const CATEGORIES = [
   { key: 'currencies',    label: 'Currencies',               nameLabel: 'Currency Code',      descLabel: 'Currency Name' },
   { key: 'wealth_sources',label: 'Sources of wealth/funds',  nameLabel: 'Source Name',        descLabel: 'Description' },
   { key: 'service_types', label: 'Supplier Service Types',   nameLabel: 'Service Type Name',  descLabel: 'Description' },
-  { key: 'bank_names', label: 'Bank Names', nameLabel: 'Bank Name', descLabel: 'Description' },
+  { key: 'bank_names',  label: 'Bank Names',  nameLabel: 'Bank Name',       descLabel: 'Description' },
+  { key: 'departments', label: 'Departments', nameLabel: 'Department Name', descLabel: 'Description' },
 ];
 
 // All document fields available for entity type configuration

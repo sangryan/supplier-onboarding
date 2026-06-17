@@ -621,11 +621,7 @@ const ProcurementDashboard = () => {
                               },
                             }}
                           >
-                            {task.requestType === 'Ad-hoc Vendor Application' ? (
-                              <VisibilityIcon fontSize="small" />
-                            ) : (
-                              <DottedArrowIcon size={18} />
-                            )}
+                            <DottedArrowIcon size={18} />
                           </IconButton>
                           </Box>
                         </TableCell>

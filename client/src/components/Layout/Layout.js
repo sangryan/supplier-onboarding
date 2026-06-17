@@ -31,7 +31,6 @@ import {
   AccountCircle,
   LockReset as LockResetIcon,
   Logout,
-  HeadsetMic as HeadsetIcon,
   History as HistoryIcon,
   ExitToApp as ExitIcon,
   Home as HomeIcon,
@@ -290,74 +289,6 @@ const Layout = () => {
           })}
         </List>
 
-        {/* Other Section */}
-        <Box sx={{ mt: 2, px: 1 }}>
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography
-              sx={{
-                fontSize: '12px',
-                fontWeight: 600,
-                color: '#6b7280',
-                letterSpacing: '0.5px',
-                mb: 1
-              }}
-            >
-              Other
-            </Typography>
-          </Box>
-          <List>
-            <ListItem disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                sx={{
-                  borderRadius: '8px',
-                  color: '#374151',
-                  '&:hover': {
-                    backgroundColor: '#d1d5db',
-                  },
-                  py: 1.5,
-                  px: 2,
-                  minHeight: '44px'
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
-                  <HeadsetIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Help and Support"
-                  primaryTypographyProps={{
-                    fontSize: '14px',
-                    fontWeight: 400
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton
-                sx={{
-                  borderRadius: '8px',
-                  color: '#374151',
-                  '&:hover': {
-                    backgroundColor: '#d1d5db',
-                  },
-                  py: 1.5,
-                  px: 2,
-                  minHeight: '44px'
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40, color: '#6b7280' }}>
-                  <HistoryIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Feedback"
-                  primaryTypographyProps={{
-                    fontSize: '14px',
-                    fontWeight: 400
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          </List>
-        </Box>
       </Box>
 
       {/* Footer */}

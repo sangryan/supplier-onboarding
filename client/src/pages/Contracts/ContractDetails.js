@@ -45,6 +45,9 @@ const ContractDetails = () => {
   const [terminateDialog, setTerminateDialog] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [terminateReason, setTerminateReason] = useState('');
+  const [recommendDialog, setRecommendDialog] = useState(false);
+  const [recommending, setRecommending] = useState(false);
+  const [recommendReason, setRecommendReason] = useState('');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [expanded, setExpanded] = useState(['basicInformation', 'contactDetails', 'contractInformation']);
@@ -57,7 +60,7 @@ const ContractDetails = () => {
   }, [id]);
 
   useEffect(() => {
-    if (contract && searchParams.get('upload') === '1' && !contract.signedContract && contract.status !== 'active') {
+    if (contract && searchParams.get('upload') === '1' && !contract.signedContract && contract.status !== 'active' && user?.role !== 'management') {
       setUploadModalOpen(true);
     }
   }, [contract, searchParams]);
@@ -100,6 +103,25 @@ const ContractDetails = () => {
       toast.error(error.response?.data?.message || 'Failed to terminate contract');
     } finally {
       setTerminating(false);
+    }
+  };
+
+  const handleRecommendTermination = async () => {
+    if (!recommendReason.trim()) {
+      toast.error('Please provide a recommendation reason');
+      return;
+    }
+    setRecommending(true);
+    try {
+      await api.post(`/contracts/${id}/recommend-termination`, { reason: recommendReason.trim() });
+      toast.success('Termination recommendation sent to legal team');
+      setRecommendDialog(false);
+      setRecommendReason('');
+      fetchContract();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send termination recommendation');
+    } finally {
+      setRecommending(false);
     }
   };
 
@@ -445,25 +467,27 @@ const ContractDetails = () => {
             >
               Download Contract
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<UploadIcon />}
-              sx={{
-                bgcolor: '#578A18',
-                color: '#fff',
-                textTransform: 'none',
-                fontSize: '14px',
-                fontWeight: 500,
-                px: 3,
-                py: 1,
-                borderRadius: '6px',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#467014', boxShadow: 'none' }
-              }}
-              onClick={() => setUploadModalOpen(true)}
-            >
-              Upload New Contract
-            </Button>
+            {user?.role !== 'management' && (
+              <Button
+                variant="contained"
+                startIcon={<UploadIcon />}
+                sx={{
+                  bgcolor: '#578A18',
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  px: 3,
+                  py: 1,
+                  borderRadius: '6px',
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: '#467014', boxShadow: 'none' }
+                }}
+                onClick={() => setUploadModalOpen(true)}
+              >
+                Upload New Contract
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -718,8 +742,66 @@ const ContractDetails = () => {
               )}
             </Grid>
 
-            {/* Termination Flow (Styled like SupplierDetails action panels) */}
-            {contract.status === 'active' && (
+            {/* Management: recommend termination when active */}
+            {user?.role === 'management' && contract.status === 'active' && (
+              <Box sx={{ mt: 4, p: 3, border: '1px solid #fca5a5', borderRadius: '8px', bgcolor: '#fff' }}>
+                <Typography sx={{ fontWeight: 600, mb: 1, color: '#111827' }}>Recommend Contract Termination</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Submit a termination recommendation to the legal team for review and action.
+                </Typography>
+                <Box sx={{ bgcolor: '#fee2e2', p: 2, borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="#b91c1c" sx={{ fontWeight: 500 }}>Legal will be notified and will actualize the termination.</Typography>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    sx={{ textTransform: 'none', bgcolor: '#dc2626', '&:hover': { bgcolor: '#b91c1c' } }}
+                    onClick={() => setRecommendDialog(true)}
+                  >
+                    Recommend Termination
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {/* Management: recommendation already pending */}
+            {user?.role === 'management' && contract.status === 'termination_recommended' && (
+              <Box sx={{ mt: 4, p: 3, border: '1px solid #fbbf24', borderRadius: '8px', bgcolor: '#fffbeb' }}>
+                <Typography sx={{ fontWeight: 600, mb: 1, color: '#92400e' }}>Termination Recommendation Pending</Typography>
+                <Typography variant="body2" color="#78350f" sx={{ mb: 1 }}>
+                  Your termination recommendation has been sent to the legal team and is awaiting action.
+                </Typography>
+                {contract.terminationRecommendationReason && (
+                  <Typography variant="body2" sx={{ fontStyle: 'italic', color: '#78350f' }}>
+                    Reason: {contract.terminationRecommendationReason}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Legal / Super Admin: pending recommendation details */}
+            {(user?.role === 'legal' || user?.role === 'super_admin') && contract.status === 'termination_recommended' && (
+              <Box sx={{ mt: 4, p: 3, border: '1px solid #fbbf24', borderRadius: '8px', bgcolor: '#fffbeb' }}>
+                <Typography sx={{ fontWeight: 600, mb: 1, color: '#92400e' }}>Termination Recommendation Received</Typography>
+                {contract.terminationRecommendationReason && (
+                  <Typography variant="body2" color="#78350f" sx={{ mb: 0.5 }}>
+                    Reason: {contract.terminationRecommendationReason}
+                  </Typography>
+                )}
+                {contract.terminationRecommendedBy && (
+                  <Typography variant="body2" color="#78350f" sx={{ mb: 0.5 }}>
+                    Recommended by: {contract.terminationRecommendedBy.firstName} {contract.terminationRecommendedBy.lastName}
+                  </Typography>
+                )}
+                {contract.terminationRecommendedAt && (
+                  <Typography variant="body2" color="#78350f">
+                    Date: {formatDate(contract.terminationRecommendedAt)}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Legal / Super Admin: actualize termination */}
+            {(user?.role === 'legal' || user?.role === 'super_admin') && (contract.status === 'active' || contract.status === 'termination_recommended') && (
               <Box sx={{ mt: 4, p: 3, border: '1px solid #fca5a5', borderRadius: '8px', bgcolor: '#fff' }}>
                 <Typography sx={{ fontWeight: 600, mb: 1, color: '#111827' }}>Terminate Contract</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -786,6 +868,30 @@ const ContractDetails = () => {
           <Button onClick={() => { setTerminateDialog(false); setTerminateReason(''); }}>Cancel</Button>
           <Button variant="contained" color="error" onClick={handleTerminateContract} disabled={terminating || !terminateReason.trim()}>
             {terminating ? 'Terminating...' : 'Terminate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={recommendDialog} onClose={() => { setRecommendDialog(false); setRecommendReason(''); }} maxWidth="sm" fullWidth>
+        <DialogTitle>Recommend Contract Termination</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>Provide a reason for recommending termination. The legal team will be notified to review and action your recommendation.</Typography>
+          <TextField
+            label="Recommendation Reason"
+            multiline
+            rows={3}
+            fullWidth
+            required
+            value={recommendReason}
+            onChange={(e) => setRecommendReason(e.target.value)}
+            placeholder="Provide a reason for recommending termination..."
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setRecommendDialog(false); setRecommendReason(''); }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleRecommendTermination} disabled={recommending || !recommendReason.trim()}>
+            {recommending ? 'Sending...' : 'Send Recommendation'}
           </Button>
         </DialogActions>
       </Dialog>

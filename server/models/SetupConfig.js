@@ -10,7 +10,7 @@ const documentRequirementSchema = new mongoose.Schema({
 const setupConfigSchema = new mongoose.Schema({
   category: {
     type: String,
-    enum: ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types', 'bank_names'],
+    enum: ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types', 'bank_names', 'departments'],
     required: true,
   },
   name: { type: String, required: true, trim: true },

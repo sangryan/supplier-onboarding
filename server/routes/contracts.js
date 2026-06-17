@@ -8,6 +8,7 @@ const Document = require('../models/Document');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { createNotification } = require('../utils/notifications');
+const User = require('../models/User');
 
 const ensureDraftContractForSupplier = async (supplier, userId) => {
   if (supplier.contract) {
@@ -174,25 +175,12 @@ router.get('/stats', protect, async (req, res) => {
       }
     });
 
-    // AdHoc Vendors count (includes those with contracts and those pending upload)
-    const adHocSuppliersForStats = await Supplier.find({ vendorNumber: /^VND-ADHOC-/ }).select('_id status contract');
-    const adHocSupplierIdsForStats = adHocSuppliersForStats.map(s => s._id);
-
-    // Count contracts for adhoc suppliers
-    const adHocContractsCount = await Contract.countDocuments({ supplier: { $in: adHocSupplierIdsForStats } });
-
-    // Count adhoc suppliers who are pending_contract_upload but don't have a contract yet
-    const pendingAdHocSuppliersCount = adHocSuppliersForStats.filter(s => s.status === 'pending_contract_upload' && !s.contract).length;
-
-    const adHoc = adHocContractsCount + pendingAdHocSuppliersCount;
-
     res.json({
       success: true,
       data: {
         active,
         expired,
         expiringSoon,
-        adHoc
       }
     });
   } catch (error) {
@@ -238,21 +226,6 @@ router.get('/', protect, async (req, res) => {
       ];
     }
 
-    // Filter by supplier type (Ad-hoc vs Registered)
-    if (supplierType) {
-      if (supplierType === 'adhoc') {
-        const adHocSuppliers = await Supplier.find({ vendorNumber: /^VND-ADHOC-/ }).select('_id');
-        query.supplier = { $in: adHocSuppliers.map(s => s._id) };
-      } else if (supplierType === 'registered') {
-        const registeredSuppliers = await Supplier.find({
-          $or: [
-            { vendorNumber: { $not: /^VND-ADHOC-/ } },
-            { vendorNumber: { $exists: false } }
-          ]
-        }).select('_id');
-        query.supplier = { $in: registeredSuppliers.map(s => s._id) };
-      }
-    }
 
     // Fetch contracts and filter by associated supplier status or contact status
     let contracts = await Contract.find(query)
@@ -281,16 +254,6 @@ router.get('/', protect, async (req, res) => {
       supplierQuery.supplierName = { $regex: search, $options: 'i' };
     }
 
-    if (supplierType) {
-      if (supplierType === 'adhoc') {
-        supplierQuery.vendorNumber = /^VND-ADHOC-/;
-      } else if (supplierType === 'registered') {
-        supplierQuery.$or = [
-          { vendorNumber: { $not: /^VND-ADHOC-/ } },
-          { vendorNumber: { $exists: false } }
-        ];
-      }
-    }
     const pendingSupplierDocs = await Supplier.find(supplierQuery).populate('contract');
     const pendingSuppliers = [];
 
@@ -373,6 +336,8 @@ router.get('/:id', protect, async (req, res) => {
       .populate('supplier')
       .populate('uploadedBy', 'firstName lastName')
       .populate('approvedBy', 'firstName lastName')
+      .populate('terminationRecommendedBy', 'firstName lastName')
+      .populate('terminatedBy', 'firstName lastName')
       .populate('signedContract')
       .populate('attachments')
       .populate('amendments.createdBy', 'firstName lastName')
@@ -708,8 +673,74 @@ router.get('/reports/expiring', protect, authorize('management', 'procurement', 
   }
 });
 
+// @route   POST /api/contracts/:id/recommend-termination
+// @desc    HOD recommends contract termination — notifies legal to action it
+// @access  Private (Management/HOD)
+router.post('/:id/recommend-termination', protect, authorize('management', 'super_admin'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Termination recommendation reason is required'
+      });
+    }
+
+    const contract = await Contract.findById(req.params.id).populate('supplier');
+
+    if (!contract) {
+      return res.status(404).json({ success: false, message: 'Contract not found' });
+    }
+
+    if (contract.status !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only active contracts can be recommended for termination'
+      });
+    }
+
+    contract.status = 'termination_recommended';
+    contract.terminationRecommendedAt = new Date();
+    contract.terminationRecommendedBy = req.user.id;
+    contract.terminationRecommendationReason = reason.trim();
+    await contract.save();
+
+    // Notify all legal users
+    try {
+      const legalUsers = await User.find({ role: 'legal', isActive: { $ne: false } });
+      const supplier = contract.supplier;
+      const appNumber = supplier?.applicationNumber || supplier?._id?.toString().slice(-6) || 'Unknown';
+      const recommenderName = [req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || 'HOD';
+
+      for (const legalUser of legalUsers) {
+        await createNotification({
+          recipient: legalUser._id,
+          type: 'termination_recommended',
+          title: `[${appNumber}] Contract Termination Recommended`,
+          message: `${recommenderName} has recommended termination of contract ${contract.contractNumber}.\n\nReason: ${reason.trim()}\n\nPlease review and action accordingly.`,
+          relatedEntity: { entityType: 'contract', entityId: contract._id },
+          actionUrl: `/contracts/${contract._id}`,
+          priority: 'high'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error notifying legal of termination recommendation:', notifError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Termination recommendation submitted. Legal has been notified.',
+      data: contract
+    });
+  } catch (error) {
+    console.error('Recommend termination error:', error);
+    res.status(500).json({ success: false, message: 'Error submitting termination recommendation' });
+  }
+});
+
 // @route   POST /api/contracts/:id/terminate
-// @desc    Terminate contract
+// @desc    Terminate contract (Legal actualizes the termination)
 // @access  Private (Legal)
 router.post('/:id/terminate', protect, authorize('legal', 'super_admin'), async (req, res) => {
   try {

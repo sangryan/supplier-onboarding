@@ -369,20 +369,8 @@ router.get('/', protect, async (req, res) => {
           .map(r => [r.submittedBy?.toString(), r.supplierName])
       );
 
-      // 3. Get all ad-hoc applications (no specific user linkage via submittedBy in some cases, or procurement-created)
-      let adHocQuery = { adHocVendorId: { $exists: true } };
-      if (search) {
-        adHocQuery.$or = [
-          { supplierName: { $regex: search, $options: 'i' } },
-          { vendorNumber: { $regex: search, $options: 'i' } }
-        ];
-      }
-      const adHocSuppliers = await Supplier.find(adHocQuery)
-        .populate('submittedBy', 'firstName lastName email')
-        .lean();
-
-      // 4. Combine and deduplicate
-      const allRecords = [...userApplications, ...adHocSuppliers.map(s => ({ ...s, isAdHoc: true }))];
+      // 3. Combine records
+      const allRecords = [...userApplications];
 
       // Add users who have NO applications as placeholders
       supplierUsers.forEach(u => {
@@ -1466,27 +1454,53 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       // Don't fail submission if notifications fail
     }
 
-    // Notify super_admin users when a supplier submits with an unknown bank name (non-blocking)
+    // Notify super_admin users when a supplier submits an "Other" value for any dropdown (non-blocking)
     try {
-      if (comprehensiveUpdate.bankName === 'Other' && comprehensiveUpdate.bankNameOther?.trim()) {
-        const superAdminUsers = await User.find({ role: 'super_admin', isActive: true });
-        for (const user of superAdminUsers) {
-          try {
-            await createNotification({
-              recipient: user._id,
-              type: 'system_alert',
-              title: 'New Bank Name Suggestion',
-              message: `Supplier "${supplier.supplierName || 'Unknown'}" suggested a new bank: "${comprehensiveUpdate.bankNameOther}". Consider adding it to the Bank Names setup.`,
-              relatedEntity: { entityType: 'supplier', entityId: supplier._id },
-              actionUrl: `/setups`
-            });
-          } catch (notifError) {
-            console.error('Error creating bank name suggestion notification for user:', user._id, notifError);
+      const otherSuggestions = [
+        {
+          condition: comprehensiveUpdate.bankName === 'Other' && comprehensiveUpdate.bankNameOther?.trim(),
+          title: 'New Bank Name Suggestion',
+          message: `Supplier "${supplier.supplierName || 'Unknown'}" suggested a new bank: "${comprehensiveUpdate.bankNameOther}". Consider adding it to the Bank Names setup.`,
+        },
+        {
+          condition: comprehensiveUpdate.serviceTypes === 'Other' && comprehensiveUpdate.serviceTypesOther?.trim(),
+          title: 'New Service Type Suggestion',
+          message: `Supplier "${supplier.supplierName || 'Unknown'}" suggested a new service type: "${comprehensiveUpdate.serviceTypesOther}". Consider adding it to the Service Types setup.`,
+        },
+        {
+          condition: comprehensiveUpdate.sourceOfWealth === 'Other' && comprehensiveUpdate.sourceOfWealthOther?.trim(),
+          title: 'New Source of Wealth Suggestion',
+          message: `Supplier "${supplier.supplierName || 'Unknown'}" suggested a new source of wealth: "${comprehensiveUpdate.sourceOfWealthOther}". Consider adding it to the Wealth Sources setup.`,
+        },
+      ].filter((s) => s.condition);
+
+      console.log(`[SUBMIT] Other suggestions detected: ${otherSuggestions.length}`, otherSuggestions.map(s => s.title));
+
+      if (otherSuggestions.length > 0) {
+        // Use $ne: false so users without the isActive field are included
+        const superAdminUsers = await User.find({ role: 'super_admin', isActive: { $ne: false } });
+        console.log(`[SUBMIT] Super admin users found for notification: ${superAdminUsers.length}`);
+
+        for (const suggestion of otherSuggestions) {
+          for (const user of superAdminUsers) {
+            try {
+              await createNotification({
+                recipient: user._id,
+                type: 'system_alert',
+                title: suggestion.title,
+                message: suggestion.message,
+                relatedEntity: { entityType: 'supplier', entityId: supplier._id },
+                actionUrl: `/setups`,
+              });
+              console.log(`[SUBMIT] Notification sent to super_admin ${user.email}: "${suggestion.title}"`);
+            } catch (notifError) {
+              console.error(`[SUBMIT] Error creating notification "${suggestion.title}" for ${user.email}:`, notifError.message);
+            }
           }
         }
       }
     } catch (notifError) {
-      console.error('Error in bank name suggestion notification process:', notifError);
+      console.error('[SUBMIT] Error in suggestion notification process:', notifError);
       // Don't fail submission if notifications fail
     }
 

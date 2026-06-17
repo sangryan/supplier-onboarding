@@ -3,7 +3,7 @@ const router = express.Router();
 const SetupConfig = require('../models/SetupConfig');
 const { protect, authorize } = require('../middleware/auth');
 
-const VALID_CATEGORIES = ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types', 'bank_names'];
+const VALID_CATEGORIES = ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types', 'bank_names', 'departments'];
 
 // GET all items for a category — any authenticated user (suppliers need this for form dropdowns)
 router.get('/:category', protect, async (req, res) => {

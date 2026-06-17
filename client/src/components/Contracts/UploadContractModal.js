@@ -16,16 +16,7 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { processFileForUpload } from '../../utils/compressImage';
-
-const DEPARTMENTS = [
-    'Procurement',
-    'Legal',
-    'Finance',
-    'Operations',
-    'IT',
-    'Human Resources',
-    'Marketing'
-];
+import useSetupConfig from '../../hooks/useSetupConfig';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -67,6 +58,7 @@ const HelperText = styled(Typography)({
 });
 
 const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
+    const { names: departmentOptions } = useSetupConfig('departments');
     const [file, setFile] = useState(null);
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [validity, setValidity] = useState('');
@@ -223,7 +215,7 @@ const UploadContractModal = ({ open, onClose, onSave, uploading }) => {
                                 InputProps={{ sx: { borderRadius: '8px' } }}
                             >
                                 <MenuItem value="" disabled>Select Department</MenuItem>
-                                {DEPARTMENTS.map((dept) => (
+                                {departmentOptions.map((dept) => (
                                     <MenuItem key={dept} value={dept}>{dept}</MenuItem>
                                 ))}
                             </TextField>

@@ -44,7 +44,7 @@ const contractSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'active', 'expired', 'terminated', 'renewed'],
+    enum: ['draft', 'active', 'expired', 'terminated', 'renewed', 'termination_recommended'],
     default: 'draft'
   },
 
@@ -175,6 +175,17 @@ const contractSchema = new mongoose.Schema({
     ref: 'User'
   },
   terminationReason: {
+    type: String,
+    trim: true
+  },
+  terminationRecommendedAt: {
+    type: Date
+  },
+  terminationRecommendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  terminationRecommendationReason: {
     type: String,
     trim: true
   }

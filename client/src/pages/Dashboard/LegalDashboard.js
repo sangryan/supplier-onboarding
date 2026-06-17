@@ -87,8 +87,6 @@ const LegalDashboard = () => {
                 params.view = 'mine';
             } else if (activeTab === 'All Applications') {
                 endpoint = '/dashboard/all-tasks';
-            } else if (activeTab === 'Ad-hoc Vendors') {
-                endpoint = '/adhoc-vendors';
             }
 
             const response = await api.get(endpoint, { params });
@@ -202,10 +200,7 @@ const LegalDashboard = () => {
     };
 
     const handleRowClick = (task) => {
-        if (activeTab === 'Ad-hoc Vendors') {
-            // No detail page yet for Ad-hoc Vendors built, but we can direct to a generic view or do nothing
-            // navigate(`/adhoc-vendors/${task._id}`);
-        } else if ((task.rawStatus || task.status) === 'pending_contract_upload') {
+        if ((task.rawStatus || task.status) === 'pending_contract_upload') {
             const contractId = task.contractId || task.supplier?.contract;
             if (contractId) {
                 navigate(`/contracts/${contractId}?upload=1`);
@@ -229,7 +224,7 @@ const LegalDashboard = () => {
         setPage(1);
     };
 
-    const tabs = ['All Tasks', 'My Tasks', 'All Applications', 'Ad-hoc Vendors'];
+    const tabs = ['All Tasks', 'My Tasks', 'All Applications'];
 
     return (
         <Box sx={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', pb: 0 }}>
@@ -375,8 +370,8 @@ const LegalDashboard = () => {
                                 <TableRow sx={{ backgroundColor: '#f9fafb' }}>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>ID</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>Company Name</TableCell>
-                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>{activeTab === 'Ad-hoc Vendors' ? 'Services Provided' : 'Last Approver'}</TableCell>
-                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>{activeTab === 'Ad-hoc Vendors' ? 'Department' : 'Submission Date'}</TableCell>
+                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>Last Approver</TableCell>
+                                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>Submission Date</TableCell>
                                     <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>Status</TableCell>
                                     <TableCell align="right" sx={{ fontSize: '13px', fontWeight: 600, color: '#4b5563', py: 1.5, borderBottom: '1px solid #e0e0e0', width: 50 }}></TableCell>
                                 </TableRow>
@@ -402,30 +397,28 @@ const LegalDashboard = () => {
                                             onClick={() => handleRowClick(task)}
                                         >
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-                                                {activeTab === 'Ad-hoc Vendors' ? `ADHOC-${task._id.toString().slice(-4).toUpperCase()}` : formatTaskId(task)}
+                                                {formatTaskId(task)}
                                             </TableCell>
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>
                                                 {task.supplierName}
                                             </TableCell>
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>
-                                                {activeTab === 'Ad-hoc Vendors' ? (task.servicesProvided || '-') : (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <span>{task.lastApprover || '-'}</span>
-                                                        {task.lastApproverDepartment && task.lastApproverDepartment !== '-' && (() => {
-                                                            const { bg, color } = getDeptChipColors(task.lastApproverDepartment);
-                                                            return (
-                                                                <Chip
-                                                                    label={task.lastApproverDepartment}
-                                                                    size="small"
-                                                                    sx={{ fontSize: '11px', height: '20px', backgroundColor: bg, color, fontWeight: 500 }}
-                                                                />
-                                                            );
-                                                        })()}
-                                                    </Box>
-                                                )}
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <span>{task.lastApprover || '-'}</span>
+                                                    {task.lastApproverDepartment && task.lastApproverDepartment !== '-' && (() => {
+                                                        const { bg, color } = getDeptChipColors(task.lastApproverDepartment);
+                                                        return (
+                                                            <Chip
+                                                                label={task.lastApproverDepartment}
+                                                                size="small"
+                                                                sx={{ fontSize: '11px', height: '20px', backgroundColor: bg, color, fontWeight: 500 }}
+                                                            />
+                                                        );
+                                                    })()}
+                                                </Box>
                                             </TableCell>
                                             <TableCell sx={{ fontSize: '14px', color: '#111827', py: 1.5, borderBottom: '1px solid #e0e0e0', display: { xs: 'none', md: 'table-cell' } }}>
-                                                {activeTab === 'Ad-hoc Vendors' ? (task.department || '-') : formatDate(task.submissionDate || task.createdAt || task.updatedAt)}
+                                                {formatDate(task.submissionDate || task.createdAt || task.updatedAt)}
                                             </TableCell>
                                             <TableCell sx={{ py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
                                                 {getStatusChip(task.rawStatus || task.status)}
