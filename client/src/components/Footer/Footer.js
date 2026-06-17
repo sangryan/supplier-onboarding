@@ -22,7 +22,7 @@ const Footer = () => {
             color: '#9ca3af'
           }}
         >
-          © 2025 Supplier Onboarding Portal. All rights reserved.
+          © {new Date().getFullYear()} Supplier Onboarding Portal. All rights reserved.
         </Typography>
       </Container>
     </Box>

@@ -1,17 +1,44 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const { sendNotificationEmail } = require('./email');
 
 /**
- * Create a notification
- * @param {Object} notificationData - Notification data
- * @returns {Promise<Notification>}
+ * Send an email copy of a notification — only for supplier recipients.
+ * Uses a direct User lookup instead of .populate() so it works safely
+ * on both create() and insertMany() results.
+ */
+const sendEmailNotification = async (notification) => {
+  try {
+    const recipientId = notification.recipient?._id || notification.recipient;
+    if (!recipientId) return;
+
+    const user = await User.findById(recipientId).select('email firstName lastName role');
+    if (!user || !user.email) return;
+
+    // Only email supplier recipients — internal staff get in-app only
+    if (user.role !== 'supplier') return;
+
+    await sendNotificationEmail({
+      email: user.email,
+      title: notification.title,
+      message: notification.message,
+      actionUrl: notification.actionUrl,
+    });
+
+    console.log(`📧 Notification email sent to supplier ${user.email}: "${notification.title}"`);
+  } catch (error) {
+    console.error('Send email notification error:', error);
+    // Don't throw — email failure must never break the in-app notification
+  }
+};
+
+/**
+ * Create a single notification and email the supplier recipient.
  */
 exports.createNotification = async (notificationData) => {
   try {
     const notification = await Notification.create(notificationData);
-
     await sendEmailNotification(notification);
-
     return notification;
   } catch (error) {
     console.error('Create notification error:', error);
@@ -20,40 +47,12 @@ exports.createNotification = async (notificationData) => {
 };
 
 /**
- * Send email notification
- * @param {Notification} notification - Notification object
- */
-const sendEmailNotification = async (notification) => {
-  try {
-    const recipient = await notification.populate('recipient');
-
-    if (!recipient || !recipient.recipient.email) {
-      return;
-    }
-
-    await sendNotificationEmail({
-      email: recipient.recipient.email,
-      title: notification.title,
-      message: notification.message,
-      actionUrl: notification.actionUrl
-    });
-  } catch (error) {
-    console.error('Send email notification error:', error);
-    // Don't throw error - email failure shouldn't break the app
-  }
-};
-
-/**
- * Create bulk notifications
- * @param {Array<Object>} notificationsData - Array of notification data
- * @returns {Promise<Array<Notification>>}
+ * Create multiple notifications and email any supplier recipients.
  */
 exports.createBulkNotifications = async (notificationsData) => {
   try {
     const notifications = await Notification.insertMany(notificationsData);
-
-    await Promise.all(notifications.map(n => sendEmailNotification(n)));
-
+    await Promise.all(notifications.map((n) => sendEmailNotification(n)));
     return notifications;
   } catch (error) {
     console.error('Create bulk notifications error:', error);
@@ -62,8 +61,7 @@ exports.createBulkNotifications = async (notificationsData) => {
 };
 
 /**
- * Delete old notifications
- * @param {Number} daysOld - Delete notifications older than this many days
+ * Delete read notifications older than `daysOld` days.
  */
 exports.cleanupOldNotifications = async (daysOld = 90) => {
   try {
@@ -72,7 +70,7 @@ exports.cleanupOldNotifications = async (daysOld = 90) => {
 
     const result = await Notification.deleteMany({
       createdAt: { $lt: cutoffDate },
-      isRead: true
+      isRead: true,
     });
 
     console.log(`Deleted ${result.deletedCount} old notifications`);
