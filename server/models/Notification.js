@@ -20,7 +20,8 @@ const notificationSchema = new mongoose.Schema({
       'profile_update_requested',
       'profile_update_approved',
       'new_task_assigned',
-      'sla_warning'
+      'sla_warning',
+      'system_alert'
     ],
     required: true
   },

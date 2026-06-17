@@ -1516,6 +1516,106 @@ const SupplierDetails = () => {
               </AccordionDetails>
             </Accordion>
 
+            {/* Payment Details */}
+            <Accordion
+              expanded={expanded.includes('paymentDetails')}
+              onChange={handleAccordionChange('paymentDetails')}
+              sx={{
+                boxShadow: 'none',
+                border: 'none',
+                borderRadius: '0 !important',
+                mb: 0,
+                '&:before': { display: 'none' },
+                '&.Mui-expanded': {
+                  margin: 0,
+                },
+              }}
+            >
+              <AccordionSummary
+                expandIcon={
+                  expanded.includes('paymentDetails') ? (
+                    <ExpandMore sx={{ color: '#6b7280' }} />
+                  ) : (
+                    <ChevronRight sx={{ color: '#6b7280' }} />
+                  )
+                }
+                sx={{
+                  px: { xs: 2, sm: 3 },
+                  py: 2,
+                  minHeight: '56px',
+                  '&.Mui-expanded': {
+                    minHeight: '56px',
+                    borderBottom: 'none',
+                    pb: 2,
+                  },
+                  '& .MuiAccordionSummary-content': {
+                    my: 0,
+                  },
+                  position: 'relative',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: { xs: '16px', sm: '24px' },
+                    right: { xs: '16px', sm: '24px' },
+                    height: '1px',
+                    backgroundColor: '#e5e7eb',
+                    zIndex: 1,
+                  },
+                }}
+              >
+                <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
+                  Payment Details
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={4}>
+                    <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Bank Name
+                    </Typography>
+                    <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400 }}>
+                      {supplier.bankName === 'Other'
+                        ? (supplier.bankNameOther || 'Other')
+                        : (supplier.bankName || '-')}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Account Number
+                    </Typography>
+                    <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400 }}>
+                      {supplier.accountNumber || '-'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Branch
+                    </Typography>
+                    <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400 }}>
+                      {supplier.branch || '-'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Currency
+                    </Typography>
+                    <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400 }}>
+                      {supplier.currency || '-'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography sx={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Credit Period
+                    </Typography>
+                    <Typography sx={{ fontSize: '14px', color: '#111827', fontWeight: 400 }}>
+                      {supplier.creditPeriod ? `${supplier.creditPeriod} Days` : '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
             {/* Source of Funds Declaration */}
             <Accordion
               expanded={expanded.includes('sourceOfFunds')}
