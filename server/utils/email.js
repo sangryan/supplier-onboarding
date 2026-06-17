@@ -202,20 +202,32 @@ exports.generateResetToken = () => crypto.randomBytes(32).toString('hex');
 
 exports.generateOTP = () => '000000'; // TODO: restore random OTP once email is working
 
-exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
-  console.log(`📧 Sending OTP email to ${email}...`);
+exports.sendOTPEmail = async ({ email, otpCode, userName, type = 'register' }) => {
+  const isLogin = type === 'login';
+  const subject = isLogin
+    ? `Your Login Verification Code - ${COMPANY_NAME}`
+    : `Email Verification Code - ${COMPANY_NAME}`;
+  const heading = isLogin ? 'Login Verification' : 'Email Verification';
+  const bodyText = isLogin
+    ? `A sign-in attempt was made for your account. Use the code below to complete your login:`
+    : `Thank you for registering with the Supplier Onboarding Portal. To complete your registration, please verify your email address using the code below:`;
+  const footerNote = isLogin
+    ? 'If you did not attempt to log in, please contact your system administrator immediately.'
+    : 'If you did not create an account, please ignore this email.';
+
+  console.log(`📧 Sending OTP (${type}) email to ${email}...`);
   const info = await sendEmail({
     from: makeFrom(),
     to: email,
-    subject: 'Email Verification Code - Supplier Onboarding Portal',
+    subject,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h2 style="color: #333; margin: 0 0 10px 0;">Email Verification</h2>
+          <h2 style="color: #333; margin: 0 0 10px 0;">${heading}</h2>
         </div>
         <div style="color: #666; font-size: 16px; line-height: 1.6;">
           <p>Hello ${userName || 'User'},</p>
-          <p>Thank you for registering with the Supplier Onboarding Portal. To complete your registration, please verify your email address using the code below:</p>
+          <p>${bodyText}</p>
           <div style="text-align: center; margin: 30px 0;">
             <div style="display: inline-block; padding: 20px 40px; background-color: #f0f0f0;
                         border-radius: 8px; border: 2px dashed #578A18;">
@@ -225,7 +237,7 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
             </div>
           </div>
           <p style="color: #d32f2f; font-weight: 600;">This code will expire in 10 minutes.</p>
-          <p>If you did not create an account, please ignore this email.</p>
+          <p>${footerNote}</p>
           <p>Best regards,<br>${COMPANY_NAME} Team</p>
         </div>
         <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
@@ -236,7 +248,7 @@ exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
     `,
   });
 
-  console.log(`✅ OTP email sent to ${email}`);
+  console.log(`✅ OTP (${type}) email sent to ${email}`);
   return info;
 };
 

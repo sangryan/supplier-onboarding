@@ -81,7 +81,8 @@ router.post('/register', [
       await sendOTPEmail({
         email: user.email,
         otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
+        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
+        type: 'register'
       });
       console.log(`✅ OTP email sent to ${user.email}`);
     } catch (emailError) {
@@ -184,7 +185,8 @@ router.post('/login', [
       await sendOTPEmail({
         email: user.email,
         otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(' ')
+        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
+        type: 'login'
       });
       console.log(`✅ OTP email sent to ${user.email} for login`);
     } catch (emailError) {
@@ -582,14 +584,6 @@ router.post('/resend-otp', [
       });
     }
 
-    // Check if already verified
-    if (user.isEmailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already verified'
-      });
-    }
-
     // Generate new OTP
     const { generateOTP, sendOTPEmail } = require('../utils/email');
     const otpCode = generateOTP();
@@ -599,12 +593,16 @@ router.post('/resend-otp', [
     user.otpExpire = otpExpire;
     await user.save();
 
+    // Derive type: verified users are in a login flow; unverified are registering
+    const otpType = user.isEmailVerified ? 'login' : 'register';
+
     // Send OTP email
     try {
       await sendOTPEmail({
         email: user.email,
         otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
+        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
+        type: otpType
       });
       console.log(`✅ OTP email resent to ${user.email}`);
     } catch (emailError) {

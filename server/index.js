@@ -9,6 +9,13 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Suppress debug/info logs in production; keep warn and error
+if (process.env.NODE_ENV === 'production') {
+  console.log = () => {};
+  console.debug = () => {};
+  console.info = () => {};
+}
+
 const app = express();
 
 // Trust proxy (required for Render and rate limiting)
