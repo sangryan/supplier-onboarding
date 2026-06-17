@@ -37,7 +37,6 @@ import {
   Download as DownloadIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
-  KeyboardArrowDown as KeyboardArrowDownIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
   Build as BuildIcon,
@@ -65,7 +64,6 @@ const UserManagement = () => {
   const [editMode, setEditMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [search, setSearch] = useState('');
-  const [roleSearch, setRoleSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
   const { names: departments } = useSetupConfig('departments');
@@ -146,7 +144,6 @@ const UserManagement = () => {
       setCurrentUser(null);
       setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', employeeNumber: '', isActive: true });
     }
-    setRoleSearch('');
     setDialogOpen(true);
   };
 
@@ -155,11 +152,14 @@ const UserManagement = () => {
     setEditMode(false);
     setCurrentUser(null);
     setFormData({ firstName: '', lastName: '', email: '', role: '', department: '', employeeNumber: '', isActive: true });
-    setRoleSearch('');
   };
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'role' && value !== 'management' ? { department: '' } : {}),
+    }));
   };
 
   const handleSubmit = async () => {
@@ -268,9 +268,6 @@ const UserManagement = () => {
     { value: 'management', label: 'Management' },
   ];
 
-  const filteredRoleOptions = roleOptions.filter((r) =>
-    r.label.toLowerCase().includes(roleSearch.toLowerCase())
-  );
 
   const applyFilters = (list) =>
     list
@@ -596,37 +593,28 @@ const UserManagement = () => {
               <TextField fullWidth value={formData.employeeNumber} onChange={(e) => handleChange('employeeNumber', e.target.value)} placeholder="e.g. EMP-001" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
             </Grid>
             <Grid item xs={12}>
-              <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Department{formData.role === 'management' ? ' *' : ''}</Typography>
-              <TextField fullWidth select value={formData.department} onChange={(e) => handleChange('department', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}>
-                <MenuItem value="" disabled>Select Department</MenuItem>
-                {departments.map((dept) => (
-                  <MenuItem key={dept} value={dept} sx={{ fontSize: '14px' }}>{dept}</MenuItem>
+              <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Role *</Typography>
+              <TextField fullWidth select value={formData.role} onChange={(e) => handleChange('role', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}>
+                <MenuItem value="" disabled>Select role</MenuItem>
+                {roleOptions.map((r) => (
+                  <MenuItem key={r.value} value={r.value} sx={{ fontSize: '14px' }}>{r.label}</MenuItem>
                 ))}
-                {formData.department && !departments.includes(formData.department) && (
-                  <MenuItem value={formData.department} sx={{ fontSize: '14px' }}>{formData.department}</MenuItem>
-                )}
               </TextField>
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                value={roleOptions.find((r) => r.value === formData.role)?.label || ''}
-                placeholder="Select role"
-                InputProps={{ readOnly: true, endAdornment: <InputAdornment position="end"><KeyboardArrowDownIcon sx={{ color: '#9ca3af' }} /></InputAdornment> }}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input::placeholder': { opacity: 1, color: '#9ca3af', fontSize: '14px' }, '& input': { fontSize: '14px' } } }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth placeholder="Search role" size="small" value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: '#9ca3af', fontSize: 18 }} /></InputAdornment> }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
-              <Box sx={{ border: '1px solid #e5e7eb', borderRadius: '0 0 10px 10px', borderTop: 'none', py: 1 }}>
-                {filteredRoleOptions.map((roleOption) => (
-                  <Box key={roleOption.value} sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 0.5, cursor: 'pointer' }} onClick={() => handleChange('role', roleOption.value)}>
-                    <Checkbox checked={formData.role === roleOption.value} size="small" sx={{ color: '#a3a3a3', '&.Mui-checked': { color: '#578A18' } }} />
-                    <Typography sx={{ fontSize: '14px', color: '#111827' }}>{roleOption.label}</Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Grid>
+            {formData.role === 'management' && (
+              <Grid item xs={12}>
+                <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Department *</Typography>
+                <TextField fullWidth select value={formData.department} onChange={(e) => handleChange('department', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}>
+                  <MenuItem value="" disabled>Select Department</MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept} value={dept} sx={{ fontSize: '14px' }}>{dept}</MenuItem>
+                  ))}
+                  {formData.department && !departments.includes(formData.department) && (
+                    <MenuItem value={formData.department} sx={{ fontSize: '14px' }}>{formData.department}</MenuItem>
+                  )}
+                </TextField>
+              </Grid>
+            )}
             {editMode && (
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

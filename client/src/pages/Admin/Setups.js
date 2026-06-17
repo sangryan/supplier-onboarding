@@ -24,6 +24,7 @@ import {
   Divider,
   FormControlLabel,
   Checkbox,
+  Autocomplete,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -87,31 +88,51 @@ const PREDEFINED_DOCS = [
 ];
 const PREDEFINED_FIELDS = new Set(PREDEFINED_DOCS.map((d) => d.field));
 
+// Convert a human label into a camelCase field key
+const toLabelKey = (label) =>
+  label
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .map((w, i) => (i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join('');
+
 // ─── Document management dialog ───────────────────────────────────────────────
 const EntityTypeDocsDialog = ({ item, onClose, onSaved }) => {
-  const [docs, setDocs]     = useState(
+  const [docs, setDocs]         = useState(
     (item?.documents || []).filter((d) => !PREDEFINED_FIELDS.has(d.field))
   );
-  const [newDoc, setNewDoc] = useState(EMPTY_DOC);
-  const [saving, setSaving] = useState(false);
+  const [newDoc, setNewDoc]     = useState(EMPTY_DOC);
+  const [docInputValue, setDocInputValue] = useState('');
+  const [saving, setSaving]     = useState(false);
 
-  const handleFieldSelect = (field) => {
-    const meta = AVAILABLE_DOCS.find((d) => d.field === field);
-    setNewDoc((p) => ({
-      ...p,
-      field,
-      label:      meta?.label       || '',
-      uploadType: meta?.defaultType  || 'single',
-    }));
+  const handleFieldSelect = (selectedOption) => {
+    if (!selectedOption) {
+      setNewDoc(EMPTY_DOC);
+      return;
+    }
+    if (selectedOption.isNew) {
+      const label = selectedOption.label;
+      const field = toLabelKey(label) || `custom_${Date.now()}`;
+      setNewDoc((p) => ({ ...p, field, label, uploadType: 'single' }));
+    } else {
+      setNewDoc((p) => ({
+        ...p,
+        field:      selectedOption.field,
+        label:      selectedOption.label,
+        uploadType: selectedOption.defaultType || 'single',
+      }));
+    }
   };
 
   const handleAddDoc = () => {
-    if (!newDoc.field) { toast.error('Select a document type'); return; }
+    if (!newDoc.field) { toast.error('Select or type a document type'); return; }
     if (docs.some((d) => d.field === newDoc.field)) {
       toast.error('This document is already in the list'); return;
     }
     setDocs((prev) => [...prev, { ...newDoc }]);
     setNewDoc(EMPTY_DOC);
+    setDocInputValue('');
   };
 
   const handleRemoveDoc = (field) =>
@@ -270,18 +291,49 @@ const EntityTypeDocsDialog = ({ item, onClose, onSaved }) => {
           Add Document
         </Typography>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 260 }}>
-            <Select
-              value={newDoc.field}
-              onChange={(e) => handleFieldSelect(e.target.value)}
-              displayEmpty
-            >
-              <MenuItem value="" disabled>Select document type</MenuItem>
-              {availableToAdd.map((d) => (
-                <MenuItem key={d.field} value={d.field}>{d.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Autocomplete
+            size="small"
+            sx={{ minWidth: 300 }}
+            options={availableToAdd}
+            getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.label)}
+            inputValue={docInputValue}
+            onInputChange={(_, val) => setDocInputValue(val)}
+            onChange={(_, val) => handleFieldSelect(val)}
+            filterOptions={(options, { inputValue }) => {
+              const filtered = options.filter((o) =>
+                o.label.toLowerCase().includes(inputValue.toLowerCase())
+              );
+              if (inputValue.trim() && !options.some((o) => o.label.toLowerCase() === inputValue.trim().toLowerCase())) {
+                filtered.push({ field: '__new__', label: inputValue.trim(), isNew: true });
+              }
+              return filtered;
+            }}
+            renderOption={(props, option) => (
+              <li {...props} key={option.isNew ? '__new__' : option.field}>
+                {option.isNew ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#578A18' }}>
+                    <AddIcon fontSize="small" />
+                    <Typography sx={{ fontSize: '13px' }}>Add "{option.label}"</Typography>
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: '13px' }}>{option.label}</Typography>
+                )}
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField {...params} placeholder="Search or add document type..." size="small" />
+            )}
+            isOptionEqualToValue={(opt, val) => opt.field === val?.field}
+            noOptionsText={
+              docInputValue.trim()
+                ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#578A18', cursor: 'pointer', py: 0.5 }}
+                    onClick={() => handleFieldSelect({ field: '__new__', label: docInputValue.trim(), isNew: true })}>
+                    <AddIcon fontSize="small" />
+                    <Typography sx={{ fontSize: '13px' }}>Add "{docInputValue.trim()}"</Typography>
+                  </Box>
+                : 'No options'
+            }
+          />
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
               value={newDoc.uploadType}

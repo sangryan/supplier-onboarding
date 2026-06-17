@@ -196,7 +196,7 @@ router.post('/', protect, authorize('super_admin'), [
       createdBy: req.user.id,
       isActive: true,
       isEmailVerified: true, // Internal users don't need email verification
-      mustChangePassword: role === 'legal' || role === 'procurement'
+      mustChangePassword: true
     });
 
     // Send invite email with temporary password (non-blocking)
