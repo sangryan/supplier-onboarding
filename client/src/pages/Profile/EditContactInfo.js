@@ -26,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
-import { isValidKenyaIdOrPassport, KENYA_ID_HELPER, isValidKenyaPhone, KENYA_PHONE_HELPER } from '../../utils/kenyaValidators';
+import { isValidKenyaIdOrPassport, KENYA_ID_HELPER, isValidKenyaPhone, KENYA_PHONE_HELPER, isValidEmail, EMAIL_HELPER } from '../../utils/kenyaValidators';
 import Footer from '../../components/Footer/Footer';
 
 const contactRelationships = [
@@ -169,6 +169,10 @@ const EditContactInfo = () => {
       toast.error('Phone number format is invalid. ' + KENYA_PHONE_HELPER);
       return;
     }
+    if (newContact.email && !isValidEmail(newContact.email)) {
+      toast.error('Email address format is invalid. ' + EMAIL_HELPER);
+      return;
+    }
 
     try {
       let updatedContacts;
@@ -249,6 +253,10 @@ const EditContactInfo = () => {
     }
     if (formData.phone && !isValidKenyaPhone(formData.phone)) {
       toast.error('Phone number format is invalid. ' + KENYA_PHONE_HELPER);
+      return;
+    }
+    if (formData.email && !isValidEmail(formData.email)) {
+      toast.error('Email address format is invalid. ' + EMAIL_HELPER);
       return;
     }
     try {
@@ -490,6 +498,12 @@ const EditContactInfo = () => {
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 size="small"
+                error={!!formData.email && !isValidEmail(formData.email)}
+                helperText={
+                  formData.email && !isValidEmail(formData.email)
+                    ? EMAIL_HELPER
+                    : ''
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
@@ -843,6 +857,12 @@ const EditContactInfo = () => {
                   value={newContact.email}
                   onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
                   size="small"
+                  error={!!newContact.email && !isValidEmail(newContact.email)}
+                  helperText={
+                    newContact.email && !isValidEmail(newContact.email)
+                      ? EMAIL_HELPER
+                      : ''
+                  }
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#fff',

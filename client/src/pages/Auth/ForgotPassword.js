@@ -174,6 +174,12 @@ const ForgotPassword = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  error={!!email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
+                  helperText={
+                    email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+                      ? 'Enter a valid email address (e.g. name@example.com)'
+                      : ''
+                  }
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#fff',

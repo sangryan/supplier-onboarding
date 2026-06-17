@@ -48,6 +48,7 @@ import {
 import { FormControl, Select } from '@mui/material';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { isValidEmail, EMAIL_HELPER } from '../../utils/kenyaValidators';
 
 const UserManagement = () => {
   const navigate = useNavigate();
@@ -175,6 +176,10 @@ const UserManagement = () => {
   const handleSubmit = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.role) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (formData.email && !isValidEmail(formData.email)) {
+      toast.error('Email address format is invalid. ' + EMAIL_HELPER);
       return;
     }
     if (formData.role === 'management' && !formData.department?.trim()) {
@@ -595,7 +600,7 @@ const UserManagement = () => {
             </Grid>
             <Grid item xs={12}>
               <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>Work email address</Typography>
-              <TextField fullWidth type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} disabled={editMode} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
+              <TextField fullWidth type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} disabled={editMode} error={!editMode && !!formData.email && !isValidEmail(formData.email)} helperText={!editMode && formData.email && !isValidEmail(formData.email) ? EMAIL_HELPER : ''} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', '& input': { fontSize: '14px' } } }} />
             </Grid>
             <Grid item xs={12}>
               <Typography sx={{ fontSize: '14px', color: '#111827', mb: 0.75 }}>SN Number</Typography>

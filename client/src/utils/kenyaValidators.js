@@ -27,6 +27,11 @@ export const isValidKenyaCompanyReg = (value) => {
 export const isValidKenyaPhone = (value) =>
   /^(\+?254|0)[17]\d{8}$/.test(value.trim());
 
+// Standard email format
+export const isValidEmail = (value) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 export const KENYA_ID_HELPER = 'National ID: 7–8 digits. Passport: 1–2 letters followed by 6–9 digits (e.g. A1234567)';
 export const KENYA_REG_HELPER = 'e.g. CPR/2022/123456, PVT/2021/123456, BN-123456, or a 5–9 digit number';
 export const KENYA_PHONE_HELPER = 'e.g. 0712345678 or +254712345678';
+export const EMAIL_HELPER = 'Enter a valid email address (e.g. name@example.com)';

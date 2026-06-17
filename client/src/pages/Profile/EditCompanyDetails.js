@@ -24,7 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { checkSupplierProfileComplete } from '../../utils/profileCheck';
-import { isValidKenyaCompanyReg, KENYA_REG_HELPER } from '../../utils/kenyaValidators';
+import { isValidKenyaCompanyReg, KENYA_REG_HELPER, isValidEmail, EMAIL_HELPER } from '../../utils/kenyaValidators';
 import Footer from '../../components/Footer/Footer';
 
 const countries = [
@@ -149,6 +149,10 @@ const EditCompanyDetails = () => {
   const handleSubmit = async () => {
     if (formData.companyRegistrationNumber && !isValidKenyaCompanyReg(formData.companyRegistrationNumber)) {
       toast.error('Company Registration Number format is invalid. ' + KENYA_REG_HELPER);
+      return;
+    }
+    if (formData.companyEmail && !isValidEmail(formData.companyEmail)) {
+      toast.error('Company email address format is invalid. ' + EMAIL_HELPER);
       return;
     }
     try {
@@ -531,6 +535,12 @@ const EditCompanyDetails = () => {
                 value={formData.companyEmail}
                 onChange={(e) => handleChange('companyEmail', e.target.value)}
                 size="small"
+                error={!!formData.companyEmail && !isValidEmail(formData.companyEmail)}
+                helperText={
+                  formData.companyEmail && !isValidEmail(formData.companyEmail)
+                    ? EMAIL_HELPER
+                    : ''
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',

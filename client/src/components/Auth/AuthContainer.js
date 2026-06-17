@@ -58,6 +58,11 @@ const AuthContainer = ({ mode = 'login' }) => {
     setError('');
 
     if (step === 'auth') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        setError('Please enter a valid email address');
+        return;
+      }
+
       if (isRegister) {
         // Register - Validate
         if (!formData.name.trim()) {
@@ -255,6 +260,12 @@ const AuthContainer = ({ mode = 'login' }) => {
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
+                error={!!formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())}
+                helperText={
+                  formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
+                    ? 'Enter a valid email address (e.g. name@example.com)'
+                    : ''
+                }
                 sx={fieldSx}
               />
             </Box>
