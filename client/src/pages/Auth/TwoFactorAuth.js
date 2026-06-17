@@ -107,7 +107,6 @@ const TwoFactorAuth = () => {
       const result = await verifyOTP(email, otpCode);
       
       if (result.success) {
-        // Check if supplier profile is complete
         if (result.user?.role === 'supplier') {
           const profileComplete = await checkSupplierProfileComplete(result.user);
           if (profileComplete) {
@@ -115,13 +114,8 @@ const TwoFactorAuth = () => {
           } else {
             navigate('/profile');
           }
-        } else if (result.user?.role === 'procurement' || result.user?.role === 'legal') {
-          if (result.user.mustChangePassword) {
-            navigate('/change-password');
-          } else {
-            // Procurement and Legal users go to dashboard (ProcurementDashboard)
-            navigate('/dashboard');
-          }
+        } else if (result.user?.mustChangePassword) {
+          navigate('/change-password');
         } else {
           navigate('/dashboard');
         }

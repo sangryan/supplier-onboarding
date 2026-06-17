@@ -358,10 +358,56 @@ router.get('/tasks', protect, authorize('procurement', 'legal', 'super_admin'), 
     }); // end else (view === 'all')
     } // end if/else view
 
+    // Termination recommendations
+    if (req.user.role === 'legal' || req.user.role === 'super_admin') {
+      const terminationContracts = await Contract.find({ status: 'termination_recommended' })
+        .populate({ path: 'supplier', select: 'supplierName legalOfficer' })
+        .populate('terminationRecommendedBy', 'firstName lastName')
+        .lean();
+
+      const makeTerminationTask = (contract) => {
+        const year = new Date(contract.terminationRecommendedAt || contract.updatedAt).getFullYear();
+        const shortId = contract._id.toString().slice(-3).toUpperCase();
+        const recommender = contract.terminationRecommendedBy
+          ? `${contract.terminationRecommendedBy.firstName} ${contract.terminationRecommendedBy.lastName}`.trim()
+          : 'HOD';
+        return {
+          _id: contract._id,
+          taskId: `CTR-${year}-${shortId}`,
+          supplierName: contract.supplier?.supplierName || contract.contractNumber,
+          requestType: 'Contract Termination Review',
+          submissionDate: contract.terminationRecommendedAt || contract.updatedAt,
+          status: 'Termination Recommended',
+          rawStatus: 'termination_recommended',
+          contractId: contract._id,
+          lastApprover: recommender,
+          lastApproverDepartment: '-',
+        };
+      };
+
+      const currentUserId = req.user._id.toString();
+
+      terminationContracts.forEach((contract) => {
+        const legalOfficerId = contract.supplier?.legalOfficer?.toString();
+
+        if (view === 'mine') {
+          // My Tasks: only the legal officer who handled this contract sees it
+          if (legalOfficerId === currentUserId) {
+            allTasks.push(makeTerminationTask(contract));
+          }
+        } else {
+          // All Tasks: unassigned contracts (no legal officer) + super_admin sees everything
+          if (req.user.role === 'super_admin' || !legalOfficerId) {
+            allTasks.push(makeTerminationTask(contract));
+          }
+        }
+      });
+    }
+
     // Apply search filter
     if (search) {
       allTasks = allTasks.filter(task =>
-        task.supplierName.toLowerCase().includes(search.toLowerCase()) ||
+        (task.supplierName || '').toLowerCase().includes(search.toLowerCase()) ||
         task.taskId.toLowerCase().includes(search.toLowerCase())
       );
     }

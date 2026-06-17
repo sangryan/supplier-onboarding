@@ -200,7 +200,9 @@ const LegalDashboard = () => {
     };
 
     const handleRowClick = (task) => {
-        if ((task.rawStatus || task.status) === 'pending_contract_upload') {
+        if (task.requestType === 'Contract Termination Review') {
+            navigate(`/contracts/${task.contractId}`);
+        } else if ((task.rawStatus || task.status) === 'pending_contract_upload') {
             const contractId = task.contractId || task.supplier?.contract;
             if (contractId) {
                 navigate(`/contracts/${contractId}?upload=1`);

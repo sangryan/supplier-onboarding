@@ -171,52 +171,31 @@ router.post('/login', [
       });
     }
 
-    // Check if email is verified - only required for suppliers
-    if (user.role === 'supplier' && !user.isEmailVerified) {
-      // Generate new OTP and send email
-      const { generateOTP, sendOTPEmail } = require('../utils/email');
-      const otpCode = generateOTP();
-      const otpExpire = Date.now() + 600000; // 10 minutes
-      
-      user.otpCode = otpCode;
-      user.otpExpire = otpExpire;
-      await user.save();
+    // Generate OTP for all users on every login
+    const { generateOTP, sendOTPEmail } = require('../utils/email');
+    const otpCode = generateOTP();
+    const otpExpire = Date.now() + 600000; // 10 minutes
 
-      // Send OTP email
-      try {
-        await sendOTPEmail({
-          email: user.email,
-          otpCode: otpCode,
-          userName: [user.firstName, user.lastName].filter(Boolean).join(" ")
-        });
-        console.log(`✅ OTP email sent to ${user.email} for login`);
-      } catch (emailError) {
-        console.error('❌ Failed to send OTP email:', emailError.message);
-      }
-
-      return res.status(200).json({
-        success: false,
-        requiresVerification: true,
-        message: 'Please verify your email. An OTP code has been sent to your email.',
-        email: user.email
-      });
-    }
-
-    // Update last login
-    user.lastLogin = new Date();
+    user.otpCode = otpCode;
+    user.otpExpire = otpExpire;
     await user.save();
 
-    const token = generateToken(user._id);
+    try {
+      await sendOTPEmail({
+        email: user.email,
+        otpCode: otpCode,
+        userName: [user.firstName, user.lastName].filter(Boolean).join(' ')
+      });
+      console.log(`✅ OTP email sent to ${user.email} for login`);
+    } catch (emailError) {
+      console.error('❌ Failed to send OTP email:', emailError.message);
+    }
 
-    // Audit log — attach user to req temporarily for logger
-    req.user = user;
-    await logAction(req, 'USER_LOGIN', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { role: user.role });
-    req.user = null;
-
-    res.json({
+    return res.status(200).json({
       success: true,
-      token,
-      user: user.toPublicJSON()
+      requiresVerification: true,
+      message: 'An OTP code has been sent to your email.',
+      email: user.email
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -496,14 +475,6 @@ router.post('/verify-otp', [
       });
     }
 
-    // Check if already verified
-    if (user.isEmailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already verified'
-      });
-    }
-
     // Check if OTP exists and not expired
     if (!user.otpCode || !user.otpExpire) {
       return res.status(400).json({
@@ -527,17 +498,21 @@ router.post('/verify-otp', [
       });
     }
 
-    // Verify email and clear OTP
-    user.isEmailVerified = true;
+    // Clear OTP; only set email-verified / supplier status on first verification
+    const isFirstVerification = !user.isEmailVerified;
+    if (isFirstVerification) {
+      user.isEmailVerified = true;
+      if (user.role === 'supplier') {
+        user.supplierApprovalStatus = 'pending';
+      }
+    }
     user.otpCode = undefined;
     user.otpExpire = undefined;
-    if (user.role === 'supplier') {
-      user.supplierApprovalStatus = 'pending';
-    }
+    user.lastLogin = new Date();
     await user.save();
 
     // Notify procurement of new supplier registration (non-blocking)
-    if (user.role === 'supplier') {
+    if (isFirstVerification && user.role === 'supplier') {
       try {
         const procurementUsers = await User.find({ role: 'procurement', isActive: true });
         const supplierName = [user.firstName, user.lastName].filter(Boolean).join(' ');
@@ -556,12 +531,17 @@ router.post('/verify-otp', [
       }
     }
 
-    // Generate token now that email is verified
+    // Generate token after OTP verified
     const token = generateToken(user._id);
+
+    // Audit log
+    req.user = user;
+    await logAction(req, 'USER_LOGIN', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(' '), { role: user.role });
+    req.user = null;
 
     res.json({
       success: true,
-      message: 'Email verified successfully',
+      message: 'OTP verified successfully',
       token,
       user: user.toPublicJSON()
     });

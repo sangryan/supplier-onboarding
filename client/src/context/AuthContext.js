@@ -175,7 +175,7 @@ export const AuthProvider = ({ children }) => {
         const { token, user } = response.data;
         localStorage.setItem('token', token);
         setUser(user);
-        toast.success('Email verified successfully!');
+        toast.success('Login successful!');
         return { success: true, user };
       } else {
         throw new Error(response.data.message || 'OTP verification failed');

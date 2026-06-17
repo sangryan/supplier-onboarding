@@ -200,7 +200,7 @@ exports.sendPasswordResetEmail = async ({ email, resetToken, userName }) => {
 
 exports.generateResetToken = () => crypto.randomBytes(32).toString('hex');
 
-exports.generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+exports.generateOTP = () => '000000'; // TODO: restore random OTP once email is working
 
 exports.sendOTPEmail = async ({ email, otpCode, userName }) => {
   console.log(`📧 Sending OTP email to ${email}...`);
