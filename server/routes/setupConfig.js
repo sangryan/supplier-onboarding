@@ -3,7 +3,7 @@ const router = express.Router();
 const SetupConfig = require('../models/SetupConfig');
 const { protect, authorize } = require('../middleware/auth');
 
-const VALID_CATEGORIES = ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types'];
+const VALID_CATEGORIES = ['roles', 'entity_types', 'currencies', 'wealth_sources', 'service_types', 'bank_names'];
 
 // GET all items for a category — any authenticated user (suppliers need this for form dropdowns)
 router.get('/:category', protect, async (req, res) => {
@@ -42,13 +42,15 @@ router.post('/', protect, authorize('super_admin'), async (req, res) => {
 // PUT update item
 router.put('/:id', protect, authorize('super_admin'), async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, documents } = req.body;
     if (!name?.trim()) {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
+    const update = { name: name.trim(), description: description?.trim() || '' };
+    if (Array.isArray(documents)) update.documents = documents;
     const item = await SetupConfig.findByIdAndUpdate(
       req.params.id,
-      { name: name.trim(), description: description?.trim() || '' },
+      update,
       { new: true, runValidators: true }
     );
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });

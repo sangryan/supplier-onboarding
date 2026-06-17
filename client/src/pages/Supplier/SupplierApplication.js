@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Paper,
@@ -139,6 +139,12 @@ const legacyWealthMap = {
   other: 'Other',
 };
 
+// Always required for every entity type, enforced in code regardless of DB config
+const UNIVERSAL_DOCS = [
+  { field: 'businessPermit',     label: 'Business Permit / Trading Licence', uploadType: 'single', required: true },
+  { field: 'bankReferenceLetter', label: 'Bank Reference Letter',             uploadType: 'single', required: true },
+];
+
 const SupplierApplication = () => {
   const navigate = useNavigate();
   const params = useParams();
@@ -147,10 +153,11 @@ const SupplierApplication = () => {
   const { user } = useAuth();
 
   // Setup-driven dropdowns
-  const { names: entityTypes } = useSetupConfig('entity_types');
+  const { items: entityTypeItems, names: entityTypes } = useSetupConfig('entity_types');
   const { names: currencies } = useSetupConfig('currencies');
   const { names: serviceTypeOptions } = useSetupConfig('service_types');
   const { names: wealthSourceOptions } = useSetupConfig('wealth_sources');
+  const { names: bankNameOptions } = useSetupConfig('bank_names');
 
   const [activeStep, setActiveStep] = useState(0);
   // Track which fields are prefilled from profile (read-only for new applications)
@@ -175,6 +182,7 @@ const SupplierApplication = () => {
 
     // Payment Details
     bankName: '',
+    bankNameOther: '',
     accountNumber: '',
     branch: '',
     currency: '',
@@ -231,6 +239,14 @@ const SupplierApplication = () => {
     confirmInformationAccurate: false,
     ndaDocument: null,
   });
+
+  // Documents required for the currently selected entity type (from setup config)
+  const entityTypeDocs = useMemo(() => {
+    if (!formData.entityType || entityTypeItems.length === 0) return [];
+    const found = entityTypeItems.find((item) => item.name === formData.entityType);
+    return found?.documents || [];
+  }, [formData.entityType, entityTypeItems]);
+
   const [loading, setLoading] = useState(false);
   const [countrySearchOpen, setCountrySearchOpen] = useState(false);
   const [countrySearchTerm, setCountrySearchTerm] = useState('');
@@ -528,194 +544,20 @@ const SupplierApplication = () => {
     );
   };
 
-  // Build dynamic documents list based on entity type
+  // Returns documents for the current entity type.
+  // UNIVERSAL_DOCS are always first and always required regardless of DB config.
   const getRequiredDocuments = () => {
-    const entityType = formData.entityType;
-    const isCompanyLike = entityType === 'Private/Public Company';
-    const isPartnership = entityType === 'Partnerships';
-    const isForeignCompany = entityType === 'Foreign Company';
-    const isIndividual = entityType === 'Individual/Sole Proprietor';
-    const isTrust = entityType === 'Trust';
-    const docs = [];
-    
-    // Add Certificate of Incorporation for company-like and foreign companies
-    if (isCompanyLike || isForeignCompany) {
-      docs.push({
-        type: 'single',
-        field: 'certificateOfIncorporation',
-        label: 'Certificate of Incorporation or Registration'
-      });
-    }
-
-    // Partnership documents
-    if (isPartnership) {
-      docs.push({
-        type: 'single',
-        field: 'partnershipDeed',
-        label: 'Partnership Deed'
-      });
-      docs.push({
-        type: 'single',
-        field: 'partnersPinCertificate',
-        label: 'PIN Certificate of partners'
-      });
-      docs.push({
-        type: 'single',
-        field: 'partnersTaxCompliance',
-        label: 'Valid tax compliance certificate for each partner'
-      });
-      docs.push({
-        type: 'multi',
-        field: 'partnerIds',
-        label: "Partners' IDs/Copies of Passports"
-      });
-    }
-
-    // Foreign Company documents
-    if (isForeignCompany) {
-      docs.push({
-        type: 'multi',
-        field: 'directorsNationalIds',
-        label: "Directors' National Identification documents"
-      });
-      docs.push({
-        type: 'multi',
-        field: 'directorsPassports',
-        label: "Directors' Passports"
-      });
-      docs.push({
-        type: 'single',
-        field: 'shareCertificate',
-        label: 'Valid share certificate'
-      });
-      docs.push({
-        type: 'single',
-        field: 'registryExtract',
-        label: 'Valid registry extract (alternative to share certificate)'
-      });
-      docs.push({
-        type: 'single',
-        field: 'taxComplianceCertificate',
-        label: 'Valid tax compliance certificate'
-      });
-    }
-
-    // Individual documents
-    if (isIndividual) {
-      docs.push({
-        type: 'single',
-        field: 'nationalId',
-        label: 'National Identification Card'
-      });
-      docs.push({
-        type: 'single',
-        field: 'passportDocument',
-        label: 'Passport'
-      });
-      docs.push({
-        type: 'single',
-        field: 'workPermit',
-        label: 'Work permit (for foreigners)'
-      });
-      docs.push({
-        type: 'single',
-        field: 'policeClearance',
-        label: 'Police clearance certificate'
-      });
-      docs.push({
-        type: 'single',
-        field: 'resume',
-        label: 'Resume (Curriculum vitae)'
-      });
-    }
-
-    // Trust documents
-    if (isTrust) {
-      docs.push({
-        type: 'multi',
-        field: 'foundersIds',
-        label: "Founders' IDs/Copies of Passports"
-      });
-      docs.push({
-        type: 'multi',
-        field: 'beneficiariesIds',
-        label: 'Beneficaries IDs/Copies of Passport'
-      });
-      docs.push({
-        type: 'single',
-        field: 'trustDeed',
-        label: 'Trust Deed'
-      });
-      docs.push({
-        type: 'single',
-        field: 'founderPin',
-        label: 'PIN Certificate of Founders'
-      });
-    }
-
-    // Company-like multi-file documents
-    if (isCompanyLike) {
-      docs.push({
-        type: 'multi',
-        field: 'directorsIds',
-        label: "Directors' IDs/Copies of Passports"
-      });
-    }
-
-    // Shared documents
-    if (isCompanyLike || isPartnership || isForeignCompany) {
-      docs.push({
-        type: 'single',
-        field: 'companyProfile',
-        label: 'Firm Company Profile'
-      });
-    }
-
-    if (isCompanyLike) {
-      docs.push({
-        type: 'single',
-        field: 'cr12',
-        label: 'Valid CR12 (not more than 30 days old)'
-      });
-    }
-
-    // Universal documents
-    docs.push({
-      type: 'single',
-      field: 'businessPermit',
-      label: 'Business Permit / Trading Licence'
-    });
-    docs.push({
-      type: 'single',
-      field: 'bankReferenceLetter',
-      label: 'Bank reference letter'
-    });
-
-    if (isCompanyLike || isIndividual) {
-      docs.push({
-        type: 'single',
-        field: 'kraPinCertificate',
-        label: isCompanyLike ? 'PIN Certificate of entity' : 'PIN Certificate'
-      });
-    }
-
-    if (isCompanyLike || isPartnership || isIndividual) {
-      docs.push({
-        type: 'single',
-        field: 'etimsProof',
-        label: 'Proof of registration on e-TIMS'
-      });
-    }
-
-    if (isCompanyLike || isPartnership || isForeignCompany || isTrust) {
-      docs.push({
-        type: 'single',
-        field: 'financialStatements',
-        label: 'Current annual audited financial statements'
-      });
-    }
-
-    return docs;
+    const universalFields = new Set(UNIVERSAL_DOCS.map((d) => d.field));
+    const entitySpecific = entityTypeDocs.filter((d) => !universalFields.has(d.field));
+    return [
+      ...UNIVERSAL_DOCS.map((d) => ({ type: 'single', field: d.field, label: d.label, required: true })),
+      ...entitySpecific.map((d) => ({
+        type: d.uploadType === 'multiple' ? 'multi' : 'single',
+        field: d.field,
+        label: d.label,
+        required: d.required !== false,
+      })),
+    ];
   };
 
   // Render dynamic document
@@ -905,6 +747,7 @@ const SupplierApplication = () => {
 
               // Payment Details - read directly from app
               bankName: app.bankName || '',
+              bankNameOther: app.bankNameOther || '',
               accountNumber: app.accountNumber || '',
               branch: app.branch || '',
               currency: app.currency || '',
@@ -1303,97 +1146,31 @@ const SupplierApplication = () => {
   };
 
   const validateRequiredDocuments = () => {
-    const entityType = formData.entityType;
-    const isSinglePresent = (v) =>
-      v instanceof File || (typeof v === 'string' && v.trim() !== '');
-    const isArrayPresent = (v) => Array.isArray(v) && v.length > 0;
-
-    if (!entityType) {
+    if (!formData.entityType) {
       toast.error('Please select an entity type');
       return false;
     }
 
-    const isCompanyLike = entityType === 'Private/Public Company';
-    const isPartnership = entityType === 'Partnerships';
-    const isForeign = entityType === 'Foreign Company';
-    const isIndividual = entityType === 'Individual/Sole Proprietor';
-    const isTrust = entityType === 'Trust';
+    const isSinglePresent = (v) =>
+      v instanceof File || (typeof v === 'string' && v.trim() !== '');
+    const isArrayPresent = (v) => Array.isArray(v) && v.length > 0;
 
     const missing = [];
+    const universalFields = new Set(UNIVERSAL_DOCS.map((d) => d.field));
 
-    // Helper for nicer UX
-    const requireSingle = (presentValue, label) => {
-      if (!presentValue) missing.push(label);
-    };
-    const requireArray = (presentValue, label) => {
-      if (!presentValue) missing.push(label);
-    };
+    // Always validate universal docs regardless of DB config
+    UNIVERSAL_DOCS.forEach((doc) => {
+      if (!isSinglePresent(formData[doc.field])) missing.push(doc.label);
+    });
 
-    // Business permit is mandatory for all entity types
-    requireSingle(isSinglePresent(formData.businessPermit), 'Business Permit / Trading Licence');
-
-    if (isCompanyLike) {
-      requireSingle(isSinglePresent(formData.certificateOfIncorporation), 'Certificate of incorporation or registration');
-      requireSingle(isSinglePresent(formData.kraPinCertificate), 'PIN Certificate of entity');
-      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
-      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
-      requireSingle(isSinglePresent(formData.cr12), 'Valid CR12 (not more than 30 days old)');
-      requireSingle(isSinglePresent(formData.companyProfile), 'Firm Company Profile');
-      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
-      requireArray(isArrayPresent(formData.directorsIds), "Directors' IDs/Copies of Passports");
-    } else if (isPartnership) {
-      requireSingle(isSinglePresent(formData.partnershipDeed), 'Partnership Deed');
-      requireSingle(isSinglePresent(formData.partnersPinCertificate), 'PIN Certificate of partners');
-      requireSingle(isSinglePresent(formData.partnersTaxCompliance), 'Valid tax compliance certificate for each partner');
-      requireArray(isArrayPresent(formData.partnerIds), "Partners' IDs/Copies of Passports");
-      requireSingle(isSinglePresent(formData.companyProfile), 'Firm Company Profile');
-      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
-      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
-      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
-    } else if (isForeign) {
-      requireSingle(isSinglePresent(formData.certificateOfIncorporation), 'Certificate of incorporation or registration');
-
-      // share certificate OR registry extract
-      const hasShare = isSinglePresent(formData.shareCertificate);
-      const hasRegistry = isSinglePresent(formData.registryExtract);
-      if (!hasShare && !hasRegistry) {
-        missing.push('Valid share certificate or registry extract');
-      }
-
-      requireSingle(isSinglePresent(formData.taxComplianceCertificate), 'Valid tax compliance certificate');
-
-      // directorsNationalIds OR directorsPassports
-      const hasNationalIds = isArrayPresent(formData.directorsNationalIds);
-      const hasPassports = isArrayPresent(formData.directorsPassports);
-      if (!hasNationalIds && !hasPassports) {
-        missing.push("Directors' National Identification documents or passport");
-      }
-
-      requireSingle(isSinglePresent(formData.companyProfile), 'Firm profile');
-      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
-      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
-    } else if (isIndividual) {
-      // nationalId OR passportDocument
-      const hasNationalId = isSinglePresent(formData.nationalId);
-      const hasPassport = isSinglePresent(formData.passportDocument);
-      if (!hasNationalId && !hasPassport) {
-        missing.push('National Identification Card/ Passport');
-      }
-
-      requireSingle(isSinglePresent(formData.workPermit), 'Work permit (for foreigners)');
-      requireSingle(isSinglePresent(formData.policeClearance), 'Police clearance certificate');
-      requireSingle(isSinglePresent(formData.kraPinCertificate), 'PIN Certificate');
-      requireSingle(isSinglePresent(formData.resume), 'Resume (Curriculum vitae)');
-      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
-      requireSingle(isSinglePresent(formData.etimsProof), 'Proof of registration on e-TIMS');
-    } else if (isTrust) {
-      requireSingle(isSinglePresent(formData.trustDeed), 'Trust Deed');
-      requireSingle(isSinglePresent(formData.founderPin), 'PIN Certificate of Founders');
-      requireArray(isArrayPresent(formData.foundersIds), "Founders' IDs/Copies of Passports");
-      requireArray(isArrayPresent(formData.beneficiariesIds), 'Beneficaries IDs/Copies of Passport');
-      requireSingle(isSinglePresent(formData.bankReferenceLetter), 'Bank reference letter');
-      requireSingle(isSinglePresent(formData.financialStatements), 'Current annual audited financial statements');
-    }
+    // Validate entity-type-specific required docs, skipping universal ones already checked
+    entityTypeDocs.forEach((doc) => {
+      if (!doc.required || universalFields.has(doc.field)) return;
+      const value = formData[doc.field];
+      const present =
+        doc.uploadType === 'multiple' ? isArrayPresent(value) : isSinglePresent(value);
+      if (!present) missing.push(doc.label);
+    });
 
     if (missing.length > 0) {
       toast.error(`Missing required documents: ${missing.join(', ')}`);
@@ -1427,6 +1204,7 @@ const SupplierApplication = () => {
       if (!formData.contactPhone?.trim()) missing.push('Contact Person Phone Number');
       if (!formData.contactEmail?.trim()) missing.push('Contact Person Email');
       if (!formData.bankName?.trim()) missing.push('Bank Name');
+      if (formData.bankName === 'Other' && !formData.bankNameOther?.trim()) missing.push('Please specify the bank name');
       if (!formData.accountNumber?.trim()) missing.push('Account Number');
       if (!formData.branch?.trim()) missing.push('Branch');
       if (!formData.currency?.trim()) missing.push('Currency');
@@ -2374,17 +2152,32 @@ const SupplierApplication = () => {
                   >
                     Bank name
                   </Typography>
-                  <TextField
-                    fullWidth
-                    value={formData.bankName}
-                    onChange={(e) => handleChange('bankName', e.target.value)}
-                    size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fff',
-                      }
-                    }}
-                  />
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={formData.bankName}
+                      onChange={(e) => handleChange('bankName', e.target.value)}
+                      displayEmpty
+                      sx={{ backgroundColor: '#fff' }}
+                    >
+                      <MenuItem value="" disabled>Select bank</MenuItem>
+                      {bankNameOptions.length === 0 && (
+                        <MenuItem value="" disabled>Loading...</MenuItem>
+                      )}
+                      {bankNameOptions.map((b) => (
+                        <MenuItem key={b} value={b}>{b}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {formData.bankName === 'Other' && (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Enter bank name"
+                      value={formData.bankNameOther}
+                      onChange={(e) => handleChange('bankNameOther', e.target.value)}
+                      sx={{ mt: 1, '& .MuiOutlinedInput-root': { backgroundColor: '#fff' } }}
+                    />
+                  )}
                 </Grid>
 
                 <Grid item xs={12} md={6}>
@@ -3588,7 +3381,9 @@ const SupplierApplication = () => {
                         Bank name
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                        {formData.bankName || '-'}
+                        {formData.bankName === 'Other'
+                          ? (formData.bankNameOther || 'Other')
+                          : (formData.bankName || '-')}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} md={4}>
@@ -3793,84 +3588,19 @@ const SupplierApplication = () => {
                         });
                       };
 
-                      return (() => {
-                        const entityType = formData.entityType;
-                        const isCompanyLike = entityType === 'Private/Public Company';
-                        const isPartnership = entityType === 'Partnerships';
-                        const isForeignCompany = entityType === 'Foreign Company';
-                        const isIndividual = entityType === 'Individual/Sole Proprietor';
-                        const isTrust = entityType === 'Trust';
-
-                        return (
-                          <Grid item xs={12}>
-                            {renderDocumentCard(formData.businessPermit, 'Business Permit / Trading Licence')}
-
-                            {isCompanyLike && (
-                              <>
-                                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                                {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate of entity')}
-                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                                {renderDocumentCard(formData.cr12, 'Valid CR12 (not more than 30 days old)')}
-                                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
-                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                                {formData.directorsIds?.length > 0 && renderMultipleDocumentCards(formData.directorsIds, "Directors' IDs/Passports")}
-                              </>
-                            )}
-
-                            {isPartnership && (
-                              <>
-                                {renderDocumentCard(formData.partnershipDeed, 'Partnership Deed')}
-                                {renderDocumentCard(formData.partnersPinCertificate, 'PIN Certificate of partners')}
-                                {renderDocumentCard(formData.partnersTaxCompliance, 'Valid tax compliance certificate for each partner')}
-                                {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
-                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                                {formData.partnerIds?.length > 0 && renderMultipleDocumentCards(formData.partnerIds, "Partners' IDs/Passports")}
-                              </>
-                            )}
-
-                            {isForeignCompany && (
-                              <>
-                                {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                                {renderDocumentCard(formData.shareCertificate, 'Valid share certificate')}
-                                {renderDocumentCard(formData.registryExtract, 'Valid registry extract')}
-                                {renderDocumentCard(formData.taxComplianceCertificate, 'Valid tax compliance certificate')}
-                                {renderDocumentCard(formData.companyProfile, 'Firm profile')}
-                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                                {formData.directorsNationalIds?.length > 0 && renderMultipleDocumentCards(formData.directorsNationalIds, "Directors' National IDs")}
-                                {formData.directorsPassports?.length > 0 && renderMultipleDocumentCards(formData.directorsPassports, "Directors' Passports")}
-                              </>
-                            )}
-
-                            {isIndividual && (
-                              <>
-                                {renderDocumentCard(formData.nationalId, 'National Identification Card')}
-                                {renderDocumentCard(formData.passportDocument, 'Passport')}
-                                {renderDocumentCard(formData.workPermit, 'Work permit (for foreigners)')}
-                                {renderDocumentCard(formData.policeClearance, 'Police clearance certificate')}
-                                {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate')}
-                                {renderDocumentCard(formData.resume, 'Resume (Curriculum vitae)')}
-                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                                {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                              </>
-                            )}
-
-                            {isTrust && (
-                              <>
-                                {renderDocumentCard(formData.trustDeed, 'Trust Deed')}
-                                {renderDocumentCard(formData.founderPin, 'PIN Certificate of Founders')}
-                                {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                                {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                                {formData.foundersIds?.length > 0 && renderMultipleDocumentCards(formData.foundersIds, "Founders' IDs/Passports")}
-                                {formData.beneficiariesIds?.length > 0 && renderMultipleDocumentCards(formData.beneficiariesIds, 'Beneficaries IDs/Passport')}
-                              </>
-                            )}
-                          </Grid>
-                        );
-                      })();
+                      return (
+                        <Grid item xs={12}>
+                          {getRequiredDocuments().map((doc) => {
+                            if (doc.type === 'multi') {
+                              const files = formData[doc.field];
+                              return files?.length > 0
+                                ? renderMultipleDocumentCards(files, doc.label)
+                                : null;
+                            }
+                            return renderDocumentCard(formData[doc.field], doc.label);
+                          })}
+                        </Grid>
+                      );
                     })()}
                   </Grid>
                 </AccordionDetails>

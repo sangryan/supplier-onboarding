@@ -67,9 +67,10 @@ const SupplierList = () => {
         page: page + 1,
         limit: rowsPerPage,
         sortOrder,
+        groupBy: 'name',
+        approvedRegistrationOnly: 'true',
       };
       if (search) params.search = search;
-      params.approvedRegistrationOnly = 'true';
 
       const response = await api.get('/suppliers', { params });
       setSuppliers(response.data.data);

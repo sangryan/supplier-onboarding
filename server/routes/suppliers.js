@@ -507,7 +507,7 @@ router.get('/', protect, async (req, res) => {
       // Aggregate to show unique suppliers (latest record for each supplierName)
       const pipeline = [
         { $match: query },
-        { $sort: { updatedAt: -1 } },
+        { $sort: { updatedAt: -1 } },                      // most recent first, so $first picks latest
         {
           $group: {
             _id: '$supplierName',
@@ -515,7 +515,7 @@ router.get('/', protect, async (req, res) => {
           }
         },
         { $replaceRoot: { newRoot: '$latestRecord' } },
-        { $sort: { supplierName: 1 } }
+        { $sort: { updatedAt: sortOrder === 'asc' ? 1 : -1 } }
       ];
 
       // Get count for pagination
@@ -726,6 +726,14 @@ router.put('/:id', protect, supplierAccess, async (req, res) => {
         }
       }
     });
+
+    // Map physicalAddress (plain string) to companyPhysicalAddress schema field
+    if (req.body.physicalAddress) {
+      updateData.companyPhysicalAddress = {
+        ...(supplier.companyPhysicalAddress || {}),
+        street: req.body.physicalAddress,
+      };
+    }
 
     // Map flat contact fields to authorizedPerson structure
     if (req.body.contactFullName || req.body.contactRelationship || req.body.contactIdPassport || req.body.contactPhone || req.body.contactEmail) {
@@ -1219,6 +1227,14 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       });
     }
 
+    // Map physicalAddress (plain string) to companyPhysicalAddress schema field
+    if (comprehensiveUpdate.physicalAddress) {
+      comprehensiveUpdate.companyPhysicalAddress = {
+        ...(supplier.companyPhysicalAddress || {}),
+        street: comprehensiveUpdate.physicalAddress,
+      };
+    }
+
     // CRITICAL: Ensure enum values are ALWAYS set in the update, even if not in req.body
     // This prevents leaving unmapped values in the database
     if (!comprehensiveUpdate.legalNature && supplier.legalNature) {
@@ -1447,6 +1463,30 @@ router.post('/:id/submit', protect, authorize('supplier'), supplierAccess, async
       }
     } catch (notifError) {
       console.error('Error in notification creation process:', notifError);
+      // Don't fail submission if notifications fail
+    }
+
+    // Notify super_admin users when a supplier submits with an unknown bank name (non-blocking)
+    try {
+      if (comprehensiveUpdate.bankName === 'Other' && comprehensiveUpdate.bankNameOther?.trim()) {
+        const superAdminUsers = await User.find({ role: 'super_admin', isActive: true });
+        for (const user of superAdminUsers) {
+          try {
+            await createNotification({
+              recipient: user._id,
+              type: 'system_alert',
+              title: 'New Bank Name Suggestion',
+              message: `Supplier "${supplier.supplierName || 'Unknown'}" suggested a new bank: "${comprehensiveUpdate.bankNameOther}". Consider adding it to the Bank Names setup.`,
+              relatedEntity: { entityType: 'supplier', entityId: supplier._id },
+              actionUrl: `/setups`
+            });
+          } catch (notifError) {
+            console.error('Error creating bank name suggestion notification for user:', user._id, notifError);
+          }
+        }
+      }
+    } catch (notifError) {
+      console.error('Error in bank name suggestion notification process:', notifError);
       // Don't fail submission if notifications fail
     }
 

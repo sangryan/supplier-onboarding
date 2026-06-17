@@ -204,7 +204,9 @@ const ApplicationStatus = () => {
     accountNumber: supplier.accountNumber || supplier.bankAccountNumber || '',
     branch: supplier.branch || supplier.bankBranch || '',
     creditPeriod: supplier.creditPeriod || '',
-    serviceTypes: supplier.serviceTypes || [],
+    serviceTypes: supplier.serviceTypes || supplier.serviceType || '',
+    serviceTypesOther: supplier.serviceTypesOther || '',
+    businessPermit: supplier.businessPermit || null,
     certificateOfIncorporation: supplier.certificateOfIncorporation || null,
     kraPinCertificate: supplier.kraPinCertificate || null,
     etimsProof: supplier.etimsProof || null,
@@ -238,6 +240,7 @@ const ApplicationStatus = () => {
     practicingCertificates: supplier.practicingCertificates || [],
     keyMembersResumes: supplier.keyMembersResumes || [],
     sourceOfWealth: supplier.sourceOfWealth || '',
+    sourceOfWealthOther: supplier.sourceOfWealthOther || '',
     declarantFullName: supplier.declarantFullName || '',
     declarantCapacity: supplier.declarantCapacity || '',
     declarantIdPassport: supplier.declarantIdPassport || '',
@@ -825,82 +828,41 @@ const ApplicationStatus = () => {
             </AccordionSummary>
             <AccordionDetails>
               <Box>
-                {(() => {
-                  const entityType = formData.entityType;
-                  const isCompanyLike = ['private_company', 'public_company', 'other'].includes(entityType);
-                  const isPartnership = entityType === 'partnership';
-                  const isForeignCompany = entityType === 'foreign_company';
-                  const isIndividual = entityType === 'individual';
-                  const isTrust = entityType === 'trust';
-
-                  return (
-                    <>
-                      {isCompanyLike && (
-                        <>
-                          {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                          {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate of entity')}
-                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                          {renderDocumentCard(formData.cr12, 'Valid CR12')}
-                          {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
-                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                          {formData.directorsIds?.length > 0 && renderMultipleDocumentCards(formData.directorsIds, "Directors' IDs/Passports")}
-                        </>
-                      )}
-
-                      {isPartnership && (
-                        <>
-                          {renderDocumentCard(formData.partnershipDeed, 'Partnership Deed')}
-                          {renderDocumentCard(formData.partnersPinCertificate, 'PIN Certificate of partners')}
-                          {renderDocumentCard(formData.partnersTaxCompliance, 'Valid tax compliance certificate for each partner')}
-                          {renderDocumentCard(formData.companyProfile, 'Firm Company Profile')}
-                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                          {formData.partnerIds?.length > 0 && renderMultipleDocumentCards(formData.partnerIds, "Partners' IDs/Passports")}
-                        </>
-                      )}
-
-                      {isForeignCompany && (
-                        <>
-                          {renderDocumentCard(formData.certificateOfIncorporation, 'Certificate of Incorporation')}
-                          {renderDocumentCard(formData.shareCertificate, 'Valid share certificate')}
-                          {renderDocumentCard(formData.registryExtract, 'Valid registry extract')}
-                          {renderDocumentCard(formData.taxComplianceCertificate, 'Valid tax compliance certificate')}
-                          {renderDocumentCard(formData.companyProfile, 'Firm profile')}
-                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                          {formData.directorsNationalIds?.length > 0 && renderMultipleDocumentCards(formData.directorsNationalIds, "Directors' National IDs")}
-                          {formData.directorsPassports?.length > 0 && renderMultipleDocumentCards(formData.directorsPassports, "Directors' Passports")}
-                        </>
-                      )}
-
-                      {isIndividual && (
-                        <>
-                          {renderDocumentCard(formData.nationalId, 'National Identification Card')}
-                          {renderDocumentCard(formData.passportDocument, 'Passport')}
-                          {renderDocumentCard(formData.workPermit, 'Work permit (for foreigners)')}
-                          {renderDocumentCard(formData.policeClearance, 'Police clearance certificate')}
-                          {renderDocumentCard(formData.kraPinCertificate, 'PIN Certificate')}
-                          {renderDocumentCard(formData.resume, 'Resume (Curriculum vitae)')}
-                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                          {renderDocumentCard(formData.etimsProof, 'Proof of registration on e-TIMS')}
-                        </>
-                      )}
-
-                      {isTrust && (
-                        <>
-                          {renderDocumentCard(formData.trustDeed, 'Trust Deed')}
-                          {renderDocumentCard(formData.founderPin, 'PIN Certificate of Founders')}
-                          {renderDocumentCard(formData.bankReferenceLetter, 'Bank reference letter')}
-                          {renderDocumentCard(formData.financialStatements, 'Current annual audited financial statements')}
-                          {formData.foundersIds?.length > 0 && renderMultipleDocumentCards(formData.foundersIds, "Founders' IDs/Passports")}
-                          {formData.beneficiariesIds?.length > 0 && renderMultipleDocumentCards(formData.beneficiariesIds, 'Beneficaries IDs/Passport')}
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
+                {[
+                  { field: 'businessPermit',             label: 'Business Permit / Trading Licence',              type: 'single' },
+                  { field: 'bankReferenceLetter',         label: 'Bank Reference Letter',                         type: 'single' },
+                  { field: 'certificateOfIncorporation',  label: 'Certificate of Incorporation or Registration',  type: 'single' },
+                  { field: 'kraPinCertificate',           label: 'PIN Certificate',                               type: 'single' },
+                  { field: 'etimsProof',                  label: 'Proof of Registration on e-TIMS',               type: 'single' },
+                  { field: 'financialStatements',         label: 'Annual Audited Financial Statements',           type: 'single' },
+                  { field: 'cr12',                        label: 'Valid CR12',                                    type: 'single' },
+                  { field: 'companyProfile',              label: 'Company Profile',                               type: 'single' },
+                  { field: 'directorsIds',                label: "Directors' IDs / Passports",                    type: 'multi'  },
+                  { field: 'partnershipDeed',             label: 'Partnership Deed',                              type: 'single' },
+                  { field: 'partnersPinCertificate',      label: "Partners' PIN Certificate",                     type: 'single' },
+                  { field: 'partnersTaxCompliance',       label: "Partners' Tax Compliance Certificate",          type: 'single' },
+                  { field: 'partnerIds',                  label: "Partners' IDs / Passports",                     type: 'multi'  },
+                  { field: 'shareCertificate',            label: 'Valid Share Certificate',                       type: 'single' },
+                  { field: 'registryExtract',             label: 'Valid Registry Extract',                        type: 'single' },
+                  { field: 'taxComplianceCertificate',    label: 'Valid Tax Compliance Certificate',              type: 'single' },
+                  { field: 'directorsNationalIds',        label: "Directors' National IDs",                       type: 'multi'  },
+                  { field: 'directorsPassports',          label: "Directors' Passports",                          type: 'multi'  },
+                  { field: 'nationalId',                  label: 'National Identification Card',                  type: 'single' },
+                  { field: 'passportDocument',            label: 'Passport',                                      type: 'single' },
+                  { field: 'workPermit',                  label: 'Work Permit (for foreigners)',                  type: 'single' },
+                  { field: 'policeClearance',             label: 'Police Clearance Certificate',                  type: 'single' },
+                  { field: 'resume',                      label: 'Resume (Curriculum Vitae)',                     type: 'single' },
+                  { field: 'trustDeed',                   label: 'Trust Deed',                                    type: 'single' },
+                  { field: 'founderPin',                  label: "Founders' PIN Certificate",                     type: 'single' },
+                  { field: 'foundersIds',                 label: "Founders' IDs / Passports",                     type: 'multi'  },
+                  { field: 'beneficiariesIds',            label: "Beneficiaries' IDs / Passports",                type: 'multi'  },
+                ].map((doc) => {
+                  if (doc.type === 'multi') {
+                    const files = formData[doc.field];
+                    return files?.length > 0 ? renderMultipleDocumentCards(files, doc.label) : null;
+                  }
+                  return formData[doc.field] ? renderDocumentCard(formData[doc.field], doc.label) : null;
+                })}
               </Box>
             </AccordionDetails>
           </Accordion>
@@ -936,6 +898,16 @@ const ApplicationStatus = () => {
             </AccordionSummary>
             <AccordionDetails>
               <Box>
+                {formData.serviceTypes && (
+                  <Typography sx={{ mb: 2, fontSize: '14px', color: '#374151' }}>
+                    <span style={{ color: '#6b7280', marginRight: 8 }}>Type of Service:</span>
+                    <strong>
+                      {formData.serviceTypes === 'Other'
+                        ? (formData.serviceTypesOther || 'Other')
+                        : formData.serviceTypes}
+                    </strong>
+                  </Typography>
+                )}
                 {renderMultipleDocumentCards(formData.practicingCertificates, 'Practicing Certificate')}
                 {renderMultipleDocumentCards(formData.keyMembersResumes, 'Resume')}
               </Box>
@@ -978,7 +950,9 @@ const ApplicationStatus = () => {
                     Source of wealth/Funds
                   </Typography>
                   <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                    {formData.sourceOfWealth || '-'}
+                    {formData.sourceOfWealth === 'Other'
+                      ? (formData.sourceOfWealthOther || 'Other')
+                      : (formData.sourceOfWealth || '-')}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>

@@ -141,14 +141,14 @@ const SupplierDetails = () => {
   };
 
   const formatAddress = (address) => {
-    if (!address) return '-';
-    if (typeof address === 'string') return address;
+    if (!address) return null;
+    if (typeof address === 'string') return address || null;
     const parts = [];
     if (address.street) parts.push(address.street);
     if (address.city) parts.push(address.city);
     if (address.country) parts.push(address.country);
     if (address.postalCode) parts.push(address.postalCode);
-    return parts.length > 0 ? parts.join(', ') : '-';
+    return parts.length > 0 ? parts.join(', ') : null;
   };
 
   const formatFileSize = (bytes) => {
@@ -267,37 +267,87 @@ const SupplierDetails = () => {
 
     // First try documents array (from API)
     if (supplier.documents && Array.isArray(supplier.documents) && supplier.documents.length > 0) {
-      const apiDocs = supplier.documents.filter(doc =>
-        ['certificate_of_incorporation', 'cr12', 'pin_certificate', 'company_profile', 'bank_reference', 'etims_registration', 'directors_id', 'audited_financials'].includes(doc.documentType)
-      );
+      // Types must match what getDocumentType() in SupplierApplication.js stores
+      const entityDocTypes = new Set([
+        'business_permit', 'bank_reference',
+        'certificate_of_incorporation', 'pin_certificate', 'etims_registration',
+        'audited_financials', 'cr12', 'company_profile', 'directors_id',
+        'partnership_deed', 'partner_pin', 'partner_tax_compliance', 'partner_id',
+        'share_certificate', 'registry_extract', 'tax_compliance',
+        'national_id', 'passport',
+        'work_permit', 'police_clearance', 'resume',
+        'trust_deed', 'founder_pin', 'founder_id', 'beneficiary_id',
+      ]);
+      const apiDocs = supplier.documents.filter(doc => entityDocTypes.has(doc.documentType));
       if (apiDocs.length > 0) {
         return apiDocs;
       }
     }
 
     // Fallback: check for filename fields directly on supplier object
-    const docMap = {
-      certificateOfIncorporation: { type: 'certificate_of_incorporation', name: 'Certificate of Incorporation' },
-      cr12: { type: 'cr12', name: 'CR12' },
-      kraPinCertificate: { type: 'pin_certificate', name: 'KRA Pin Certificate' },
-      companyProfile: { type: 'company_profile', name: 'Company Profile' },
-      bankReferenceLetter: { type: 'bank_reference', name: 'Bank Reference Letter' },
-      etimsProof: { type: 'etims_registration', name: 'Proof of registration on E-tims' },
-      financialStatements: { type: 'audited_financials', name: 'Audited Financial Statements' },
+    // Single-file fields
+    const singleDocMap = {
+      businessPermit:            { type: 'business_permit',            name: 'Business Permit / Trading Licence' },
+      bankReferenceLetter:       { type: 'bank_reference',             name: 'Bank Reference Letter' },
+      certificateOfIncorporation:{ type: 'certificate_of_incorporation',name: 'Certificate of Incorporation or Registration' },
+      kraPinCertificate:         { type: 'pin_certificate',            name: 'PIN Certificate' },
+      etimsProof:                { type: 'etims_registration',         name: 'Proof of Registration on e-TIMS' },
+      financialStatements:       { type: 'audited_financials',         name: 'Annual Audited Financial Statements' },
+      cr12:                      { type: 'cr12',                       name: 'Valid CR12' },
+      companyProfile:            { type: 'company_profile',            name: 'Company Profile' },
+      partnershipDeed:           { type: 'partnership_deed',           name: 'Partnership Deed' },
+      partnersPinCertificate:    { type: 'partner_pin',              name: "Partners' PIN Certificate" },
+      partnersTaxCompliance:     { type: 'partner_tax_compliance',   name: "Partners' Tax Compliance Certificate" },
+      shareCertificate:          { type: 'share_certificate',        name: 'Valid Share Certificate' },
+      registryExtract:           { type: 'registry_extract',         name: 'Valid Registry Extract' },
+      taxComplianceCertificate:  { type: 'tax_compliance',           name: 'Valid Tax Compliance Certificate' },
+      nationalId:                { type: 'national_id',              name: 'National Identification Card' },
+      passportDocument:          { type: 'passport',                 name: 'Passport' },
+      workPermit:                { type: 'work_permit',                name: 'Work Permit (for foreigners)' },
+      policeClearance:           { type: 'police_clearance',           name: 'Police Clearance Certificate' },
+      resume:                    { type: 'resume',                     name: 'Resume (Curriculum Vitae)' },
+      trustDeed:                 { type: 'trust_deed',                 name: 'Trust Deed' },
+      founderPin:                { type: 'founder_pin',                name: "Founders' PIN Certificate" },
     };
 
-    Object.keys(docMap).forEach(key => {
-      if (supplier[key]) {
-        const fileName = typeof supplier[key] === 'string' ? supplier[key] : '';
-        if (fileName) {
-          entityDocs.push({
-            _id: `doc-${key}`,
-            documentType: docMap[key].type,
-            originalName: docMap[key].name,
-            fileSize: 2400000, // Default 2.3 MB
-            fileName: fileName,
-          });
-        }
+    Object.keys(singleDocMap).forEach(key => {
+      const fileName = typeof supplier[key] === 'string' ? supplier[key] : '';
+      if (fileName) {
+        entityDocs.push({
+          _id: `doc-${key}`,
+          documentType: singleDocMap[key].type,
+          originalName: singleDocMap[key].name,
+          fileSize: 2400000,
+          fileName: fileName,
+        });
+      }
+    });
+
+    // Multi-file fields
+    const multiDocMap = {
+      directorsIds:        { type: 'directors_id',  name: "Directors' IDs / Passports" },
+      partnerIds:          { type: 'partner_id',    name: "Partners' IDs / Passports" },
+      directorsNationalIds:{ type: 'national_id',   name: "Directors' National IDs" },
+      directorsPassports:  { type: 'passport',      name: "Directors' Passports" },
+      foundersIds:         { type: 'founder_id',    name: "Founders' IDs / Passports" },
+      beneficiariesIds:    { type: 'beneficiary_id',name: "Beneficiaries' IDs / Passports" },
+    };
+
+    Object.keys(multiDocMap).forEach(key => {
+      const files = supplier[key];
+      if (Array.isArray(files) && files.length > 0) {
+        files.forEach((file, index) => {
+          const fileName = typeof file === 'string' ? file : '';
+          if (fileName) {
+            entityDocs.push({
+              _id: `doc-${key}-${index}`,
+              documentType: multiDocMap[key].type,
+              originalName: files.length > 1 ? `${multiDocMap[key].name} ${index + 1}` : multiDocMap[key].name,
+              fileSize: 2400000,
+              fileName: fileName,
+            });
+          }
+        });
       }
     });
 
@@ -1358,7 +1408,9 @@ const SupplierDetails = () => {
                       mb: 3,
                     }}
                   >
-                    {formatServiceType(supplier.serviceTypes || supplier.serviceType)}
+                    {(supplier.serviceTypes === 'Other' || supplier.serviceType === 'other' || supplier.serviceType === 'Other')
+                      ? (supplier.serviceTypesOther || 'Other')
+                      : formatServiceType(supplier.serviceTypes || supplier.serviceType)}
                   </Typography>
                 </Box>
 
@@ -1544,7 +1596,12 @@ const SupplierDetails = () => {
                         fontWeight: 400,
                       }}
                     >
-                      {supplier.sourceOfFunds?.source ? supplier.sourceOfFunds.source.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : supplier.sourceOfWealth || '-'}
+                      {supplier.sourceOfWealth === 'Other'
+                        ? (supplier.sourceOfWealthOther || 'Other')
+                        : supplier.sourceOfWealth
+                          || (supplier.sourceOfFunds?.source
+                            ? supplier.sourceOfFunds.source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            : '-')}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
