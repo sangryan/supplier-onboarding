@@ -44,6 +44,7 @@ import ChangePassword from './pages/Profile/ChangePassword';
 import NotFound from './pages/NotFound';
 import AuditLogs from './pages/Admin/AuditLogs';
 import RegistrationApprovals from './pages/Admin/RegistrationApprovals';
+import Setups from './pages/Admin/Setups';
 
 function App() {
   const { user, loading } = useAuth();
@@ -145,6 +146,9 @@ function App() {
 
           {/* Audit Logs */}
           <Route path="/audit-logs" element={<AuditLogs />} />
+
+          {/* Setups */}
+          <Route path="/setups" element={<Setups />} />
         </Route>
 
         {/* 404 */}

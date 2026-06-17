@@ -155,6 +155,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/adhoc-vendors', require('./routes/adhocVendors'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/setup-config', require('./routes/setupConfig'));
 
 // NDA template download – serves the standard NDA PDF
 app.get('/api/nda-template', (req, res) => {
@@ -200,9 +201,11 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   // Connect to database after server starts
   if (process.env.MONGODB_URI) {
     mongoose.connect(process.env.MONGODB_URI)
-      .then(() => {
+      .then(async () => {
         console.log('✅ MongoDB connected successfully');
         console.log(`Database: ${process.env.MONGODB_URI.split('@')[1]?.split('?')[0] || 'hidden'}`);
+        const seedSetupConfig = require('./utils/setupSeeder');
+        await seedSetupConfig();
       })
       .catch(err => {
         console.error('❌ MongoDB connection error:', err.message);

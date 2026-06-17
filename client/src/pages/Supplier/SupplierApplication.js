@@ -35,6 +35,7 @@ import Footer from '../../components/Footer/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { buildUploadUrl, fetchFileBlobUrl } from '../../utils/fileAccess';
 import { isValidKenyaIdOrPassport, isValidKenyaCompanyReg, KENYA_ID_HELPER, KENYA_REG_HELPER } from '../../utils/kenyaValidators';
+import useSetupConfig from '../../hooks/useSetupConfig';
 import { processFileForUpload, processFilesForUpload } from '../../utils/compressImage';
 import { format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
@@ -81,17 +82,7 @@ const countries = [
   { code: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
-const currencies = ['KES', 'USD', 'EUR', 'GBP'];
-
 const creditPeriods = ['30 Days', '45 Days', '60 Days', '90 Days', '120 Days'];
-
-const entityTypes = [
-  'Private/Public Company',
-  'Partnerships',
-  'Foreign Company',
-  'Individual/Sole Proprietor',
-  'Trust'
-];
 
 const contactRelationships = [
   'CEO',
@@ -138,16 +129,15 @@ const mapEntityTypeToLegalNature = (value) => {
   return mapping[displayValue] || 'company';
 };
 
-const serviceTypes = [
-  'Goods Supply',
-  'Services',
-  'Consultancy',
-  'Construction',
-  'IT Services',
-  'Professional Services',
-  'Maintenance & Repair',
-  'Other'
-];
+// Legacy source-of-wealth codes → display names (for applications saved before setup migration)
+const legacyWealthMap = {
+  salary: 'Salary',
+  business_income: 'Business Income',
+  investment: 'Investment',
+  inheritance: 'Inheritance',
+  loan: 'Loan',
+  other: 'Other',
+};
 
 const SupplierApplication = () => {
   const navigate = useNavigate();
@@ -155,6 +145,13 @@ const SupplierApplication = () => {
   const id = params.id; // Works for both /application/:id/edit and /application/:id
   const theme = useTheme();
   const { user } = useAuth();
+
+  // Setup-driven dropdowns
+  const { names: entityTypes } = useSetupConfig('entity_types');
+  const { names: currencies } = useSetupConfig('currencies');
+  const { names: serviceTypeOptions } = useSetupConfig('service_types');
+  const { names: wealthSourceOptions } = useSetupConfig('wealth_sources');
+
   const [activeStep, setActiveStep] = useState(0);
   // Track which fields are prefilled from profile (read-only for new applications)
   // Using array instead of Set for better React state detection
@@ -186,6 +183,7 @@ const SupplierApplication = () => {
     // Entity Details
     entityType: '',
     serviceTypes: '',
+    serviceTypesOther: '',
     servicesDescription: '',
     // File uploads
     businessPermit: null,
@@ -927,10 +925,11 @@ const SupplierApplication = () => {
               // Entity Details
               entityType: mapEntityTypeToDisplay(app.entityType),
               serviceTypes: app.serviceTypes || app.serviceType || '',
+              serviceTypesOther: app.serviceTypesOther || '',
               servicesDescription: app.servicesDescription || '',
 
-              // Declarations (map from sourceOfFunds if direct fields don't exist)
-              sourceOfWealth: app.sourceOfWealth || app.sourceOfFunds?.source || '',
+              // Declarations — map legacy lowercase codes to display names
+              sourceOfWealth: legacyWealthMap[app.sourceOfWealth] || app.sourceOfWealth || legacyWealthMap[app.sourceOfFunds?.source] || app.sourceOfFunds?.source || '',
               sourceOfWealthOther: app.sourceOfWealthOther || '',
               declarantFullName: app.declarantFullName || app.sourceOfFunds?.declarantName || '',
               declarantCapacity: app.declarantCapacity || app.sourceOfFunds?.declarantCapacity || '',
@@ -1199,7 +1198,8 @@ const SupplierApplication = () => {
         const draftPayload = {
           supplierName: formData.supplierName || 'Draft Application',
           legalNature: mapEntityTypeToLegalNature(formData.entityType),
-          serviceType: formData.serviceTypes || 'professional_services',
+          serviceType: formData.serviceTypes === 'Other' ? (formData.serviceTypesOther || 'Other') : (formData.serviceTypes || 'professional_services'),
+          serviceTypesOther: formData.serviceTypes === 'Other' ? formData.serviceTypesOther : '',
           currentStep: activeStep,
           lastModified: new Date().toISOString()
         };
@@ -1436,12 +1436,13 @@ const SupplierApplication = () => {
     if (step === 1) {
       if (!formData.entityType?.trim()) missing.push('Entity Type');
       if (!formData.serviceTypes?.trim()) missing.push('Service Type');
+      if (formData.serviceTypes === 'Other' && !formData.serviceTypesOther?.trim()) missing.push('Please specify the type of service offered');
       if (!formData.servicesDescription?.trim()) missing.push('Services Description');
     }
 
     if (step === 2) {
       if (!formData.sourceOfWealth?.trim()) missing.push('Source of Wealth/Funds');
-      if (formData.sourceOfWealth === 'other' && !formData.sourceOfWealthOther?.trim()) missing.push('Please specify source of wealth/funds');
+      if (formData.sourceOfWealth === 'Other' && !formData.sourceOfWealthOther?.trim()) missing.push('Please specify source of wealth/funds');
       if (!formData.declarantFullName?.trim()) missing.push('Full Name of Declarant');
       if (!formData.declarantCapacity?.trim()) missing.push('Declarant Capacity');
       if (!formData.declarantIdPassport?.trim()) {
@@ -1496,7 +1497,8 @@ const SupplierApplication = () => {
         const draftPayload = {
           supplierName: formData.supplierName || 'Draft Application',
           legalNature: mapEntityTypeToLegalNature(formData.entityType),
-          serviceType: formData.serviceTypes || 'professional_services',
+          serviceType: formData.serviceTypes === 'Other' ? (formData.serviceTypesOther || 'Other') : (formData.serviceTypes || 'professional_services'),
+          serviceTypesOther: formData.serviceTypes === 'Other' ? formData.serviceTypesOther : '',
           currentStep: activeStep,
           lastModified: new Date().toISOString()
         };
@@ -2449,10 +2451,11 @@ const SupplierApplication = () => {
                         Select
                       </MenuItem>
                       {currencies.map((curr) => (
-                        <MenuItem key={curr} value={curr}>
-                          {curr}
-                        </MenuItem>
+                        <MenuItem key={curr} value={curr}>{curr}</MenuItem>
                       ))}
+                      {currencies.length === 0 && (
+                        <MenuItem disabled>Loading...</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -2564,6 +2567,9 @@ const SupplierApplication = () => {
                       {entityTypes.map((type) => (
                         <MenuItem key={type} value={type}>{type}</MenuItem>
                       ))}
+                      {entityTypes.length === 0 && (
+                        <MenuItem disabled>Loading...</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                   {prefilledFields.includes('entityType') && (
@@ -2723,17 +2729,32 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      <MenuItem value="" disabled>
-                        Select
-                      </MenuItem>
-                      {serviceTypes.map((type) => (
-                        <MenuItem key={type} value={type}>
-                          {type}
-                        </MenuItem>
+                      <MenuItem value="" disabled>Select</MenuItem>
+                      {serviceTypeOptions.map((type) => (
+                        <MenuItem key={type} value={type}>{type}</MenuItem>
                       ))}
+                      {serviceTypeOptions.length === 0 && (
+                        <MenuItem disabled>Loading...</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                 </Grid>
+
+                {formData.serviceTypes === 'Other' && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 500, fontSize: '14px', color: '#374151' }}>
+                      Please specify service type <span style={{ color: '#d32f2f' }}>*</span>
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={formData.serviceTypesOther}
+                      onChange={(e) => handleChange('serviceTypesOther', e.target.value)}
+                      placeholder="Describe the type of service being offered"
+                      sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#fff' } }}
+                    />
+                  </Grid>
+                )}
 
                 {/* Practicing Certificates Upload Area */}
                 <Grid item xs={12}>
@@ -2968,20 +2989,18 @@ const SupplierApplication = () => {
                         }
                       }}
                     >
-                      <MenuItem value="" disabled>
-                        Select
-                      </MenuItem>
-                      <MenuItem value="salary">Salary</MenuItem>
-                      <MenuItem value="business_income">Business Income</MenuItem>
-                      <MenuItem value="investment">Investment</MenuItem>
-                      <MenuItem value="inheritance">Inheritance</MenuItem>
-                      <MenuItem value="loan">Loan</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
+                      <MenuItem value="" disabled>Select</MenuItem>
+                      {wealthSourceOptions.map((src) => (
+                        <MenuItem key={src} value={src}>{src}</MenuItem>
+                      ))}
+                      {wealthSourceOptions.length === 0 && (
+                        <MenuItem disabled>Loading...</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                 </Grid>
 
-                {formData.sourceOfWealth === 'other' && (
+                {formData.sourceOfWealth === 'Other' && (
                   <Grid item xs={12}>
                     <Typography
                       variant="body2"
@@ -3893,7 +3912,9 @@ const SupplierApplication = () => {
                         Types of Services Being Offered
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151', mb: 2 }}>
-                        {formData.serviceTypes || '-'}
+                        {formData.serviceTypes === 'Other'
+                          ? (formData.serviceTypesOther || 'Other')
+                          : (formData.serviceTypes || '-')}
                       </Typography>
                     </Grid>
 
@@ -4072,7 +4093,7 @@ const SupplierApplication = () => {
                         Source of wealth/Funds
                       </Typography>
                       <Typography sx={{ fontWeight: 500, fontSize: '14px', color: '#374151' }}>
-                        {formData.sourceOfWealth === 'other'
+                        {formData.sourceOfWealth === 'Other'
                           ? (formData.sourceOfWealthOther || 'Other')
                           : (formData.sourceOfWealth || '-')}
                       </Typography>

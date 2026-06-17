@@ -36,6 +36,7 @@ import {
   ExitToApp as ExitIcon,
   Home as HomeIcon,
   HowToReg as HowToRegIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
@@ -178,7 +179,7 @@ const Layout = () => {
         { text: 'Suppliers', icon: <BusinessIcon />, path: '/suppliers' },
         { text: 'All Tasks', icon: <AssignmentIcon />, path: '/tasks/all' },
         { text: 'Audit Logs', icon: <HistoryIcon />, path: '/audit-logs' },
-        { text: 'Setups', icon: <AssessmentIcon />, path: '/reports' },
+        { text: 'Setups', icon: <TuneIcon />, path: '/setups' },
       ];
     } else if (user.role === 'management') {
       return [
