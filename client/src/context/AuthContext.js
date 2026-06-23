@@ -56,56 +56,60 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('🔵 [LOGIN] Starting login for:', email);
-      console.log('API baseURL:', api.defaults.baseURL);
-      
       const response = await api.post('/auth/login', { email, password });
-      console.log('🔵 [LOGIN] Response status:', response.status);
-      console.log('🔵 [LOGIN] Response data:', JSON.stringify(response.data, null, 2));
-      
-      // Check if email verification is required (can be in success: false or success: true response)
-      if (response.data && response.data.requiresVerification) {
-        console.log('🟡 [LOGIN] Email verification required - NOT setting user or token');
-        // Return success: true to indicate the login attempt was valid, just needs verification
-        return { 
-          success: true, 
-          requiresVerification: true,
-          email: response.data.email || email,
-          message: response.data.message || 'Please verify your email'
-        };
+      const data = response.data;
+
+      if (data.requiresTOTPSetup) {
+        return { success: true, requiresTOTPSetup: true, email: data.email, qrCode: data.qrCode, secret: data.secret };
       }
-      
-      // Only proceed if we have token and user (normal successful login)
-      const { token, user } = response.data || {};
-      
-      if (!token || !user) {
-        console.error('🔴 [LOGIN] Invalid response format - missing token or user:', response.data);
-        throw new Error('Invalid response from server');
+      if (data.requiresTOTP) {
+        return { success: true, requiresTOTP: true, email: data.email };
       }
-      
-      console.log('🟢 [LOGIN] Setting token and user');
+      if (data.requiresVerification) {
+        return { success: true, requiresVerification: true, email: data.email || email };
+      }
+
+      const { token, user } = data;
+      if (!token || !user) throw new Error('Invalid response from server');
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Login successful!');
-      
       return { success: true, user };
     } catch (error) {
-      console.error('🔴 [LOGIN] Error caught:', error);
-      console.error('🔴 [LOGIN] Error response:', error.response?.data);
-      console.error('🔴 [LOGIN] Error status:', error.response?.status);
-      
-      // Check if it's a verification requirement in error response
-      if (error.response?.data?.requiresVerification) {
-        console.log('🟡 [LOGIN] Email verification required (from error response)');
-        return { 
-          success: true, 
-          requiresVerification: true,
-          email: error.response.data.email || email,
-          message: error.response.data.message || 'Please verify your email'
-        };
-      }
-      
-      const message = error.response?.data?.message || error.message || 'Login failed';
+      const data = error.response?.data;
+      if (data?.requiresTOTPSetup) return { success: true, requiresTOTPSetup: true, email: data.email, qrCode: data.qrCode, secret: data.secret };
+      if (data?.requiresTOTP) return { success: true, requiresTOTP: true, email: data.email };
+      if (data?.requiresVerification) return { success: true, requiresVerification: true, email: data.email || email };
+      const message = data?.message || error.message || 'Login failed';
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
+  const setupTOTP = async (email, totpCode) => {
+    try {
+      const response = await api.post('/auth/setup-totp', { email, totpCode });
+      const { token, user, backupCodes } = response.data;
+      localStorage.setItem('token', token);
+      setUser(user);
+      return { success: true, user, backupCodes };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Invalid code';
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
+  const verifyTOTP = async (email, totpCode) => {
+    try {
+      const response = await api.post('/auth/verify-totp', { email, totpCode });
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      setUser(user);
+      toast.success('Login successful!');
+      return { success: true, user };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Invalid code';
       toast.error(message);
       return { success: false, message };
     }
@@ -239,6 +243,8 @@ export const AuthProvider = ({ children }) => {
     refreshUser,
     verifyOTP,
     resendOTP,
+    setupTOTP,
+    verifyTOTP,
     isAuthenticated: !!user,
   };
 

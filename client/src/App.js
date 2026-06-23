@@ -24,6 +24,8 @@ import LandingPage from './pages/Landing/LandingPage';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import TwoFactorAuth from './pages/Auth/TwoFactorAuth';
+import TOTPSetup from './pages/Auth/TOTPSetup';
+import TOTPVerify from './pages/Auth/TOTPVerify';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -104,6 +106,14 @@ function App() {
               <Navigate to={getDefaultRoute(user)} replace />
             )
           }
+        />
+        <Route
+          path="/totp-setup"
+          element={!user ? <TOTPSetup /> : <Navigate to={getDefaultRoute(user)} replace />}
+        />
+        <Route
+          path="/totp-verify"
+          element={!user ? <TOTPVerify /> : <Navigate to={getDefaultRoute(user)} replace />}
         />
         <Route
           path="/forgot-password"

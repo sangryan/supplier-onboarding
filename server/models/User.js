@@ -99,6 +99,17 @@ const userSchema = new mongoose.Schema({
   mustChangePassword: {
     type: Boolean,
     default: false
+  },
+  totpSecret: {
+    type: String
+  },
+  totpEnabled: {
+    type: Boolean,
+    default: false
+  },
+  totpBackupCodes: {
+    type: [String],
+    default: []
   }
 }, {
   timestamps: true
@@ -136,6 +147,7 @@ userSchema.methods.toPublicJSON = function() {
     isEmailVerified: this.isEmailVerified,
     supplierApprovalStatus: this.supplierApprovalStatus,
     mustChangePassword: this.mustChangePassword,
+    totpEnabled: this.totpEnabled,
     lastLogin: this.lastLogin,
     createdAt: this.createdAt
   };

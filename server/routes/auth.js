@@ -172,32 +172,35 @@ router.post('/login', [
       });
     }
 
-    // Generate OTP for all users on every login
-    const { generateOTP, sendOTPEmail } = require('../utils/email');
-    const otpCode = generateOTP();
-    const otpExpire = Date.now() + 600000; // 10 minutes
-
-    user.otpCode = otpCode;
-    user.otpExpire = otpExpire;
-    await user.save();
-
-    try {
-      await sendOTPEmail({
-        email: user.email,
-        otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
-        type: 'login'
+    // TOTP: if already set up, prompt for code
+    if (user.totpEnabled) {
+      return res.json({
+        success: true,
+        requiresTOTP: true,
+        email: user.email
       });
-      console.log(`✅ OTP email sent to ${user.email} for login`);
-    } catch (emailError) {
-      console.error('❌ Failed to send OTP email:', emailError.message);
     }
 
-    return res.status(200).json({
+    // TOTP: first time — generate secret and QR code
+    const speakeasy = require('speakeasy');
+    const QRCode = require('qrcode');
+    const companyName = process.env.COMPANY_NAME || 'Supplier Portal';
+    const secret = speakeasy.generateSecret({
+      name: `${companyName} (${user.email})`,
+      issuer: companyName,
+      length: 20
+    });
+    user.totpSecret = secret.base32;
+    await user.save();
+
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+    return res.json({
       success: true,
-      requiresVerification: true,
-      message: 'An OTP code has been sent to your email.',
-      email: user.email
+      requiresTOTPSetup: true,
+      email: user.email,
+      qrCode,
+      secret: secret.base32
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -620,6 +623,135 @@ router.post('/resend-otp', [
       success: false,
       message: 'Error resending OTP'
     });
+  }
+});
+
+// @route   POST /api/auth/setup-totp
+// @desc    Confirm first TOTP code, enable TOTP, return backup codes + token
+// @access  Public
+router.post('/setup-totp', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('totpCode').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { email, totpCode } = req.body;
+    const speakeasy = require('speakeasy');
+    const bcrypt = require('bcryptjs');
+    const crypto = require('crypto');
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !user.totpSecret) {
+      return res.status(400).json({ success: false, message: 'Setup session expired. Please log in again.' });
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.totpSecret,
+      encoding: 'base32',
+      token: totpCode,
+      window: 1
+    });
+
+    if (!verified) {
+      return res.status(400).json({ success: false, message: 'Invalid code. Make sure your device time is correct.' });
+    }
+
+    // Generate 8 backup codes
+    const backupCodes = Array.from({ length: 8 }, () =>
+      crypto.randomBytes(4).toString('hex').toUpperCase()
+    );
+    const hashedCodes = await Promise.all(backupCodes.map(c => bcrypt.hash(c, 10)));
+
+    user.totpEnabled = true;
+    user.totpBackupCodes = hashedCodes;
+    user.lastLogin = new Date();
+
+    // First verification also marks email as verified (for suppliers)
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+      if (user.role === 'supplier') user.supplierApprovalStatus = 'pending';
+    }
+    await user.save();
+
+    const token = generateToken(user._id);
+    req.user = user;
+    await logAction(req, 'USER_LOGIN', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(' '), { role: user.role, method: 'totp_setup' });
+    req.user = null;
+
+    res.json({
+      success: true,
+      token,
+      user: user.toPublicJSON(),
+      backupCodes
+    });
+  } catch (error) {
+    console.error('Setup TOTP error:', error);
+    res.status(500).json({ success: false, message: 'Error setting up authenticator' });
+  }
+});
+
+// @route   POST /api/auth/verify-totp
+// @desc    Verify TOTP code (or backup code) and issue token
+// @access  Public
+router.post('/verify-totp', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('totpCode').notEmpty().withMessage('Code is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { email, totpCode } = req.body;
+    const speakeasy = require('speakeasy');
+    const bcrypt = require('bcryptjs');
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !user.totpEnabled) {
+      return res.status(400).json({ success: false, message: 'Authenticator not set up for this account.' });
+    }
+
+    // Try TOTP code first
+    let verified = speakeasy.totp.verify({
+      secret: user.totpSecret,
+      encoding: 'base32',
+      token: totpCode,
+      window: 1
+    });
+
+    // Fall back to backup codes
+    if (!verified && user.totpBackupCodes?.length) {
+      for (let i = 0; i < user.totpBackupCodes.length; i++) {
+        const match = await bcrypt.compare(totpCode.toUpperCase(), user.totpBackupCodes[i]);
+        if (match) {
+          user.totpBackupCodes.splice(i, 1); // each backup code is single-use
+          verified = true;
+          break;
+        }
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ success: false, message: 'Invalid code.' });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = generateToken(user._id);
+    req.user = user;
+    await logAction(req, 'USER_LOGIN', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(' '), { role: user.role, method: 'totp' });
+    req.user = null;
+
+    res.json({ success: true, token, user: user.toPublicJSON() });
+  } catch (error) {
+    console.error('Verify TOTP error:', error);
+    res.status(500).json({ success: false, message: 'Error verifying code' });
   }
 });
 

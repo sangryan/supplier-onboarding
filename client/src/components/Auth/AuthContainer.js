@@ -133,38 +133,42 @@ const AuthContainer = ({ mode = 'login' }) => {
           const result = await login(formData.email, formData.password);
           console.log('🟢 [AUTH] Login result:', JSON.stringify(result, null, 2));
 
+          if (result && result.requiresTOTPSetup) {
+            setHasFailedLogin(false);
+            setError('');
+            navigate('/totp-setup', {
+              replace: true,
+              state: { email: result.email, qrCode: result.qrCode, secret: result.secret }
+            });
+            setLoading(false);
+            return;
+          }
+
+          if (result && result.requiresTOTP) {
+            setHasFailedLogin(false);
+            setError('');
+            navigate('/totp-verify', {
+              replace: true,
+              state: { email: result.email }
+            });
+            setLoading(false);
+            return;
+          }
+
           if (result && result.requiresVerification) {
             setHasFailedLogin(false);
             setError('');
-            setTimeout(() => {
-              navigate('/2fa', {
-                replace: true,
-                state: { email: formData.email || result.email, from: 'login' }
-              });
-            }, 100);
+            navigate('/2fa', {
+              replace: true,
+              state: { email: formData.email || result.email, from: 'login' }
+            });
             setLoading(false);
             return;
           }
 
           if (result && result.success) {
             setHasFailedLogin(false);
-
-            if (result.user?.role === 'supplier') {
-              const profileComplete = await checkSupplierProfileComplete(result.user);
-              if (profileComplete) {
-                navigate('/dashboard');
-              } else {
-                navigate('/profile');
-              }
-            } else if (result.user?.role === 'procurement' || result.user?.role === 'legal') {
-              if (result.user.mustChangePassword) {
-                navigate('/change-password');
-              } else {
-                navigate('/dashboard');
-              }
-            } else {
-              navigate('/dashboard');
-            }
+            navigate('/dashboard');
           } else {
             setError(result?.message || 'Login failed');
             setHasFailedLogin(true);
