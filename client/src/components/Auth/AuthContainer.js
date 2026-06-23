@@ -101,22 +101,7 @@ const AuthContainer = ({ mode = 'login' }) => {
           console.log('🟢 [AUTH] Registration result:', JSON.stringify(result, null, 2));
 
           if (result && result.success) {
-            if (result.requiresVerification) {
-              console.log('🟡 [AUTH] Email verification required - navigating to 2FA');
-              setError('');
-              setTimeout(() => {
-                navigate('/2fa', {
-                  replace: true,
-                  state: { email: formData.email || result.email, from: 'register' }
-                });
-              }, 100);
-              setLoading(false);
-              return;
-            } else if (result.user?.role === 'supplier') {
-              navigate('/application/new');
-            } else {
-              navigate('/dashboard');
-            }
+            navigate('/profile');
           } else {
             setError(result?.message || 'Registration failed');
           }

@@ -44,24 +44,17 @@ router.post('/register', [
       });
     }
 
-    // Generate OTP code (6 alphanumeric characters)
-    const { generateOTP, sendOTPEmail } = require('../utils/email');
-    const otpCode = generateOTP();
-    const otpExpire = Date.now() + 600000; // 10 minutes
-
-    // If user exists but not verified, update with new OTP
     let user;
     if (existingUser && !existingUser.isEmailVerified) {
       existingUser.firstName = firstName;
       existingUser.lastName = lastName;
       existingUser.password = password;
       existingUser.phone = phone;
-      existingUser.otpCode = otpCode;
-      existingUser.otpExpire = otpExpire;
+      existingUser.isEmailVerified = true;
+      existingUser.supplierApprovalStatus = 'profile_incomplete';
       await existingUser.save();
       user = existingUser;
     } else {
-      // Create new user
       user = await User.create({
         firstName,
         lastName,
@@ -69,33 +62,36 @@ router.post('/register', [
         password,
         phone,
         role: 'supplier',
-        otpCode,
-        otpExpire,
-        isEmailVerified: false,
+        isEmailVerified: true,
         supplierApprovalStatus: 'profile_incomplete'
       });
     }
 
-    // Send OTP email
+    // Notify procurement of new supplier registration
     try {
-      await sendOTPEmail({
-        email: user.email,
-        otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
-        type: 'register'
-      });
-      console.log(`✅ OTP email sent to ${user.email}`);
-    } catch (emailError) {
-      console.error('❌ Failed to send OTP email:', emailError.message);
-      // Still return success but log the error
+      const procurementUsers = await User.find({ role: 'procurement', isActive: true });
+      const supplierName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+      for (const pu of procurementUsers) {
+        await createNotification({
+          recipient: pu._id,
+          type: 'new_task_assigned',
+          title: 'New Supplier Registration',
+          message: `${supplierName} (${user.email}) has registered and is pending review.`,
+          relatedEntity: { entityType: 'user', entityId: user._id },
+          actionUrl: '/dashboard'
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to notify procurement of new supplier:', notifErr.message);
     }
 
-    // Don't generate token yet - user must verify email first
+    // Issue token immediately — TOTP setup on first login completes onboarding
+    const token = generateToken(user._id);
     res.status(201).json({
       success: true,
-      message: 'Registration successful. Please verify your email with the OTP code sent to your email.',
-      requiresVerification: true,
-      email: user.email
+      message: 'Registration successful.',
+      token,
+      user: user.toPublicJSON()
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -585,32 +581,6 @@ router.post('/resend-otp', [
         success: true,
         message: 'If an account with that email exists, an OTP code has been sent.'
       });
-    }
-
-    // Generate new OTP
-    const { generateOTP, sendOTPEmail } = require('../utils/email');
-    const otpCode = generateOTP();
-    const otpExpire = Date.now() + 600000; // 10 minutes
-
-    user.otpCode = otpCode;
-    user.otpExpire = otpExpire;
-    await user.save();
-
-    // Derive type: verified users are in a login flow; unverified are registering
-    const otpType = user.isEmailVerified ? 'login' : 'register';
-
-    // Send OTP email
-    try {
-      await sendOTPEmail({
-        email: user.email,
-        otpCode: otpCode,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(' '),
-        type: otpType
-      });
-      console.log(`✅ OTP email resent to ${user.email}`);
-    } catch (emailError) {
-      console.error('❌ Failed to send OTP email:', emailError.message);
-      // Still return success (security best practice)
     }
 
     res.json({

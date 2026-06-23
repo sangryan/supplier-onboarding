@@ -61,6 +61,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tempPasswordDialog, setTempPasswordDialog] = useState({ open: false, password: '', userName: '' });
   const [editMode, setEditMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [search, setSearch] = useState('');
@@ -189,7 +190,7 @@ const UserManagement = () => {
         });
         toast.success('User updated successfully');
       } else {
-        await api.post('/users', {
+        const res = await api.post('/users', {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
@@ -197,7 +198,14 @@ const UserManagement = () => {
           department: formData.department,
           employeeNumber: formData.employeeNumber,
         });
-        toast.success('User created successfully. Temporary password sent by email.');
+        handleCloseDialog();
+        fetchUsers();
+        setTempPasswordDialog({
+          open: true,
+          password: res.data.tempPassword,
+          userName: `${formData.firstName} ${formData.lastName}`.trim(),
+        });
+        return;
       }
       handleCloseDialog();
       fetchUsers();
@@ -633,6 +641,36 @@ const UserManagement = () => {
           )}
           <Button fullWidth variant="contained" onClick={handleSubmit} sx={{ textTransform: 'none', borderRadius: '8px', boxShadow: 'none', bgcolor: '#578A18', '&:hover': { bgcolor: '#467014', boxShadow: 'none' } }}>
             {editMode ? 'Save User' : 'Invite User'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Temp password reveal dialog */}
+      <Dialog open={tempPasswordDialog.open} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>User Created</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2, color: '#555', fontSize: '14px' }}>
+            <strong>{tempPasswordDialog.userName}</strong> has been added. Share the temporary password below with them directly — it will not be shown again.
+          </Typography>
+          <Box sx={{ background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: '8px', p: 2, textAlign: 'center', mb: 2 }}>
+            <Typography sx={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '20px', letterSpacing: '2px', color: '#111' }}>
+              {tempPasswordDialog.password}
+            </Typography>
+          </Box>
+          <Box sx={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: '8px', p: 1.5 }}>
+            <Typography sx={{ fontSize: '12px', color: '#7a5c00' }}>
+              The user will be prompted to change this password on first login.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2.5 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => setTempPasswordDialog({ open: false, password: '', userName: '' })}
+            sx={{ textTransform: 'none', borderRadius: '8px', boxShadow: 'none', bgcolor: '#578A18', '&:hover': { bgcolor: '#467014', boxShadow: 'none' } }}
+          >
+            Done
           </Button>
         </DialogActions>
       </Dialog>

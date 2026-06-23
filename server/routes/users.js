@@ -5,7 +5,6 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Supplier = require('../models/Supplier');
 const { protect, authorize } = require('../middleware/auth');
-const { sendUserInviteEmail } = require('../utils/email');
 const { logAction } = require('../utils/auditLogger');
 
 // @route   GET /api/users
@@ -199,24 +198,13 @@ router.post('/', protect, authorize('super_admin'), [
       mustChangePassword: true
     });
 
-    // Send invite email with temporary password (non-blocking)
-    try {
-      await sendUserInviteEmail({
-        email: user.email,
-        tempPassword,
-        userName: [user.firstName, user.lastName].filter(Boolean).join(" "),
-        role: role.replace('_', ' ')
-      });
-    } catch (emailError) {
-      console.error('Failed to send user invite email:', emailError.message);
-    }
-
     await logAction(req, 'USER_CREATED', 'User', user._id, [user.firstName, user.lastName].filter(Boolean).join(" "), { role, email: user.email });
 
     res.status(201).json({
       success: true,
       data: user.toPublicJSON(),
-      message: 'User created successfully. Temporary password has been sent by email.'
+      tempPassword,
+      message: 'User created successfully. Share the temporary password with the user directly.'
     });
   } catch (error) {
     console.error('Create user error:', error);
