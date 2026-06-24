@@ -30,3 +30,6 @@ Thumbs.db
 *.tmp
 temp/
 
+# Scripts (seeds, one-off utilities)
+server/seeds/
+
