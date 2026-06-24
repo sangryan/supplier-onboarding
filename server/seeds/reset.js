@@ -63,13 +63,10 @@ async function run() {
   console.log('\n  Clearing uploads...');
   await clearUploads();
 
-  // Recreate super admin
+  // Recreate super admin (plain password — pre-save hook handles hashing)
   console.log('\n  Creating super admin...');
-  const hashedPassword = await bcrypt.hash(ADMIN.password, 10);
-
-  // Re-require User model after dropping collections so indexes are recreated
   const User = require('../models/User');
-  await User.create({ ...ADMIN, password: hashedPassword });
+  await User.create({ ...ADMIN });
   console.log('  ✅ Super admin created');
 
   console.log('\n──────────────────────────────');
